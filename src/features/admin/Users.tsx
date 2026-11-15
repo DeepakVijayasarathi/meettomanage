@@ -847,7 +847,7 @@ export default function AdminUsers() {
             <span className="text-xs text-muted-foreground">—</span>
           ) : (
             <div className="flex items-center gap-2">
-              <Progress value={row.attendancePercent} className="h-1.5 w-16" />
+              <Progress value={row.attendancePercent} aria-label={`Attendance ${row.attendancePercent}%`} className="h-1.5 w-16" />
               <span className="text-xs font-semibold text-muted-foreground">{row.attendancePercent}%</span>
             </div>
           ),

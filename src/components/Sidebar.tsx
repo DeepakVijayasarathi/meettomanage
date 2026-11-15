@@ -109,7 +109,7 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
           {sections.map((section, idx) => (
             <div key={idx} className="mb-4">
               {section.title && !collapsed && (
-                <p className="mb-1 px-2 text-[11px] font-medium text-muted-foreground/80">{section.title}</p>
+                <p className="mb-1 px-2 text-[11px] font-medium text-muted-foreground">{section.title}</p>
               )}
               {section.title && collapsed && idx > 0 && <div className="mx-auto mb-2 h-px w-6 bg-sidebar-border" />}
               <div className={cn("flex flex-col gap-px", collapsed && "items-center")}>

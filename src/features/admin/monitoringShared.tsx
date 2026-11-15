@@ -98,7 +98,7 @@ export function ResourceGauge({ icon: Icon, label, percent, detail }: { icon: ty
         </span>
         <span className="font-semibold text-foreground">{Math.round(percent)}%</span>
       </div>
-      <Progress value={Math.min(100, percent)} indicatorClassName={TONE_BAR_CLASS[tone]} />
+      <Progress value={Math.min(100, percent)} aria-label={label} indicatorClassName={TONE_BAR_CLASS[tone]} />
       <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
     </div>
   );

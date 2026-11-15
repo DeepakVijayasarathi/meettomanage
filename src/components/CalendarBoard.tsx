@@ -28,6 +28,10 @@ interface CalendarBoardProps {
   onMonthChange?: (month: Date) => void;
 }
 
+/** Text on a status chip: white only on the dark red "cancelled"; the other status colours are too
+ *  light for white text (as low as 1.9:1 on scheduled yellow), so they get near-black. */
+const chipText = (status: SessionStatus) => (status === "cancelled" ? "text-white" : "text-[#1C1917]");
+
 const DEFAULT_LEGEND: SessionStatus[] = ["scheduled", "completed", "cancelled", "noshow", "demo", "rescheduled", "holiday", "leave"];
 
 export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendStatuses = DEFAULT_LEGEND, onMonthChange }: CalendarBoardProps) {
@@ -176,8 +180,9 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                       onClick={() => onSessionClick?.(s)}
                       title={s.title}
                       className={cn(
-                        "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium text-white transition-transform hover:scale-[1.02]",
-                        SESSION_STATUS_COLOR[s.status]
+                        "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium transition-transform hover:scale-[1.02]",
+                        SESSION_STATUS_COLOR[s.status],
+                        chipText(s.status)
                       )}
                     >
                       <span className="min-w-0 flex-1 truncate">
@@ -201,8 +206,9 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                               onClick={() => onSessionClick?.(s)}
                               title={s.title}
                               className={cn(
-                                "flex items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-medium text-white transition-transform hover:scale-[1.02]",
-                                SESSION_STATUS_COLOR[s.status]
+                                "flex items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs font-medium transition-transform hover:scale-[1.02]",
+                                SESSION_STATUS_COLOR[s.status],
+                                chipText(s.status)
                               )}
                             >
                               <span className="min-w-0 flex-1 truncate">
@@ -253,7 +259,7 @@ function SelectedDayList({ dateKey, sessions, onSessionClick }: { dateKey: strin
               key={s.id}
               type="button"
               onClick={() => onSessionClick?.(s)}
-              className={cn("flex items-start gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-white", SESSION_STATUS_COLOR[s.status])}
+              className={cn("flex items-start gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium", SESSION_STATUS_COLOR[s.status], chipText(s.status))}
             >
               <span className="shrink-0 tabular-nums">{formatTimeLabel(s.startTime)}</span>
               <span className="min-w-0 flex-1 break-words">{s.title}<span className="block text-xs font-normal opacity-90">{SESSION_STATUS_LABEL[s.status]}</span></span>

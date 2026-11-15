@@ -373,7 +373,7 @@ function Row({ on, label, locked }: { on: boolean; label: string; locked?: boole
   return (
     <li className="flex min-h-[2.5rem] items-start gap-2.5">
       {on ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" /> : <Off className="mt-0.5 h-4 w-4 shrink-0 text-[#A8A29E]" />}
-      <span className={cn("text-sm leading-relaxed", on ? "text-[#111]" : "text-[#8A837D]")}>{!on && <span className="sr-only">Not included: </span>}{label}</span>
+      <span className={cn("text-sm leading-relaxed", on ? "text-[#111]" : "text-[#6B645E]")}>{!on && <span className="sr-only">Not included: </span>}{label}</span>
     </li>
   );
 }

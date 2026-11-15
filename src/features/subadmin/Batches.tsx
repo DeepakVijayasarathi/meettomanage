@@ -139,7 +139,7 @@ function BatchCard({ batch, index, onOpen }: { batch: DisplayBatch; index: numbe
             {batch.enrolled} / {batch.capacity}
           </span>
         </div>
-        <Progress value={pct} className="h-2" indicatorClassName={pct >= 90 ? "bg-success" : pct >= 70 ? "bg-warning" : "bg-destructive"} />
+        <Progress value={pct} aria-label={`Capacity: ${batch.enrolled} of ${batch.capacity} seats filled`} className="h-2" indicatorClassName={pct >= 90 ? "bg-success" : pct >= 70 ? "bg-warning" : "bg-destructive"} />
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
