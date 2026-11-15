@@ -60,7 +60,7 @@ pipeline {
                     # Use Docker build context instead of bind-mounting $WORKSPACE.
                     # Jenkins runs in a container while Docker runs on the host, so
                     # the Jenkins-only workspace path is not visible to bind mounts.
-                    docker build --pull --target test \
+                    docker build --pull --target e2e \
                       --tag ${IMAGE_NAME}:quality-${BUILD_NUMBER} \
                       -f Dockerfile .
                     docker image rm ${IMAGE_NAME}:quality-${BUILD_NUMBER} >/dev/null 2>&1 || true

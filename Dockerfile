@@ -16,7 +16,16 @@ COPY . .
 # Docker build context, which also works when Jenkins itself runs in a container
 # and its workspace path is not bind-mountable by the host Docker daemon.
 FROM source AS test
-RUN npm run lint && npm test -- --run
+RUN npm run config:audit && npm run routes:audit && npm run lint && npm test -- --run
+
+# Browser-level quality gate. The official image contains the exact Chromium/system
+# libraries Playwright needs; Alpine cannot run the supported browser build reliably.
+FROM mcr.microsoft.com/playwright:v1.65.1-noble AS e2e
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run config:audit && npm run routes:audit && npm run lint && npm test -- --run && npm run test:e2e
 
 FROM source AS build
 

@@ -13,3 +13,4 @@ dist-ssr
 /output/
 /playwright-report/
 /test-results/
+/.s3.mjs

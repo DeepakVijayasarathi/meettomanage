@@ -9,6 +9,7 @@
     "build:uat": "tsc -b && vite build --mode uat && node scripts/prerender-meta.mjs && node scripts/prerender-body.mjs && node scripts/seo-audit.mjs",
     "seo:audit": "node scripts/seo-audit.mjs",
     "routes:audit": "node scripts/route-audit.mjs",
+    "config:audit": "node scripts/config-audit.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest",
