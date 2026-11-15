@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { isChunkLoadError, reloadFresh } from "@/lib/freshReload";
+import { reportClientError } from "@/lib/telemetry";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -33,6 +34,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Unhandled render error:", error, info.componentStack);
+    reportClientError(error, "react-render", info.componentStack ?? undefined);
 
     if (isChunkLoadError(error)) {
       let alreadyReloaded = false;

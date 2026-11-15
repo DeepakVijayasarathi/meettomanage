@@ -11,6 +11,7 @@ import { applyInitialLang } from "@/lib/i18n";
 import { stripFreshReloadParam, tryAutoReloadFresh } from "@/lib/freshReload";
 import { clearAuthStorage } from "@/lib/authStorage";
 import { discoverHostTenant, hasTenantSessionMismatch } from "@/lib/tenantPath";
+import { installGlobalErrorReporting } from "@/lib/telemetry";
 import "@/index.css";
 
 // Vite fires this when a lazy route's JS or CSS can't be preloaded - i.e. this tab holds an older
@@ -19,6 +20,7 @@ window.addEventListener("vite:preloadError", () => {
   tryAutoReloadFresh();
 });
 stripFreshReloadParam();
+installGlobalErrorReporting();
 
 async function start() {
   // localStorage is shared by every tenant path and custom hostname. Resolve a

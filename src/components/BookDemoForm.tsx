@@ -315,7 +315,7 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
           {demoError}
         </p>
       )}
-      <Button type="submit" disabled={demoSubmitting} className="mt-1 w-full !bg-[#EA580C] !text-white hover:!bg-[#C2410C]">
+      <Button type="submit" disabled={demoSubmitting} className="mt-1 w-full !bg-[#C2410C] !text-white hover:!bg-[#9A3412]">
         {demoSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Book Demo"}
       </Button>
     </form>

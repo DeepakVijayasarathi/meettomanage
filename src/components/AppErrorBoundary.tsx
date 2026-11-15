@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { isChunkLoadError, reloadFresh, tryAutoReloadFresh } from "@/lib/freshReload";
+import { reportClientError } from "@/lib/telemetry";
 
 interface Props {
   children: ReactNode;
@@ -29,6 +30,7 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Unhandled render error:", error, info.componentStack);
+    reportClientError(error, "react-route", info.componentStack ?? undefined);
     // An old build in this tab: fetch the current one straight away instead of asking the user.
     // At most once a minute (see tryAutoReloadFresh) - after that the screen below stays up.
     if (isChunkLoadError(error)) tryAutoReloadFresh();

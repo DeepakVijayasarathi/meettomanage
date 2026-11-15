@@ -49,10 +49,12 @@ export function setAccessToken(token: string | null) {
 
 export class ApiError extends Error {
   readonly status: number;
+  readonly correlationId?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, correlationId?: string) {
     super(message);
     this.status = status;
+    this.correlationId = correlationId;
   }
 }
 
@@ -199,7 +201,7 @@ async function fetchApi<T>(path: string, init: RequestInit | undefined, tenantSc
     // Backend errors arrive as RFC 7807 ProblemDetails
     const message = await readProblemMessage(response);
     if (response.status === 402) notePlanLimitMessage(message);
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, response.headers.get("X-Correlation-ID") ?? undefined);
   }
 
   // Some endpoints return 200 with no body (e.g. MonitoringController.BroadcastReload's

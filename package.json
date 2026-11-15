@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/prerender-meta.mjs && node scripts/prerender-body.mjs && node scripts/seo-audit.mjs",
+    "build": "tsc -b && vite build && node scripts/performance-budget.mjs && node scripts/prerender-meta.mjs && node scripts/prerender-body.mjs && node scripts/seo-audit.mjs",
     "build:uat": "tsc -b && vite build --mode uat && node scripts/prerender-meta.mjs && node scripts/prerender-body.mjs && node scripts/seo-audit.mjs",
     "seo:audit": "node scripts/seo-audit.mjs",
+    "routes:audit": "node scripts/route-audit.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@microsoft/signalr": "^10.0.0",
@@ -43,7 +46,9 @@
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.65.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -60,7 +65,7 @@
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.9.0",
     "jsdom": "^29.1.1",
-    "playwright": "^1.48.0",
+    "playwright": "^1.65.1",
     "postcss": "^8.4.49",
     "puppeteer-core": "^23.11.1",
     "tailwindcss": "^3.4.14",
