@@ -107,7 +107,9 @@
     --success-foreground: 222 30% 10%;
 
     --warning: 33 92% 58%;
-    --warning-foreground: 26 83% 12%;
+    /* Light amber, not dark brown: nearly every use is text on a faint warning tint (badges,
+       alerts) over a dark card, where dark brown text was unreadable. */
+    --warning-foreground: 38 95% 68%;
 
     --brand-accent: 3 85% 62%;
     --brand-accent-foreground: 222 30% 8%;

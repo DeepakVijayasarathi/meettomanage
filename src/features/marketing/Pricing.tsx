@@ -343,7 +343,8 @@ function PlanCard({ name, price, priceNote, ribbon, saving, description, highlig
         <h2 className="font-display min-w-0 text-[1.4rem] font-extrabold leading-tight tracking-[-0.025em] text-[#111] rtl:tracking-normal">{name}</h2>
         {ribbon && <span className={cn("mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.06em] rtl:tracking-normal", highlighted ? "bg-[#111] text-white" : "bg-[#ECFDF3] text-[#047857]")}>{ribbon}</span>}
       </div>
-      <p className="mt-2 min-h-[3.25rem] text-sm leading-relaxed text-[#5B6472]">{description || <span aria-hidden="true">&nbsp;</span>}</p>
+      {/* A blank line is kept only when some sibling plan has a description, so prices stay aligned; with none it collapses. */}
+      {description !== undefined && <p className="mt-2 min-h-[3.25rem] text-sm leading-relaxed text-[#5B6472]">{description || <span aria-hidden="true">&nbsp;</span>}</p>}
       <div className="mt-5 flex min-h-[3.25rem] flex-wrap items-baseline gap-x-2 gap-y-1">
         <span className={cn("font-display font-extrabold leading-none tracking-[-0.03em] text-[#111] rtl:tracking-normal", compact ? "text-[clamp(2rem,2.5vw,2.6rem)]" : "text-[clamp(2.4rem,3.6vw,3.1rem)]")}>{price}</span>
         <span className="text-sm font-semibold text-[#5B6472]">{priceNote}</span>
@@ -443,6 +444,7 @@ export default function Pricing() {
   const paid = visible.filter((p) => !isFreePlan(p));
   const popularCode = popularPlanCode(paid);
   const fourUp = visible.length >= 4;
+  const anyDescription = visible.some((p) => !!p.description);
 
   function limitLines(plan: PublicPlan): string[] {
     const num = (v: number, fmt: (n: number) => string) => (v === -1 ? t.unlimited : fmt(v));
@@ -511,7 +513,7 @@ export default function Pricing() {
                 priceNote={free ? t.freeForever : t.perCycle[shownCycle]}
                 ribbon={free ? t.freeBadge : plan.code === popularCode ? t.popular : undefined}
                 saving={shownCycle === "Year" && freeMonths > 0 ? t.monthsFree(freeMonths) : undefined}
-                description={plan.description}
+                description={anyDescription ? plan.description : undefined}
                 highlighted={plan.code === popularCode}
                 compact={fourUp}
                 ctaLabel={cta.label}

@@ -32,6 +32,8 @@ const DEFAULT_LEGEND: SessionStatus[] = ["scheduled", "completed", "cancelled", 
 
 export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendStatuses = DEFAULT_LEGEND, onMonthChange }: CalendarBoardProps) {
   const [cursor, setCursor] = useState(initialMonth ?? new Date());
+  // Phones only: the day whose classes are listed under the grid (cells there show dots, not labels).
+  const [selectedKey, setSelectedKey] = useState(() => format(initialMonth ?? new Date(), "yyyy-MM-dd"));
   const onMonthChangeRef = useRef(onMonthChange);
   onMonthChangeRef.current = onMonthChange;
   useEffect(() => {
@@ -56,6 +58,8 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
       const key = s.date;
       map.set(key, [...(map.get(key) ?? []), s]);
     }
+    // Earliest first, so a day reads in the order it happens.
+    for (const list of map.values()) list.sort((x, y) => x.startTime.localeCompare(y.startTime));
     return map;
   }, [sessions]);
 
@@ -120,7 +124,8 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
               <div
                 key={key}
                 className={cn(
-                  "min-h-[104px] border-b border-r border-border p-1.5 last:border-r-0",
+                  "relative min-h-[60px] border-b border-r border-border p-1 last:border-r-0 sm:min-h-[104px] sm:p-1.5",
+                  selectedKey === key && "ring-2 ring-inset ring-primary sm:ring-0",
                   !inMonth && "bg-muted/20",
                   isToday(day) && "bg-primary/5",
                   isHoliday && "bg-muted/80 grayscale"
@@ -137,7 +142,19 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                     {format(day, "d")}
                   </span>
                 </div>
-                <div className="mt-1 flex flex-col gap-1">
+                {/* Phones: seven columns are too narrow for labels, so a day shows dots and tapping it lists its classes below. */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedKey(key)}
+                  aria-label={`${format(day, "EEEE, MMM d")}: ${isHoliday ? "holiday, " : ""}${daySessions.length} ${daySessions.length === 1 ? "class" : "classes"}`}
+                  aria-pressed={selectedKey === key}
+                  className="absolute inset-0 flex items-end justify-center gap-0.5 pb-1.5 sm:hidden"
+                >
+                  {isHoliday && <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />}
+                  {daySessions.slice(0, 4).map((s) => <span key={s.id} className={cn("h-1.5 w-1.5 rounded-full", SESSION_STATUS_COLOR[s.status])} />)}
+                  {daySessions.length > 4 && <span className="text-[9px] font-bold leading-none text-muted-foreground">+</span>}
+                </button>
+                <div className="mt-1 hidden flex-col gap-1 sm:flex">
                   {isHoliday && holidayEvent && (
                     <button
                       onClick={() => onSessionClick?.(holidayEvent)}
@@ -204,6 +221,8 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
         </div>
       </div>
 
+      <SelectedDayList dateKey={selectedKey} sessions={sessionsByDay.get(selectedKey) ?? []} onSessionClick={onSessionClick} />
+
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-muted/40 px-3 py-2.5">
         {legendStatuses.map((status) => (
           <div key={status} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -212,6 +231,36 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Phones only: the tapped day's holiday and classes, full width so titles are readable. */
+function SelectedDayList({ dateKey, sessions, onSessionClick }: { dateKey: string; sessions: ClassSession[]; onSessionClick?: (session: ClassSession) => void }) {
+  const day = new Date(`${dateKey}T00:00:00`);
+  const holiday = sessions.find((s) => s.id.startsWith("holiday-"));
+  const items = sessions.filter((s) => !s.id.startsWith("holiday-"));
+  return (
+    <div className="rounded-xl border border-border p-3 sm:hidden" aria-live="polite">
+      <p className="text-sm font-bold text-foreground">{format(day, "EEEE, MMM d")}</p>
+      {holiday && <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Holiday · {holiday.title}</p>}
+      {items.length === 0 ? (
+        !holiday && <p className="mt-1 text-sm text-muted-foreground">No classes this day.</p>
+      ) : (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {items.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onSessionClick?.(s)}
+              className={cn("flex items-start gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-white", SESSION_STATUS_COLOR[s.status])}
+            >
+              <span className="shrink-0 tabular-nums">{formatTimeLabel(s.startTime)}</span>
+              <span className="min-w-0 flex-1 break-words">{s.title}<span className="block text-xs font-normal opacity-90">{SESSION_STATUS_LABEL[s.status]}</span></span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

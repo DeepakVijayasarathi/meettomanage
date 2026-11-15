@@ -30,7 +30,7 @@ export function ViewAsBanner() {
   return (
     <div
       role="status"
-      className="fixed bottom-4 left-1/2 z-[100] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full border border-warning/50 bg-warning/95 py-1.5 pl-4 pr-1.5 text-sm text-warning-foreground shadow-lg"
+      className="fixed bottom-4 left-1/2 z-[100] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full border border-warning/50 bg-warning/95 py-1.5 pl-4 pr-1.5 text-sm text-[hsl(26_83%_12%)] shadow-lg"
     >
       <Eye className="h-4 w-4 shrink-0" />
       <span className="truncate">
