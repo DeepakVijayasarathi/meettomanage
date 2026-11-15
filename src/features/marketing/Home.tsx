@@ -108,12 +108,12 @@ function CardArt({ index }: { index: number }) {
 const SECURITY_ICONS: LucideIcon[] = [Lock, CreditCard, ShieldCheck];
 const AUDIENCE_ICONS: Record<string, LucideIcon> = { abacus: Calculator, phonics: BookOpenText, english: Languages, tuition: GraduationCap, coding: Code2, trainer: Users };
 const JOURNEY = [
-  { label: "Enquiry", detail: "Capture every lead", icon: MessageSquare },
-  { label: "Demo", detail: "Book and follow up", icon: CalendarCheck2 },
-  { label: "Admission", detail: "Keep one student record", icon: GraduationCap },
-  { label: "Invoice", detail: "Collect and reconcile fees", icon: IndianRupee },
-  { label: "Class", detail: "Teach and mark attendance", icon: Video },
-  { label: "Parent update", detail: "Share progress automatically", icon: Smartphone },
+  { label: "Enquiry", detail: "Capture every lead", note: "One shared pipeline", icon: MessageSquare },
+  { label: "Demo", detail: "Book and follow up", note: "No missed follow-ups", icon: CalendarCheck2 },
+  { label: "Admission", detail: "Keep one student record", note: "History stays connected", icon: GraduationCap },
+  { label: "Invoice", detail: "Collect and reconcile fees", note: "Clear payment status", icon: IndianRupee },
+  { label: "Class", detail: "Teach and mark attendance", note: "One-click operations", icon: Video },
+  { label: "Parent update", detail: "Share progress automatically", note: "Families stay informed", icon: Smartphone },
 ];
 const EYEBROW = "text-xs font-bold uppercase tracking-[0.12em] text-[#C2410C] rtl:tracking-normal";
 const H2 = "font-display text-[clamp(1.65rem,3vw,2.5rem)] font-extrabold leading-[1.08] tracking-[-0.035em] text-[#1C1917] rtl:tracking-normal";
@@ -267,24 +267,47 @@ export default function MarketingHome() {
 
         {/* Free games remain available under Resources; this page keeps the buyer journey focused. */}
 
-        {lang === "en" && <section aria-labelledby="connected-journey-heading" className="border-y border-[#F2DFCE] bg-[#FFF6EE] py-[clamp(56px,6vw,88px)] text-[#1C1917]">
-          <div className="mx-auto max-w-[1200px] px-5">
-            <div className="max-w-[760px]">
-              <p className={EYEBROW}>One connected student record</p>
-              <h2 id="connected-journey-heading" className="font-display mt-4 text-[clamp(1.75rem,3.2vw,2.75rem)] font-extrabold leading-[1.08] tracking-[-0.035em]">From first enquiry to the next paid class.</h2>
-              <p className="mt-5 text-lg leading-relaxed text-[#57534E]">Your team sees the same history at every step. No copying names between a form, spreadsheet, payment app and video-call link.</p>
-            </div>
-            <ol className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        {lang === "en" && <section aria-labelledby="connected-journey-heading" className="relative overflow-hidden border-y border-[#F2DFCE] bg-[#FFF8F3] py-[clamp(64px,7vw,104px)] text-[#1C1917]">
+          <div aria-hidden="true" className="pointer-events-none absolute -start-40 top-10 h-96 w-96 rounded-full bg-[#FFE2CB]/60 blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute -end-32 bottom-0 h-80 w-80 rounded-full bg-[#FFD9BC]/45 blur-3xl" />
+          <div className="relative mx-auto max-w-[1240px] px-5">
+            <Reveal className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div className="max-w-[780px]">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#F1CBAE] bg-white/90 px-3.5 py-2 text-xs font-extrabold uppercase tracking-[0.12em] text-[#C2410C] shadow-sm">
+                  <span className="mx-live-dot h-2 w-2 rounded-full bg-[#EA580C]" /> One connected student record
+                </div>
+                <h2 id="connected-journey-heading" className="font-display mt-5 text-balance text-[clamp(2rem,3.6vw,3.2rem)] font-extrabold leading-[1.04] tracking-[-0.045em]">From first enquiry to the <span className="text-[#C2410C]">next paid class.</span></h2>
+                <p className="mt-5 max-w-[720px] text-[clamp(1rem,1.45vw,1.15rem)] leading-[1.75] text-[#57534E]">Your team sees the same history at every step. No copying names between a form, spreadsheet, payment app and video-call link.</p>
+              </div>
+              <div className="hidden items-center gap-3 rounded-2xl border border-[#EAD7C7] bg-white/80 px-5 py-4 shadow-[0_18px_45px_-34px_rgba(120,53,15,.55)] backdrop-blur lg:flex">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF0E3] text-[#C2410C]"><Sparkles className="h-5 w-5" /></span>
+                <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-[#9A3412]">One source of truth</p><p className="mt-1 text-sm font-semibold text-[#44403C]">Six steps. Zero duplicate entry.</p></div>
+              </div>
+            </Reveal>
+
+            <ol className="relative mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {JOURNEY.map((step, index) => {
                 const Icon = step.icon;
-                return <li key={step.label} className="relative rounded-2xl border border-[#EBCFB7] bg-white p-5 shadow-[0_16px_36px_-28px_rgba(194,65,12,.5)]">
-                  <div className="flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF0E3] text-[#C2410C]"><Icon className="h-5 w-5" /></span><span className="text-xs font-bold text-[#A8A29E]">0{index + 1}</span></div>
-                  <h3 className="mt-5 font-display font-extrabold text-[#1C1917]">{step.label}</h3><p className="mt-1 text-sm leading-relaxed text-[#6B625B]">{step.detail}</p>
-                  {index < JOURNEY.length - 1 && <ArrowRight aria-hidden="true" className="absolute -end-3 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-[#EA580C] lg:block" />}
-                </li>;
+                return <Reveal as="li" key={step.label} delay={index * 85} className="group relative min-h-[210px] overflow-hidden rounded-[26px] border border-[#E9D5C4] bg-white/95 p-6 shadow-[0_22px_55px_-38px_rgba(120,53,15,.5)] transition-[transform,box-shadow,border-color] duration-500 hover:-translate-y-1.5 hover:border-[#F0A56D] hover:shadow-[0_30px_65px_-36px_rgba(194,65,12,.48)] sm:p-7">
+                  <div aria-hidden="true" className="absolute -end-12 -top-16 h-40 w-40 rounded-full bg-gradient-to-br from-[#FFF0E3] to-transparent transition-transform duration-700 group-hover:scale-125" />
+                  <div className="relative flex items-start justify-between gap-5">
+                    <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FFF3EA] to-[#FFD9BC] text-[#C2410C] shadow-[0_10px_24px_-14px_rgba(194,65,12,.65)] ring-1 ring-white transition-transform duration-500 group-hover:rotate-[-4deg] group-hover:scale-110"><Icon className="h-6 w-6" /></span>
+                    <span className="font-display text-[2.4rem] font-black leading-none tracking-[-0.06em] text-[#F1DED0] transition-colors duration-300 group-hover:text-[#F6C8A5]">0{index + 1}</span>
+                  </div>
+                  <div className="relative mt-6">
+                    <h3 className="font-display text-xl font-extrabold tracking-[-0.025em] text-[#1C1917]">{step.label}</h3>
+                    <p className="mt-2 text-[15px] font-medium leading-relaxed text-[#57534E]">{step.detail}</p>
+                    <p className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-[#9A3412]"><CheckCircle2 className="h-4 w-4 text-[#EA580C]" />{step.note}</p>
+                  </div>
+                  {index < JOURNEY.length - 1 && <span aria-hidden="true" className="absolute bottom-0 start-0 h-1 w-full origin-left scale-x-0 bg-gradient-to-r from-[#FB923C] to-[#C2410C] transition-transform duration-700 group-hover:scale-x-100" />}
+                </Reveal>;
               })}
             </ol>
-            <div className="mt-8 flex flex-wrap gap-3"><Link to="/demo-login" className={cn(BTN_PRIMARY, "!rounded-full")}>Try the workflow live <ArrowRight className="h-4 w-4" /></Link><Link to="/get-started?intent=migration" className="inline-flex items-center gap-2 rounded-full border border-[#E8C8AD] bg-white px-6 py-3.5 text-sm font-bold text-[#9A3412] hover:bg-[#FFF3EA]"><Upload className="h-4 w-4" /> Plan my migration</Link></div>
+            <Reveal delay={180} className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <Link to="/demo-login" className={cn(BTN_PRIMARY, "min-h-12 justify-center !rounded-full px-7")}>Try the workflow live <ArrowRight className="h-4 w-4" /></Link>
+              <Link to="/get-started?intent=migration" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#E8C8AD] bg-white px-7 text-sm font-bold text-[#9A3412] shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#F0A56D] hover:bg-[#FFF3EA]"><Upload className="h-4 w-4" /> Plan my migration</Link>
+              <p className="text-center text-xs font-semibold text-[#78716C] sm:ms-2 sm:text-start">Bring your current spreadsheet—we help map the move.</p>
+            </Reveal>
           </div>
         </section>}
 
