@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { Check, Lock, Mail, Minus, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -262,7 +263,7 @@ export default function SubAdminPermissions() {
         <CardContent className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-11 w-11">
-              <AvatarFallback style={{ backgroundColor: `${profile.avatarColor}22`, color: profile.avatarColor }} className="text-sm font-bold">
+              <AvatarFallback style={initialsStyle(profile.avatarColor)} className={cn(INITIALS_TEXT, "text-sm font-bold")}>
                 {getInitials(profile.name)}
               </AvatarFallback>
             </Avatar>

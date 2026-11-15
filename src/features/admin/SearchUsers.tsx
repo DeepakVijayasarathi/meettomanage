@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { GraduationCap, Search, UserSearch } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -31,7 +32,7 @@ function matchesUser(user: AppUser, query: string): boolean {
 function UserAvatar({ name, color }: { name: string; color: string }) {
   return (
     <Avatar className="h-9 w-9">
-      <AvatarFallback style={{ backgroundColor: `${color}22`, color }}>{getInitials(name)}</AvatarFallback>
+      <AvatarFallback style={initialsStyle(color)} className={INITIALS_TEXT}>{getInitials(name)}</AvatarFallback>
     </Avatar>
   );
 }

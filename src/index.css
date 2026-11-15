@@ -40,7 +40,7 @@
        L lowered from 51% to 45% — text-destructive on its own bg-destructive/10 badge
        (e.g. the "Suspended" user-status pill) only cleared 4.13:1; the darker value also
        improves destructive-foreground (white) contrast on solid destructive buttons. */
-    --destructive: 3 76% 45%;
+    --destructive: 3 76% 41%;
     --destructive-foreground: 0 0% 100%;
 
     /* Hue nudged toward the Meet to Manage brand green (#7DC142, hue ~92). L lowered from
@@ -48,7 +48,7 @@
        "Completed" status pill used across every portal) only cleared 2.78:1, badly failing
        WCAG AA's 4.5:1; this is the single most-reused status color in the app. Darkening it
        also improves success-foreground (white) on solid buttons. */
-    --success: 96 50% 30%;
+    --success: 96 55% 25%;
     --success-foreground: 0 0% 100%;
 
     /* Meet to Manage brand orange (#F7941D, hue ~33). */
@@ -165,9 +165,9 @@
     --muted-foreground: 215 16% 42%;
     --accent: 210 25% 94%;
     --accent-foreground: 222 32% 14%;
-    --destructive: 3 76% 45%;
+    --destructive: 3 76% 41%;
     --destructive-foreground: 0 0% 100%;
-    --success: 96 50% 30%;
+    --success: 96 55% 25%;
     --success-foreground: 0 0% 100%;
     --warning: 33 92% 50%;
     --warning-foreground: 26 83% 14%;

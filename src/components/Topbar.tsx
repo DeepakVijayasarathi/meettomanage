@@ -106,7 +106,7 @@ export function Topbar({ onMenuClick, title, sections = [] }: TopbarProps) {
               className="ml-1 flex items-center gap-2 rounded-full pr-1 hover:bg-muted/60"
             >
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary">{getInitials(userName)}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground">{getInitials(userName)}</AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>

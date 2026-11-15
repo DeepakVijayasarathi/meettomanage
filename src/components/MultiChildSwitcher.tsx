@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { AlertCircle, Plus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSession } from "@/state/session";
@@ -24,7 +25,7 @@ export function MultiChildSwitcher() {
             )}
           >
             <Avatar className="h-6 w-6">
-              <AvatarFallback style={{ backgroundColor: `${color}22`, color }} className="text-[10px]">
+              <AvatarFallback style={initialsStyle(color)} className={cn(INITIALS_TEXT, "text-[10px]")}>
                 {getInitials(child.name)}
               </AvatarFallback>
             </Avatar>

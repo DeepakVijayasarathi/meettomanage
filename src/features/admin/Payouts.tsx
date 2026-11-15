@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { format, parse } from "date-fns";
 import { Link } from "react-router-dom";
 import {
@@ -417,7 +418,7 @@ export default function AdminPayouts() {
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                     )}
                     <Avatar className="h-9 w-9 shrink-0">
-                      <AvatarFallback style={{ backgroundColor: `${teacher?.avatarColor ?? "#999"}22`, color: teacher?.avatarColor ?? "#999" }}>
+                      <AvatarFallback style={initialsStyle(teacher?.avatarColor ?? "#999")} className={INITIALS_TEXT}>
                         {getInitials(group.teacherName)}
                       </AvatarFallback>
                     </Avatar>

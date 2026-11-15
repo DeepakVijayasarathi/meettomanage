@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
-import { useMarketingLocale } from "@/lib/i18n";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { applyEnglishLtrAttributes, applyMarketingLocaleAttributes, useMarketingLocale } from "@/lib/i18n";
 import { trackMarketingEvent } from "@/lib/analytics";
 
 const SKIP = "script,style,noscript,code,pre,[data-no-translate]";
@@ -25,6 +25,13 @@ export function MarketingTranslationLayer({ children }: { children: ReactNode })
   const originals = useRef(new WeakMap<Text, string>());
   // Nodes currently showing a translation, so switching language can put the English back first.
   const applied = useRef(new Map<Text, { original: string; translated: string }>());
+
+  // Only marketing pages take the visitor's language and direction; leaving them (to login or a
+  // portal, which are English-only) puts the page back to English, left-to-right.
+  useLayoutEffect(() => {
+    applyMarketingLocaleAttributes();
+    return applyEnglishLtrAttributes;
+  }, [locale]);
 
   // Capture every current and future public sales link in one place. This avoids silent
   // analytics gaps when a new landing page adds a Book demo link but forgets an onClick.

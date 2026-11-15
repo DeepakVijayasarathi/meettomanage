@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { ChildSchedulePreferenceSummary } from "@/components/ChildSchedulePreferenceSummary";
 import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, MonitorSmartphone, Plus, ShieldCheck, ShieldOff, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
@@ -70,7 +71,7 @@ import { listDepartments, type ApiDepartment } from "@/api/departments";
 function UserAvatar({ name, color }: { name: string; color: string }) {
   return (
     <Avatar className="h-9 w-9">
-      <AvatarFallback style={{ backgroundColor: `${color}22`, color }}>{getInitials(name)}</AvatarFallback>
+      <AvatarFallback style={initialsStyle(color)} className={INITIALS_TEXT}>{getInitials(name)}</AvatarFallback>
     </Avatar>
   );
 }

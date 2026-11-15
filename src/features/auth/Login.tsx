@@ -304,7 +304,7 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
                   role="tab"
                   aria-selected={on}
                   onClick={() => pickRole(t.role)}
-                  className={cn("flex items-center justify-center gap-1.5 !rounded-xl px-1 py-2.5 text-[13px] font-semibold transition-colors", on ? "bg-[#EA580C] text-white shadow-md" : "text-[#44403C] hover:bg-white/70")}
+                  className={cn("flex items-center justify-center gap-1.5 !rounded-xl px-1 py-2.5 text-[13px] font-semibold transition-colors", on ? "bg-[#C2410C] text-white shadow-md" : "text-[#44403C] hover:bg-white/70")}
                 >
                   <Icon className="hidden h-4 w-4 shrink-0 sm:block" /> {t.label}
                 </button>
@@ -354,7 +354,7 @@ export default function Login({ mode = "login" }: { mode?: "login" | "demo" }) {
               <Link to="/forgot-pin" className="text-sm font-semibold text-[#C2410C] hover:underline">Forgot your PIN?</Link>
             </div>
 
-            <Button type="submit" size="lg" disabled={submitting} className="h-12 w-full !rounded-xl !bg-[#EA580C] text-base !text-white shadow-[0_14px_26px_-14px_rgba(194,65,12,0.8)] transition-all hover:!bg-[#C2410C]">
+            <Button type="submit" size="lg" disabled={submitting} className="h-12 w-full !rounded-xl !bg-[#C2410C] text-base !text-white shadow-[0_14px_26px_-14px_rgba(194,65,12,0.8)] transition-all hover:!bg-[#9A3412]">
               {submitting ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</>
               ) : apiEnabled() ? (

@@ -235,7 +235,8 @@ export function AppShell({ role, children }: AppShellProps) {
     "--ring": hexToHslTriple(meta.hex),
     // Product call: every portal's filled surfaces (buttons, badges, the sidebar's active
     // row) use white foreground for brand consistency, even though a few role colors
-    // (teacher's orange ~2.5:1, parent's green/subadmin+coordinator's teal ~3.2-3.4:1)
+    // (parent's green/subadmin+coordinator's teal ~3.2-3.4:1; teacher moved to burnt
+    // orange #C2410C, 5.2:1, after the accessibility review)
     // measurably fail WCAG AA's 4.5:1 text-contrast minimum against pure white — see
     // pickAccentForegroundHsl in lib/utils.ts for the contrast-aware alternative this
     // deliberately doesn't use here.

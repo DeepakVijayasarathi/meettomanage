@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { AlertOctagon, ShieldOff, Undo2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -149,7 +150,7 @@ export default function AdminFeeSuspension() {
                 <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-11 w-11">
-                      <AvatarFallback style={{ backgroundColor: `${child.avatarColor}22`, color: child.avatarColor }}>
+                      <AvatarFallback style={initialsStyle(child.avatarColor)} className={INITIALS_TEXT}>
                         {getInitials(child.name)}
                       </AvatarFallback>
                     </Avatar>

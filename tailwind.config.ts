@@ -130,7 +130,7 @@ export default {
           admin: "#1F6FE0",
           subadmin: "#0E9C8C",
           admission: "#8356E7", // kept in sync with ROLE_META.admission.hex in src/lib/roles.ts
-          teacher: "#F08A1D",
+          teacher: "#C2410C",
           parent: "#23A455",
           student: "#3B82F6",
           // Was #0D9488 — nearly indistinguishable from subadmin's #0E9C8C (the two read

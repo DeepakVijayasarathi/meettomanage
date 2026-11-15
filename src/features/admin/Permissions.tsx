@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { Check, CheckCircle2, Loader2, Mail, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -308,7 +309,7 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
         {subAdmins.map((s) => (
           <TabsTrigger key={s.id} value={s.id} className="gap-2">
             <Avatar className="h-5 w-5">
-              <AvatarFallback style={{ backgroundColor: `${s.avatarColor}22`, color: s.avatarColor }} className="text-[10px]">
+              <AvatarFallback style={initialsStyle(s.avatarColor)} className={cn(INITIALS_TEXT, "text-[10px]")}>
                 {getInitials(s.name)}
               </AvatarFallback>
             </Avatar>

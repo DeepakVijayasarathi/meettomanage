@@ -139,14 +139,32 @@ export function useMarketingLocale(): [string, (next: string) => void] {
   return [current, setMarketingLocale];
 }
 
+/** Login, signup and every portal are English-only. Mirroring them right-to-left for an Arabic
+ *  visitor left English text laid out backwards, so only the public marketing pages (the ones
+ *  wrapped in MarketingTranslationLayer) take the visitor's language and direction. */
+const ENGLISH_ONLY_PATH = /^\/(login|demo-login|portal-select|forgot-pin|forgot-password|reset-pin|signup|register|status|terms|guest-join|view-as|platform|admin|itadmin|marketing|executive|teacher|parent|subadmin|admission|coordinator|management|student|join|meet|pay|verify|recording|dev|t)(\/|$)/;
+
+/** Puts the page into the chosen marketing locale's language and direction. */
+export function applyMarketingLocaleAttributes() {
+  const locale = MARKETING_LOCALES.find((item) => item.code === marketingLocale) ?? MARKETING_LOCALES[0];
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = locale.code;
+  document.documentElement.dir = locale.dir ?? "ltr";
+  document.body.classList.toggle("lang-ar", locale.dir === "rtl");
+}
+
+/** English, left-to-right: for every page outside the marketing site. */
+export function applyEnglishLtrAttributes() {
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = "en";
+  document.documentElement.dir = "ltr";
+  document.body.classList.remove("lang-ar");
+}
+
 /** Idempotent; safe to call again once React mounts (mirrors theme.ts's applyInitialTheme). */
 export function applyInitialLang() {
-  const locale = MARKETING_LOCALES.find((item) => item.code === marketingLocale) ?? MARKETING_LOCALES[0];
-  if (typeof document !== "undefined") {
-    document.documentElement.lang = locale.code;
-    document.documentElement.dir = locale.dir ?? "ltr";
-    document.body.classList.toggle("lang-ar", locale.dir === "rtl");
-  }
+  if (typeof window !== "undefined" && ENGLISH_ONLY_PATH.test(window.location.pathname)) applyEnglishLtrAttributes();
+  else applyMarketingLocaleAttributes();
 }
 
 export function useLang(): [Lang, (next: Lang) => void] {

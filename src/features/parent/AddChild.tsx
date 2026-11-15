@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { Link } from "react-router-dom";
 import { CalendarClock, CheckCircle2, Clock3, PartyPopper, TrendingUp, UserPlus, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -108,8 +109,8 @@ export default function ParentAddChild() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
                             <span
-                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
-                              style={{ backgroundColor: `${color}22`, color }}
+                              className={cn(INITIALS_TEXT, "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold")}
+                              style={initialsStyle(color)}
                             >
                               {getInitials(child.name)}
                             </span>

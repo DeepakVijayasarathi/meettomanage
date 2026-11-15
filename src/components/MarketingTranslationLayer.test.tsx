@@ -4,7 +4,7 @@ import { MarketingTranslationLayer } from "./MarketingTranslationLayer";
 
 const { trackMarketingEvent } = vi.hoisted(() => ({ trackMarketingEvent: vi.fn() }));
 
-vi.mock("@/lib/i18n", () => ({ useMarketingLocale: () => ["en"] }));
+vi.mock("@/lib/i18n", () => ({ useMarketingLocale: () => ["en"], applyMarketingLocaleAttributes: () => {}, applyEnglishLtrAttributes: () => {} }));
 vi.mock("@/lib/analytics", () => ({ trackMarketingEvent }));
 
 describe("MarketingTranslationLayer sales CTA tracking", () => {

@@ -340,7 +340,7 @@ export default function FounderDashboard() {
                 strokeWidth={0}
               >
                 {departmentRevenue.map((d) => (
-                  <Cell key={d.department} fill={d.color} />
+                  <Cell key={d.department} fill={d.color} aria-label={`${d.department}: ${formatCurrency(d.value)}`} />
                 ))}
               </Pie>
               <RTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }} />

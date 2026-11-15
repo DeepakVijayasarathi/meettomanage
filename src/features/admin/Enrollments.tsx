@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { CheckCircle2, Download, FileEdit, GraduationCap, Loader2, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -428,7 +429,7 @@ export default function AdminEnrollments() {
         render: (row) => (
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-9 w-9">
-              <AvatarFallback style={{ backgroundColor: `${row.avatarColor}22`, color: row.avatarColor }}>{getInitials(row.name)}</AvatarFallback>
+              <AvatarFallback style={initialsStyle(row.avatarColor)} className={INITIALS_TEXT}>{getInitials(row.name)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <p className="truncate font-semibold text-foreground">{row.name}</p>

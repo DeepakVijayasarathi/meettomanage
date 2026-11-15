@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { ChildSchedulePreferenceSummary } from "@/components/ChildSchedulePreferenceSummary";
 import { useSearchParams } from "react-router-dom";
 import { GraduationCap, Loader2, Mic, MonitorSmartphone, Plus, Sparkles, Trash2, Users as UsersIcon, Video } from "lucide-react";
@@ -542,7 +543,7 @@ export default function SubAdminUsers() {
         render: (row) => (
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-9 w-9">
-              <AvatarFallback style={{ backgroundColor: `${row.avatarColor}22`, color: row.avatarColor }}>
+              <AvatarFallback style={initialsStyle(row.avatarColor)} className={INITIALS_TEXT}>
                 {getInitials(row.name)}
               </AvatarFallback>
             </Avatar>
@@ -628,7 +629,7 @@ export default function SubAdminUsers() {
         render: (row) => (
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-9 w-9">
-              <AvatarFallback style={{ backgroundColor: `${row.avatarColor}22`, color: row.avatarColor }}>
+              <AvatarFallback style={initialsStyle(row.avatarColor)} className={INITIALS_TEXT}>
                 {getInitials(row.name)}
               </AvatarFallback>
             </Avatar>
@@ -874,7 +875,7 @@ export default function SubAdminUsers() {
               <DialogHeader>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9">
-                    <AvatarFallback style={{ backgroundColor: `${detailChild.avatarColor}22`, color: detailChild.avatarColor }}>
+                    <AvatarFallback style={initialsStyle(detailChild.avatarColor)} className={INITIALS_TEXT}>
                       {getInitials(detailChild.name)}
                     </AvatarFallback>
                   </Avatar>

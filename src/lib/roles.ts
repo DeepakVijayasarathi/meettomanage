@@ -71,7 +71,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Teacher",
     description: "Live class delivery, whiteboard activities and student engagement.",
     colorVar: "role-teacher",
-    hex: "#F08A1D",
+    hex: "#C2410C",
     icon: GraduationCap,
     available: true,
     homePath: "/teacher",
