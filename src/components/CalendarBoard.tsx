@@ -139,7 +139,7 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                   <span
                     className={cn(
                       "text-xs font-semibold",
-                      !inMonth && "text-muted-foreground/50",
+                      !inMonth && "text-muted-foreground font-normal",
                       isToday(day) && "flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground"
                     )}
                   >
@@ -168,7 +168,7 @@ export function CalendarBoard({ sessions, initialMonth, onSessionClick, legendSt
                       <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Holiday</span>
                       {holidayName && <span className="max-w-full truncate text-[10px] font-medium text-muted-foreground">{holidayName}</span>}
                       {notHeldCount > 0 && (
-                        <span className="text-[10px] text-muted-foreground/80">
+                        <span className="text-[10px] text-muted-foreground">
                           {notHeldCount} {notHeldCount === 1 ? "class" : "classes"} not held
                         </span>
                       )}

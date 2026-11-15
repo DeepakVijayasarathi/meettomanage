@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useMemo, useState } from "react";
 import { Download, History, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -6,7 +7,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { KpiCard } from "@/components/KpiCard";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
-import { formatDate, toCsv as toCsvEscaped } from "@/lib/utils";
+import { cn, formatDate, toCsv as toCsvEscaped } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import { listAuditLogs, type ApiAuditLog } from "@/api/audit";
@@ -63,8 +64,8 @@ const COLUMNS: DataTableColumn<AuditEntry>[] = [
       const color = meta?.color ?? "hsl(var(--muted-foreground))";
       return (
         <span
-          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold"
-          style={{ backgroundColor: `${color}1A`, color }}
+          className={cn(INITIALS_TEXT, "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold")}
+          style={initialsStyle(color, "1A")}
         >
           <Icon className="h-3 w-3" />
           {r.module}

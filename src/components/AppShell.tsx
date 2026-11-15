@@ -11,7 +11,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { NAV_BY_ROLE, type NavSection } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
-import { hexToHslTriple } from "@/lib/utils";
+import { accentForDarkMode, hexToHslTriple } from "@/lib/utils";
 import { apiEnabled } from "@/lib/api";
 import { useLocation, useNavigate } from "react-router-dom";
 import { setPlanLimitAction, toast } from "@/hooks/use-toast";
@@ -241,6 +241,8 @@ export function AppShell({ role, children }: AppShellProps) {
     // pickAccentForegroundHsl in lib/utils.ts for the contrast-aware alternative this
     // deliberately doesn't use here.
     "--primary-foreground": "0 0% 100%",
+    // Dark mode swaps in a lighter shade with dark text (applied by .dark .portal-accent in index.css).
+    "--primary-on-dark": hexToHslTriple(accentForDarkMode(meta.hex)),
   } as CSSProperties;
 
   // With a live API, the built-in list is only a fallback for a menu that failed to load (not
@@ -252,7 +254,7 @@ export function AppShell({ role, children }: AppShellProps) {
   }
 
   return (
-    <div className="flex min-h-dvh bg-background" style={accentStyle}>
+    <div className="portal-accent flex min-h-dvh bg-background" style={accentStyle}>
       {/* Visually hidden until focused — first tab stop on every page, so a keyboard user
           doesn't have to tab through the entire sidebar (10-20+ links) on every navigation
           just to reach the page content. */}

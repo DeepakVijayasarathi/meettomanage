@@ -77,10 +77,10 @@ export default function LearningPlugins() {
           <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search games and resources…" className="pl-9" />
           {query && <button onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2" aria-label="Clear search"><X className="h-4 w-4" /></button>}
         </label>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className="h-10 max-w-full rounded-md border bg-background px-3 text-sm">
+        <select aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)} className="h-10 max-w-full rounded-md border bg-background px-3 text-sm">
           <option>All</option>{LEARNING_PLUGIN_CATEGORIES.map((name) => <option key={name}>{name}</option>)}
         </select>
-        <select value={type} onChange={(e) => setType(e.target.value as typeof type)} className="h-10 rounded-md border bg-background px-3 text-sm">
+        <select aria-label="Type" value={type} onChange={(e) => setType(e.target.value as typeof type)} className="h-10 rounded-md border bg-background px-3 text-sm">
           <option value="all">All types</option><option value="game">Games</option><option value="resource">Resources</option><option value="both">Game + resource</option>
         </select>
       </div>

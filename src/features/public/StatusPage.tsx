@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Activity, AlertTriangle, CheckCircle2, Clock3, RefreshCw, Wrench } from "lucide-react";
 import { getPublicStatus, type PublicStatus, type PublicStatusSummary } from "@/api/status";
 import { Button } from "@/components/ui/button";
+import { useLightBrandScope } from "@/lib/theme";
 
 const COPY: Record<PublicStatus, { label: string; className: string; icon: typeof Activity }> = {
   Operational: { label: "All systems operational", className: "border-emerald-200 bg-emerald-50 text-emerald-800", icon: CheckCircle2 },
@@ -11,6 +12,7 @@ const COPY: Record<PublicStatus, { label: string; className: string; icon: typeo
 };
 
 export default function StatusPage() {
+  useLightBrandScope();
   const [data, setData] = useState<PublicStatusSummary | null>(null); const [error, setError] = useState(""); const [loading, setLoading] = useState(true);
   const load = useCallback(async () => { try { setData(await getPublicStatus()); setError(""); } catch (e) { console.error("Status refresh failed", e); setError("We couldn't reach the status service just now. Please try again in a minute."); } finally { setLoading(false); } }, []);
   useEffect(() => { void load(); }, [load]);

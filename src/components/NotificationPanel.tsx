@@ -139,7 +139,7 @@ export function NotificationPanel() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold leading-snug">{item.title}</p>
                     <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{item.description}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground/70">{item.time}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{item.time}</p>
                   </div>
                   {!item.read && <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
                 </button>

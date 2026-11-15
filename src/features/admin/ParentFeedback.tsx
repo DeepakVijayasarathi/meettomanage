@@ -19,7 +19,7 @@ type Filter = "all" | ParentFeedbackKind;
 
 function Stars({ value }: { value: number }) {
   return (
-    <span className="inline-flex items-center gap-0.5" aria-label={`${value} out of 5 stars`}>
+    <span role="img" className="inline-flex items-center gap-0.5" aria-label={`${value} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Star key={n} className={cn("h-4 w-4", n <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")} />
       ))}

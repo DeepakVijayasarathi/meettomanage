@@ -396,11 +396,11 @@ export default function TeacherLeave() {
           {apiEnabled() && (
             <Tabs value={applyMode} onValueChange={(v) => setApplyMode(v as "window" | "classwise")} className="pt-2">
               <TabsList>
-                <TabsTrigger value="window">
+                <TabsTrigger value="window" aria-controls={undefined}>
                   <span className="sm:hidden">Date range</span>
                   <span className="hidden sm:inline">Whole Day / Date Range</span>
                 </TabsTrigger>
-                <TabsTrigger value="classwise">Specific Classes</TabsTrigger>
+                <TabsTrigger value="classwise" aria-controls={undefined}>Specific Classes</TabsTrigger>
               </TabsList>
             </Tabs>
           )}

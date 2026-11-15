@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Download, Eye, EyeOff, FileText, Check, FolderOpen, Loader2, Upload, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -402,8 +403,8 @@ export default function TeacherResources() {
               <Card key={resource.id} className="flex flex-col transition-shadow hover:shadow-pop">
                 <CardHeader className="flex-row items-start gap-3 space-y-0">
                   <span
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: `${meta.hex}1A`, color: meta.hex }}
+                    className={cn(INITIALS_TEXT, "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl")}
+                    style={initialsStyle(meta.hex, "1A")}
                   >
                     <Icon className="h-5 w-5" />
                   </span>

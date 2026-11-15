@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, ClipboardList, IndianRupee, Users, Video, XCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -20,7 +21,7 @@ import { listMySessions, toFrontendSession } from "@/api/sessions";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { listMyPayouts, toFrontendPayout } from "@/api/payouts";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
-import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import { formatCurrency, formatDate, getInitials, cn } from "@/lib/utils";
 import type { ClassSession, TeacherPayout } from "@/types";
 
 const TEACHER_ID = "t-1";
@@ -193,7 +194,7 @@ export default function TeacherAttendance() {
             const child = getChildById(id);
             return (
               <Avatar key={id} className="h-7 w-7 border-2 border-card">
-                <AvatarFallback style={{ backgroundColor: `${child?.avatarColor ?? "hsl(var(--muted-foreground))"}26`, color: child?.avatarColor ?? "hsl(var(--muted-foreground))" }} className="text-[10px]">
+                <AvatarFallback style={initialsStyle(child?.avatarColor, "26")} className={cn(INITIALS_TEXT, "text-[10px]")}>
                   {child ? getInitials(child.name) : "?"}
                 </AvatarFallback>
               </Avatar>
@@ -361,7 +362,7 @@ export default function TeacherAttendance() {
                     <div key={record.childId} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <Avatar className="h-8 w-8 shrink-0">
-                          <AvatarFallback style={{ backgroundColor: `${child?.avatarColor ?? "hsl(var(--muted-foreground))"}26`, color: child?.avatarColor ?? "hsl(var(--muted-foreground))" }}>
+                          <AvatarFallback style={initialsStyle(child?.avatarColor, "26")} className={INITIALS_TEXT}>
                             {child ? getInitials(child.name) : "?"}
                           </AvatarFallback>
                         </Avatar>

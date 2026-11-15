@@ -4,8 +4,11 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Seo } from "@/components/Seo";
 import { useBrand } from "@/lib/branding";
+import { useLightBrandScope } from "@/lib/theme";
 
 export default function NotFound() {
+  // A light-design page (cream background), like login: keep it light in dark mode too.
+  useLightBrandScope();
   const brand = useBrand();
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#FFF6EE] px-6 text-center">

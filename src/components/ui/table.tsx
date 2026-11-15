@@ -2,11 +2,31 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-x-auto">
-      <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
-    </div>
-  )
+  ({ className, ...props }, ref) => {
+    // A table wider than its box scrolls sideways, which keyboard users can only do if the
+    // scroll area can take focus. Only then is it made focusable, so tables that fit add no tab stop.
+    const wrapRef = React.useRef<HTMLDivElement>(null);
+    const [overflows, setOverflows] = React.useState(false);
+    React.useEffect(() => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const update = () => setOverflows(el.scrollWidth > el.clientWidth + 1);
+      update();
+      const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+      observer?.observe(el);
+      if (el.firstElementChild) observer?.observe(el.firstElementChild);
+      return () => observer?.disconnect();
+    }, []);
+    return (
+      <div
+        ref={wrapRef}
+        className="relative w-full overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        {...(overflows ? { tabIndex: 0, role: "region", "aria-label": props["aria-label"] ?? "Table, scroll sideways for more" } : {})}
+      >
+        <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+      </div>
+    );
+  }
 );
 Table.displayName = "Table";
 

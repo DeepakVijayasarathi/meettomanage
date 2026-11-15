@@ -181,8 +181,8 @@ export default function SearchUsers() {
                           </TableCell>
                           <TableCell>
                             <span
-                              className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold")}
-                              style={{ backgroundColor: `${roleMeta.hex}1a`, color: roleMeta.hex }}
+                              className={cn(INITIALS_TEXT, "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold")}
+                              style={initialsStyle(roleMeta.hex, "1A")}
                             >
                               {roleMeta.shortLabel}
                             </span>

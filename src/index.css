@@ -100,8 +100,10 @@
     --accent: 222 20% 18%;
     --accent-foreground: 210 25% 96%;
 
-    --destructive: 3 70% 58%;
-    --destructive-foreground: 0 0% 100%;
+    /* Lighter red so error text is readable on dark cards and red tints (was 4.1:1); filled red
+       buttons then take dark text, like the other dark-mode accents. */
+    --destructive: 3 85% 68%;
+    --destructive-foreground: 222 30% 8%;
 
     --success: 96 45% 55%;
     --success-foreground: 222 30% 10%;
@@ -217,6 +219,14 @@
 }
 
 @layer utilities {
+  /* Dark mode: the portal colour set inline by AppShell is too dark to read as text on dark
+     cards, so use its lighter shade, with near-black text on filled buttons. !important is
+     needed to override the inline custom properties. */
+  .dark .portal-accent {
+    --primary: var(--primary-on-dark) !important;
+    --ring: var(--primary-on-dark) !important;
+    --primary-foreground: 222 30% 8% !important;
+  }
   .font-display {
     font-family: var(--brand-font-display), system-ui, sans-serif;
   }

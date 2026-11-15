@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useMemo } from "react";
 import { Gauge, LayoutGrid, UserCheck } from "lucide-react";
 import {
@@ -143,8 +144,8 @@ export default function ManagementPerformance() {
       render: (r) => (
         <div className="flex min-w-0 items-center gap-3">
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ backgroundColor: r.teacher.avatarColor }}
+            className={cn(INITIALS_TEXT, "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold")}
+            style={initialsStyle(r.teacher.avatarColor)}
           >
             {getInitials(r.teacher.name)}
           </span>

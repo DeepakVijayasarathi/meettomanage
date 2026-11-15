@@ -33,7 +33,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Admin",
     description: "Central command centre for academic, operational and financial control.",
     colorVar: "role-admin",
-    hex: "#1F6FE0",
+    hex: "#1B5FC1",
     icon: ShieldCheck,
     available: true,
     homePath: "/admin",
@@ -44,7 +44,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Relationship Manager",
     description: "Parent relationship management with permission-based operational access.",
     colorVar: "role-subadmin",
-    hex: "#0E9C8C",
+    hex: "#0A6F63",
     icon: UserCog,
     available: true,
     homePath: "/subadmin",
@@ -60,7 +60,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     // text it was worse (4.00:1); neither cleared WCAG AA's 4.5:1 minimum for either choice,
     // so unlike the other 7 role colors (fixed via AppShell picking whichever of white/navy
     // text contrasts best), this one needed the color itself adjusted.
-    hex: "#8356E7",
+    hex: "#6F49C4",
     icon: HeartHandshake,
     available: true,
     homePath: "/admission",
@@ -82,7 +82,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Parent",
     description: "Single dashboard for child learning, payments and communication.",
     colorVar: "role-parent",
-    hex: "#23A455",
+    hex: "#18713B",
     icon: Users,
     available: true,
     homePath: "/parent",
@@ -93,7 +93,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     shortLabel: "Student",
     description: "Interactive, measurable and child-friendly digital learning.",
     colorVar: "role-student",
-    hex: "#3B82F6",
+    hex: "#2C60B6",
     icon: Sparkles,
     available: true,
     homePath: "/student",
@@ -106,7 +106,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     colorVar: "role-coordinator",
     // Kept in sync with role.coordinator in tailwind.config.ts — see the comment
     // there for why this moved off the old teal (#0D9488, collided with subadmin).
-    hex: "#B8860B",
+    hex: "#7F5C08",
     icon: CalendarRange,
     available: true,
     homePath: "/coordinator",
@@ -136,7 +136,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     description: "Technical/operational oversight with Admin-portal-grade breadth.",
     colorVar: "role-itadmin",
     // Kept in sync with role.itadmin in tailwind.config.ts.
-    hex: "#0891B2",
+    hex: "#066B84",
     icon: Cpu,
     available: true,
     homePath: "/itadmin",
@@ -153,7 +153,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     description: "Complete visibility and control — Management's business view plus every Admin permission, in one dashboard.",
     colorVar: "role-executive",
     // Kept in sync with role.executive in tailwind.config.ts.
-    hex: "#B45309",
+    hex: "#A04A08",
     icon: Crown,
     available: true,
     homePath: "/executive",
@@ -168,7 +168,7 @@ export const ROLE_META: Record<Role, RoleMeta> = {
     description: "Demo requests, blog, SEO and website analytics for the public marketing site.",
     colorVar: "role-marketing",
     // Kept in sync with role.marketing in tailwind.config.ts.
-    hex: "#EA580C",
+    hex: "#AB4009",
     icon: Megaphone,
     available: true,
     homePath: "/marketing",

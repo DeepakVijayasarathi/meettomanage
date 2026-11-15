@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useMemo, useState } from "react";
 import { BadgeCheck, CalendarCheck2, KeyRound, PhoneCall, PieChart, Sparkles, ThumbsDown, Trophy, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -145,8 +146,8 @@ export default function AdmissionConversion() {
               <div key={stage} className="flex min-w-[280px] flex-1 flex-col rounded-xl border border-border bg-muted/20">
                 <div className="flex items-center gap-2.5 border-b border-border p-4">
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: `${meta.color}1A`, color: meta.color }}
+                    className={cn(INITIALS_TEXT, "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg")}
+                    style={initialsStyle(meta.color, "1A")}
                   >
                     <Icon className="h-4 w-4" />
                   </span>
@@ -171,10 +172,8 @@ export default function AdmissionConversion() {
                           <div className="flex items-start gap-2.5">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback
-                                style={{
-                                  backgroundColor: `${CHART_PALETTE[lead.childName.length % CHART_PALETTE.length]}22`,
-                                  color: CHART_PALETTE[lead.childName.length % CHART_PALETTE.length],
-                                }}
+                                style={initialsStyle(CHART_PALETTE[lead.childName.length % CHART_PALETTE.length])}
+                                className={INITIALS_TEXT}
                               >
                                 {getInitials(lead.childName)}
                               </AvatarFallback>
@@ -196,7 +195,7 @@ export default function AdmissionConversion() {
                             onValueChange={(v) => moveLead(lead.id, v as BoardStage)}
                             disabled={!canMove}
                           >
-                            <SelectTrigger className="h-8 text-xs">
+                            <SelectTrigger className="h-8 text-xs" aria-label={`Move ${lead.childName} to stage`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

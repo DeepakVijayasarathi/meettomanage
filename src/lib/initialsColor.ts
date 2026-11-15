@@ -9,7 +9,8 @@ import type { CSSProperties } from "react";
 export const INITIALS_TEXT =
   "[color:color-mix(in_srgb,var(--initials)_52%,#000)] dark:[color:color-mix(in_srgb,var(--initials)_45%,#fff)]";
 
-export function initialsStyle(color: string | null | undefined): CSSProperties {
+/** `tint` is the background's hex alpha: "22" for initials circles, "1A" for the lighter icon/date chips. */
+export function initialsStyle(color: string | null | undefined, tint = "22"): CSSProperties {
   const c = color || "#999999";
-  return { backgroundColor: `${c}22`, "--initials": c } as CSSProperties;
+  return { backgroundColor: `${c}${tint}`, "--initials": c } as CSSProperties;
 }

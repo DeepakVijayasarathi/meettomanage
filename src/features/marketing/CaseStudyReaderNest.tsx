@@ -120,7 +120,7 @@ export default function CaseStudyReaderNest() {
                 <figcaption className="relative mx-4 -mt-14 rounded-2xl border border-[#EAE2D7] bg-white px-5 py-4 shadow-[0_10px_35px_-15px_rgba(53,40,25,0.2)] sm:mx-7">
                   <span className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.13em] text-[#B34B26]"><BookOpen className="h-3.5 w-3.5" /> Where it all began</span>
                   <span className="block text-sm font-semibold leading-relaxed text-[#37312B]">A love for learning, one page at a time.</span>
-                  <span className="mt-1 block text-[11px] text-[#827669]">AI-generated illustrative image.</span>
+                  <span className="mt-1 block text-[11px] text-[#6B6158]">AI-generated illustrative image.</span>
                 </figcaption>
               </figure>
             </div>
@@ -131,15 +131,15 @@ export default function CaseStudyReaderNest() {
       <article className="bg-white pb-16 sm:pb-24">
         <div className="border-b border-[#EEE8DF] bg-white">
           <dl className="mx-auto grid max-w-[1200px] gap-6 px-5 py-8 sm:grid-cols-3 sm:px-8 sm:py-10">
-            {[["The academy", "The Reader Nest"], ["Their world", "Early childhood & online education"], ["Our work together", "Academy management & live learning"]].map(([label, value]) => <div key={label} className="sm:border-s sm:border-[#E5DCCD] sm:ps-6 first:sm:border-0 first:sm:ps-0"><dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#9A8069]">{label}</dt><dd className="mt-2 text-sm font-semibold leading-relaxed text-[#40382F]">{value}</dd></div>)}
+            {[["The academy", "The Reader Nest"], ["Their world", "Early childhood & online education"], ["Our work together", "Academy management & live learning"]].map(([label, value]) => <div key={label} className="sm:border-s sm:border-[#E5DCCD] sm:ps-6 first:sm:border-0 first:sm:ps-0"><dt className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7A6450]">{label}</dt><dd className="mt-2 text-sm font-semibold leading-relaxed text-[#40382F]">{value}</dd></div>)}
           </dl>
         </div>
         <div className="mx-auto grid max-w-[1200px] gap-10 px-5 pt-12 sm:px-8 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-20 lg:pt-20">
           <aside className="min-w-0">
             <div className="lg:sticky lg:top-28">
-              <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-[#9B826E]">Inside the story</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-[#7A6450]">Inside the story</p>
               <nav aria-label="Story chapters" className="mt-5 flex gap-2 overflow-x-auto pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
-                {CHAPTERS.map((chapter, index) => <a key={chapter} href={"#story-section-" + index} className="group inline-flex shrink-0 items-center gap-3 rounded-lg border border-[#EEE6DC] px-3 py-2.5 text-xs text-[#70675C] transition-colors hover:border-[#D7B69A] hover:bg-[#FBF4EB] hover:text-[#A4431B] lg:border-0 lg:px-0"><span className="text-[10px] tabular-nums text-[#B4A18F]">0{index + 1}</span>{chapter}</a>)}
+                {CHAPTERS.map((chapter, index) => <a key={chapter} href={"#story-section-" + index} className="group inline-flex shrink-0 items-center gap-3 rounded-lg border border-[#EEE6DC] px-3 py-2.5 text-xs text-[#70675C] transition-colors hover:border-[#D7B69A] hover:bg-[#FBF4EB] hover:text-[#A4431B] lg:border-0 lg:px-0"><span className="text-[10px] tabular-nums text-[#86705C]">0{index + 1}</span>{chapter}</a>)}
               </nav>
               <div className="mt-7 hidden border-t border-[#EEE6DC] pt-6 lg:block"><p className="text-sm font-bold text-[#40382F]">Meet the academy</p><a href="https://thereadernest.com/" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#A4431B]">Visit The Reader Nest <ExternalLink className="h-3 w-3" /><span className="sr-only"> (opens in a new tab)</span></a></div>
             </div>
@@ -153,16 +153,16 @@ export default function CaseStudyReaderNest() {
                   : section.paragraphs.map((paragraph, i) => paragraph.startsWith("**") ? <p key={i} className="font-serif mt-8 border-s-2 border-[#B34B26] bg-[#FFF6EE] px-6 py-7 text-[24px] italic leading-relaxed text-[#804526]">{paragraph.slice(2, -2)}</p> : <p key={i} className={TEXT}>{paragraph}</p>)}
                 {index === 0 && <figure className="mt-8 overflow-hidden rounded-2xl border border-[#EEE6DC]">
                   <img loading="lazy" src="/clients/reader-nest/teacher-photo.webp" alt="AI-generated illustrative scene of an educator teaching online" width={1536} height={1024} className="aspect-[3/2] w-full object-cover" />
-                  <figcaption className="flex flex-wrap items-center justify-between gap-2 bg-[#FFF6EE] px-5 py-4 text-xs"><span className="font-semibold text-[#665647]">More confidence. More possibility.</span><span className="text-[#827669]">AI-generated illustrative image</span></figcaption>
+                  <figcaption className="flex flex-wrap items-center justify-between gap-2 bg-[#FFF6EE] px-5 py-4 text-xs"><span className="font-semibold text-[#665647]">More confidence. More possibility.</span><span className="text-[#6B6158]">AI-generated illustrative image</span></figcaption>
                 </figure>}
                 {index === 2 && <figure className="mt-9 overflow-hidden rounded-2xl border border-[#E5DDD1] bg-[#F7F3EB] p-3 sm:p-5">
-                  <div className="mb-4 flex items-center gap-1.5" aria-hidden="true"><span className="h-2 w-2 rounded-full bg-[#D8BBA7]" /><span className="h-2 w-2 rounded-full bg-[#E2CCAB]" /><span className="h-2 w-2 rounded-full bg-[#C7CCB6]" /><span className="ms-2 text-[10px] tracking-wide text-[#8D7A67]">THE TECHNOLOGY BEHIND THE TEACHING</span></div>
+                  <div className="mb-4 flex items-center gap-1.5" aria-hidden="true"><span className="h-2 w-2 rounded-full bg-[#D8BBA7]" /><span className="h-2 w-2 rounded-full bg-[#E2CCAB]" /><span className="h-2 w-2 rounded-full bg-[#C7CCB6]" /><span className="ms-2 text-[10px] tracking-wide text-[#6E5E4F]">THE TECHNOLOGY BEHIND THE TEACHING</span></div>
                   <img loading="lazy" src="/product/classroom-1200.webp" alt="MeetToManage live classroom interface" width={1200} className="h-auto w-full rounded-lg" />
-                  <figcaption className="pt-4 text-center text-xs text-[#827669]">MeetToManage live classroom. Product illustration.</figcaption>
+                  <figcaption className="pt-4 text-center text-xs text-[#6B6158]">MeetToManage live classroom. Product illustration.</figcaption>
                 </figure>}
               </section>
             ))}
-            <div className="mt-12 flex flex-wrap gap-x-6 gap-y-3 border-t border-[#EEE6DC] pt-6 text-xs text-[#827669]">
+            <div className="mt-12 flex flex-wrap gap-x-6 gap-y-3 border-t border-[#EEE6DC] pt-6 text-xs text-[#6B6158]">
               <a href="https://thereadernest.com/about-us/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-[#A4431B]">Read the academy's story<span className="sr-only"> (opens in a new tab)</span></a>
               <a href="https://www.instagram.com/the_reader_nest/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-[#A4431B]">Follow The Reader Nest<span className="sr-only"> (opens in a new tab)</span></a>
             </div>
@@ -172,11 +172,11 @@ export default function CaseStudyReaderNest() {
           <div aria-hidden="true" className="pointer-events-none absolute -end-24 -top-28 h-80 w-80 rounded-full border border-white/10" />
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -start-20 h-80 w-80 rounded-full border border-white/10" />
           <Sparkles className="mx-auto h-6 w-6 text-white" />
-          <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#FFEBDD]">Built for educators. Designed for growth.</p>
+          <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-white">Built for educators. Designed for growth.</p>
           <h2 className="font-display mx-auto mt-5 max-w-[680px] text-[clamp(1.9rem,3.5vw,3rem)] font-bold leading-[1.15] tracking-[-0.04em]">Your academy has a story.<br /><span className="font-serif font-normal italic text-white">Let's build what comes next.</span></h2>
           <p className="mx-auto mt-5 max-w-[530px] text-[15px] leading-relaxed text-[#FFF6EE]">Bring admissions, live classrooms and everyday operations together with a platform that understands your academy.</p>
           <Link to="/get-started" className="relative mt-8 inline-flex items-center justify-center gap-3 rounded-full bg-white px-7 py-4 text-sm font-bold text-[#9A3412] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Book your free demo <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
-          <div className="relative"><PricingLink className="text-white/90 hover:text-white focus-visible:outline-white" /></div>
+          <div className="relative"><PricingLink className="text-white hover:text-white focus-visible:outline-white" /></div>
         </section>
       </article>
     </PageShell>

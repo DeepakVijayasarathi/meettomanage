@@ -153,6 +153,7 @@ export function RecorderControls({ serverName, recorderStatus }: { serverName: s
           size="icon"
           variant="ghost"
           className="h-6 w-6"
+          aria-label="Fewer warm recorders"
           disabled={busy !== null || recorderStatus.minInstances <= 1}
           onClick={() => handleMinChange(recorderStatus.minInstances - 1)}
         >
@@ -163,6 +164,7 @@ export function RecorderControls({ serverName, recorderStatus }: { serverName: s
           size="icon"
           variant="ghost"
           className="h-6 w-6"
+          aria-label="More warm recorders"
           disabled={busy !== null || recorderStatus.minInstances >= recorderStatus.maxInstances}
           onClick={() => handleMinChange(recorderStatus.minInstances + 1)}
         >

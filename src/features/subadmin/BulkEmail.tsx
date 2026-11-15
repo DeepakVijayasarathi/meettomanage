@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Mail, MessageSquare, Send, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -33,7 +34,7 @@ import {
   type ApiEmailHistoryItem,
   type EmailNotificationType,
 } from "@/api/reports";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 
 type Scope = "all" | "batch";
 
@@ -273,7 +274,7 @@ function ComposePanel({ canSend }: { canSend: boolean }) {
       <Card>
         <CardContent className="flex flex-col gap-4 p-5">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${CHART_PALETTE[4]}1A`, color: CHART_PALETTE[4] }}>
+            <span className={cn(INITIALS_TEXT, "flex h-9 w-9 items-center justify-center rounded-lg")} style={initialsStyle(CHART_PALETTE[4], "1A")}>
               <Users2 className="h-[18px] w-[18px]" />
             </span>
             <p className="text-sm font-semibold text-foreground">Recipient Preview</p>

@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -27,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/state/session";
-import { formatDate, formatPercent } from "@/lib/utils";
+import { formatDate, formatPercent, cn } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
@@ -417,8 +418,8 @@ export default function SubAdminDashboard() {
               <Card className="h-full transition-colors hover:border-primary/40">
                 <CardContent className="flex h-full flex-col gap-3 p-5">
                   <span
-                    className="flex h-10 w-10 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: `${card.color}1A`, color: card.color }}
+                    className={cn(INITIALS_TEXT, "flex h-10 w-10 items-center justify-center rounded-xl")}
+                    style={initialsStyle(card.color, "1A")}
                   >
                     <card.icon className="h-5 w-5" />
                   </span>
@@ -534,8 +535,8 @@ export default function SubAdminDashboard() {
                 return (
                   <div key={entry.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                     <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: `${CHART_PALETTE[i % CHART_PALETTE.length]}1A`, color: CHART_PALETTE[i % CHART_PALETTE.length] }}
+                      className={cn(INITIALS_TEXT, "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg")}
+                      style={initialsStyle(CHART_PALETTE[i % CHART_PALETTE.length], "1A")}
                     >
                       <MetaIcon className="h-[18px] w-[18px]" />
                     </span>

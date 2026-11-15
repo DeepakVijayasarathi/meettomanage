@@ -86,7 +86,7 @@ function AccessRequest() {
     </div>
     <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60">
       {busy ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</> : "Send request"}</button>
-    <p className="text-center text-xs text-brand-ink/60">Prefer to talk first? <Link to="/demo" className="font-medium text-primary underline-offset-4 hover:underline">Book a free walkthrough</Link>.</p>
+    <p className="text-center text-xs text-brand-ink/75">Prefer to talk first? <Link to="/demo" className="font-medium text-primary underline-offset-4 hover:underline">Book a free walkthrough</Link>.</p>
   </form>;
 }
 

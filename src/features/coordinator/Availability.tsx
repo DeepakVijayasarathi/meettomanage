@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useEffect, useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
 import { CalendarOff, CheckCircle2, Clock, PartyPopper, UserCheck, XCircle } from "lucide-react";
@@ -93,7 +94,7 @@ const DAY_STATE_STYLE: Record<DayState, string> = {
   // short of WCAG AA's 4.5:1. A darkened one-off shade of the same pink keeps this
   // legend visually distinct from "available"/"holiday" without touching the shared
   // status.leave token (still correct at full saturation for its dot usage).
-  leave: "bg-status-leave/15 text-[#af1261]",
+  leave: "bg-status-leave/15 text-[#af1261] dark:text-[#F9A8D4]",
   holiday: "bg-status-holiday/20 text-foreground/70",
 };
 
@@ -272,8 +273,8 @@ export default function CoordinatorAvailability() {
                     <TableCell className="sticky left-0 bg-card font-medium">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <span
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                          style={{ backgroundColor: teacher.avatarColor }}
+                          className={cn(INITIALS_TEXT, "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold")}
+                          style={initialsStyle(teacher.avatarColor)}
                         >
                           {getInitials(teacher.name)}
                         </span>
@@ -306,8 +307,8 @@ export default function CoordinatorAvailability() {
               <div key={teacher.id} className="rounded-xl border border-border p-3">
                 <div className="mb-2.5 flex min-w-0 items-center gap-2.5">
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                    style={{ backgroundColor: teacher.avatarColor }}
+                    className={cn(INITIALS_TEXT, "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold")}
+                    style={initialsStyle(teacher.avatarColor)}
                   >
                     {getInitials(teacher.name)}
                   </span>
@@ -358,8 +359,8 @@ export default function CoordinatorAvailability() {
                 >
                   <div className="flex items-start gap-3">
                     <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={{ backgroundColor: teacherRoster.find((t) => t.id === leave.teacherId)?.avatarColor ?? "hsl(var(--muted-foreground))" }}
+                      className={cn(INITIALS_TEXT, "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold")}
+                      style={initialsStyle(teacherRoster.find((t) => t.id === leave.teacherId)?.avatarColor)}
                     >
                       {getInitials(leave.teacherName)}
                     </span>
@@ -410,8 +411,8 @@ export default function CoordinatorAvailability() {
                 <CardContent className="flex flex-col gap-3 p-5">
                   <div className="flex items-center gap-3">
                     <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                      style={{ backgroundColor: teacher.avatarColor }}
+                      className={cn(INITIALS_TEXT, "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold")}
+                      style={initialsStyle(teacher.avatarColor)}
                     >
                       {getInitials(teacher.name)}
                     </span>

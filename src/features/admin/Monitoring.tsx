@@ -562,8 +562,8 @@ function LiveUsersCard({ sessions, loading, bridgeHealth }: { sessions: LiveClas
                       className="gap-1.5 text-[11px]"
                       title={`Joined ${formatJoinedAgo(p.joinedAtUtc)}${p.connectionCount > 1 ? ` · ${p.connectionCount} simultaneous connections` : ""}${!p.attendanceRecorded ? " · attendance not yet recorded" : ""}`}
                     >
-                      {p.name} <span className="opacity-70">· {p.role}</span>
-                      {p.connectionCount > 1 && <span className="opacity-70">· {p.connectionCount} devices</span>}
+                      {p.name} <span>· {p.role}</span>
+                      {p.connectionCount > 1 && <span>· {p.connectionCount} devices</span>}
                       {!p.attendanceRecorded && <AlertTriangle className="h-3 w-3 text-warning-foreground" />}
                     </Badge>
                   ))}

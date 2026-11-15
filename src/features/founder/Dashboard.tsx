@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import {
   Users,
   IndianRupee,
@@ -39,7 +40,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent, formatTimeLabel } from "@/lib/utils";
+import { formatCurrency, formatCurrencyAxisTick, formatDate, formatNumber, formatPercent, formatTimeLabel, cn } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import {
   ADMIN_KPIS,
@@ -489,7 +490,7 @@ export default function FounderDashboard() {
       <Card className="mt-6 p-5">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${CHART_PALETTE[0]}1A`, color: CHART_PALETTE[0] }}>
+            <span className={cn(INITIALS_TEXT, "flex h-9 w-9 items-center justify-center rounded-lg")} style={initialsStyle(CHART_PALETTE[0], "1A")}>
               <Clock className="h-[18px] w-[18px]" />
             </span>
             <div>
@@ -522,8 +523,8 @@ export default function FounderDashboard() {
               <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                 <div className="flex items-center gap-3">
                   <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
-                    style={{ backgroundColor: `${CHART_PALETTE[i % CHART_PALETTE.length]}1A`, color: CHART_PALETTE[i % CHART_PALETTE.length] }}
+                    className={cn(INITIALS_TEXT, "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold")}
+                    style={initialsStyle(CHART_PALETTE[i % CHART_PALETTE.length], "1A")}
                   >
                     {formatTimeLabel(s.startTime).split(":")[0]}
                   </span>

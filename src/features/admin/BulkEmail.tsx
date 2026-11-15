@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Mail, Send, Users2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -146,8 +148,8 @@ export default function AdminBulkEmail() {
               <Label id="bulk-email-scope-label">Recipient scope</Label>
               <Tabs value={scope} onValueChange={(v) => setScope(v as Scope)}>
                 <TabsList aria-labelledby="bulk-email-scope-label">
-                  <TabsTrigger value="all">All Active Students</TabsTrigger>
-                  <TabsTrigger value="batch">Per Batch</TabsTrigger>
+                  <TabsTrigger value="all" aria-controls={undefined}>All Active Students</TabsTrigger>
+                  <TabsTrigger value="batch" aria-controls={undefined}>Per Batch</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -209,7 +211,7 @@ export default function AdminBulkEmail() {
         <Card>
           <CardContent className="flex flex-col gap-4 p-5">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: `${CHART_PALETTE[4]}1A`, color: CHART_PALETTE[4] }}>
+              <span className={cn(INITIALS_TEXT, "flex h-9 w-9 items-center justify-center rounded-lg")} style={initialsStyle(CHART_PALETTE[4], "1A")}>
                 <Users2 className="h-[18px] w-[18px]" />
               </span>
               <p className="text-sm font-semibold text-foreground">Recipient Preview</p>

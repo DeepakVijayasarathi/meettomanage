@@ -319,7 +319,7 @@ function MockLiveClassroom({ mode }: { mode: "teacher" | "student" }) {
                   <p className="text-sm font-medium">
                     {waitingGuests.length === 1 ? `${waitingGuests[0].name} wants to join` : `${waitingGuests.length} people want to join`}
                   </p>
-                  <p className="mt-0.5 truncate text-xs text-call-ink/60">{waitingGuests.map((g) => g.name).join(", ")}</p>
+                  <p className="mt-0.5 truncate text-xs text-call-ink/75">{waitingGuests.map((g) => g.name).join(", ")}</p>
                 </div>
               </div>
               <div className="mt-3 flex justify-end gap-1">

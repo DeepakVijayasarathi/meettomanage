@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, Palette, Pencil, Plug, Plus, Puzzle, Save, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
@@ -580,7 +581,7 @@ export default function AdminSettings() {
                       <p className="text-sm font-semibold text-foreground">{item.label}</p>
                       <p className="text-xs text-muted-foreground">{item.description}</p>
                     </div>
-                    <Switch
+                    <Switch aria-label={item.label}
                       checked={values[item.key] === "true"}
                       onCheckedChange={(checked) => setValue(item.key, checked ? "true" : "false")}
                     />
@@ -740,7 +741,7 @@ export default function AdminSettings() {
                     {i > 0 && <Separator className="my-1" />}
                     <div className="flex items-center justify-between gap-4 py-3">
                       <p className="text-sm font-semibold text-foreground">{portal[0].toUpperCase() + portal.slice(1)}</p>
-                      <Switch
+                      <Switch aria-label={`${portal[0].toUpperCase() + portal.slice(1)} portal`}
                         checked={checked}
                         onCheckedChange={(next) => {
                           const nextList = next ? [...enabledPortals, portal] : enabledPortals.filter((p) => p !== portal);
@@ -772,7 +773,7 @@ export default function AdminSettings() {
                     {i > 0 && <Separator className="my-1" />}
                     <div className="flex items-center justify-between gap-4 py-3">
                       <p className="text-sm font-semibold text-foreground">{portal[0].toUpperCase() + portal.slice(1)}</p>
-                      <Switch
+                      <Switch aria-label={`${portal[0].toUpperCase() + portal.slice(1)} portal`}
                         checked={checked}
                         onCheckedChange={(next) => {
                           const nextList = next ? [...enabledPortals, portal] : enabledPortals.filter((p) => p !== portal);
@@ -1019,7 +1020,7 @@ function MenuManager() {
               <Input id="menu-item-sort-order" type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} />
             </div>
             <div className="flex items-end gap-2 pb-1">
-              <Switch checked={form.isActive} onCheckedChange={(isActive) => setForm({ ...form, isActive })} />
+              <Switch aria-label="Active" checked={form.isActive} onCheckedChange={(isActive) => setForm({ ...form, isActive })} />
               <span className="text-sm text-muted-foreground">Active</span>
             </div>
             <div className="flex items-end justify-end gap-2">
@@ -1079,7 +1080,7 @@ function MenuManager() {
                       {item.sectionOrder}.{item.sortOrder}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Switch checked={item.isActive} onCheckedChange={() => toggleActive(item)} disabled={busy} />
+                      <Switch aria-label={`Show ${item.label} in the menu`} checked={item.isActive} onCheckedChange={() => toggleActive(item)} disabled={busy} />
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
@@ -1878,7 +1879,7 @@ function JitsiRecordingSettings() {
                   button on My Classes instead.
                 </p>
               </div>
-              <Switch checked={form.autoRecord} onCheckedChange={(autoRecord) => setForm({ ...form, autoRecord })} />
+              <Switch aria-label="Auto-record every class" checked={form.autoRecord} onCheckedChange={(autoRecord) => setForm({ ...form, autoRecord })} />
             </div>
             <div className="space-y-2 rounded-xl border border-border px-4 py-3 sm:col-span-2">
               <div>
@@ -1927,7 +1928,7 @@ function JitsiRecordingSettings() {
                   room on mid-class from the call's own "Waiting Room" button either way.
                 </p>
               </div>
-              <Switch checked={form.defaultLobby} onCheckedChange={(defaultLobby) => setForm({ ...form, defaultLobby })} />
+              <Switch aria-label="Start every class with the waiting room on" checked={form.defaultLobby} onCheckedChange={(defaultLobby) => setForm({ ...form, defaultLobby })} />
             </div>
           </div>
         )}
@@ -2229,7 +2230,7 @@ export function IntegrationsManager() {
             </div>
 
             <div className="flex items-center gap-2 pb-1">
-              <Switch checked={form.isEnabled} onCheckedChange={(isEnabled) => setForm({ ...form, isEnabled })} />
+              <Switch aria-label="Enabled" checked={form.isEnabled} onCheckedChange={(isEnabled) => setForm({ ...form, isEnabled })} />
               <span className="text-sm text-muted-foreground">Enabled</span>
             </div>
             <div className="flex items-end justify-end gap-2 sm:col-span-2">
@@ -2262,8 +2263,8 @@ export function IntegrationsManager() {
                     <div className="flex items-center justify-between gap-4 px-4 py-3">
                       <div className="flex items-center gap-3">
                         <span
-                          className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold"
-                          style={{ backgroundColor: `${meta.color}1A`, color: meta.color }}
+                          className={cn(INITIALS_TEXT, "flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold")}
+                          style={initialsStyle(meta.color, "1A")}
                         >
                           {integration.name[0]}
                         </span>
@@ -2276,7 +2277,7 @@ export function IntegrationsManager() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Switch checked={integration.isEnabled} onCheckedChange={() => toggleEnabled(integration)} disabled={busy || !canEdit} />
+                        <Switch aria-label={`${integration.name} enabled`} checked={integration.isEnabled} onCheckedChange={() => toggleEnabled(integration)} disabled={busy || !canEdit} />
                         {canEdit && (
                           <Button variant="outline" size="sm" onClick={() => startEdit(integration)}>
                             <Pencil className="h-3.5 w-3.5" /> Configure

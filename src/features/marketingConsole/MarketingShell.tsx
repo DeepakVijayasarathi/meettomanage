@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
 import { NAV_BY_ROLE } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
-import { hexToHslTriple } from "@/lib/utils";
+import { accentForDarkMode, hexToHslTriple } from "@/lib/utils";
 import { useSession } from "@/state/session";
 
 /**
@@ -25,10 +25,11 @@ export function MarketingShell({ children }: { children: ReactNode }) {
     "--primary": hexToHslTriple(meta.hex),
     "--ring": hexToHslTriple(meta.hex),
     "--primary-foreground": "0 0% 100%",
+    "--primary-on-dark": hexToHslTriple(accentForDarkMode(meta.hex)),
   } as CSSProperties;
 
   return (
-    <div className="flex min-h-dvh bg-background" style={accentStyle}>
+    <div className="portal-accent flex min-h-dvh bg-background" style={accentStyle}>
       <Helmet>
         <title>Marketing Console — Meet to Manage</title>
         <meta name="robots" content="noindex, nofollow" />

@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { endOfWeek, isWithinInterval, parseISO, startOfWeek } from "date-fns";
@@ -21,7 +22,7 @@ import { LEAVE_REQUESTS } from "@/data/leaves";
 import { useSession } from "@/state/session";
 import { usePortalBase } from "@/lib/portalBase";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatDate, formatTimeLabel } from "@/lib/utils";
+import { formatDate, formatTimeLabel, cn } from "@/lib/utils";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
@@ -181,8 +182,8 @@ function TimelineRow({ session, colorIndex }: { session: ClassSession; colorInde
     <div className="flex flex-col gap-3 rounded-xl border border-border p-4 transition-shadow hover:shadow-soft sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
         <span
-          className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-[11px] font-bold leading-tight"
-          style={{ backgroundColor: `${hex}1A`, color: hex }}
+          className={cn(INITIALS_TEXT, "flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-[11px] font-bold leading-tight")}
+          style={initialsStyle(hex, "1A")}
         >
           {session.type === "demo" ? <Sparkles className="h-5 w-5" /> : <CalendarClock className="h-5 w-5" />}
         </span>

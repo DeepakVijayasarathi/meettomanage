@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { addDays, endOfWeek, isWithinInterval, parse, parseISO, startOfDay, startOfWeek } from "date-fns";
@@ -42,7 +43,7 @@ import { getMyMeetingRoomShortLink } from "@/api/account";
 import { listAttendance, type ApiSessionAttendance } from "@/api/academicOps";
 import { utcIsoToLocalDateTime } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
-import { formatCurrency, formatDate, formatTimeLabel } from "@/lib/utils";
+import { formatCurrency, formatDate, formatTimeLabel, cn } from "@/lib/utils";
 import { isTeacherJoinable, joinHint } from "@/features/parent/utils";
 import type { ClassSession, DemoFeedback, SessionStatus, TeacherPayout } from "@/types";
 
@@ -304,8 +305,8 @@ export default function TeacherDashboard() {
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-[11px] font-bold leading-tight"
-                          style={{ backgroundColor: `${hex}1A`, color: hex }}
+                          className={cn(INITIALS_TEXT, "flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-[11px] font-bold leading-tight")}
+                          style={initialsStyle(hex, "1A")}
                         >
                           {session.type === "demo" ? <Sparkles className="h-5 w-5" /> : <CalendarClock className="h-5 w-5" />}
                         </span>
@@ -441,8 +442,8 @@ export default function TeacherDashboard() {
                   <div key={session.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-4">
                     <div className="flex items-center gap-3">
                       <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                        style={{ backgroundColor: `${hex}1A`, color: hex }}
+                        className={cn(INITIALS_TEXT, "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl")}
+                        style={initialsStyle(hex, "1A")}
                       >
                         <Icon className="h-5 w-5" />
                       </span>

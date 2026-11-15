@@ -287,13 +287,16 @@ export function DataTable<T>({
                   // A bare onClick div is mouse/pointer-only — several screens have no
                   // separate action button and rely on the row itself as the only way in
                   // (e.g. admin Enrollments/Users/Billing), which made those unreachable
-                  // by keyboard entirely. role="button" + tabIndex + Enter/Space closes that.
-                  role={onRowClick ? "button" : undefined}
+                  // by keyboard entirely. tabIndex + Enter/Space closes that.
+                  // No role="button" though: the row holds its own buttons (Edit, Show PIN…), and a button
+                  // inside a button is unusable for screen readers. It stays focusable and opens on
+                  // Enter/Space — but only when the row itself is focused, so those inner buttons
+                  // keep working from the keyboard instead of opening the row.
                   tabIndex={onRowClick ? 0 : undefined}
                   onKeyDown={
                     onRowClick
                       ? (e) => {
-                          if (e.key === "Enter" || e.key === " ") {
+                          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
                             e.preventDefault();
                             onRowClick(row);
                           }
@@ -409,12 +412,12 @@ export function DataTable<T>({
                   <TableRow
                     key={rowKey(row)}
                     onClick={() => onRowClick?.(row)}
-                    role={onRowClick ? "button" : undefined}
+                    // See the card view above: focusable without role="button", and keys only act on the row itself.
                     tabIndex={onRowClick ? 0 : undefined}
                     onKeyDown={
                       onRowClick
                         ? (e) => {
-                            if (e.key === "Enter" || e.key === " ") {
+                            if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
                               e.preventDefault();
                               onRowClick(row);
                             }

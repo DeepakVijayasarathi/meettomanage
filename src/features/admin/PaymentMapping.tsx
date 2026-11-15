@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useState } from "react";
 import { BookOpenText, Building2, Calculator, ChevronDown, Landmark, Link2, Loader2, Pencil, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -406,7 +407,7 @@ export default function AdminPaymentMapping() {
           aria-expanded={showOverride}
           className="flex w-full items-center gap-3 p-5 text-left"
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${CHART_PALETTE[0]}1A`, color: CHART_PALETTE[0] }}>
+          <span className={cn(INITIALS_TEXT, "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl")} style={initialsStyle(CHART_PALETTE[0], "1A")}>
             <Link2 className="h-5 w-5" />
           </span>
           <div className="flex-1">

@@ -200,7 +200,7 @@ function GameSession({ mode }: { mode: LiteracyGameMode }) {
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-[#716154]">{copy.intro} Try as often as you like. There is no rush.</p>
           {mode === "sounds" && <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#716154]">Sound plays only when you press the listen button. You can use a written clue instead.</p>}
           <button type="button" onClick={start} className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#C2410C] px-7 py-3 text-base font-bold text-white transition-colors hover:bg-[#9A3412] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]"><Play aria-hidden="true" className="h-4 w-4" />Start playing</button>
-          <p className="mt-4 text-xs text-[#8B7766]">One first-try point per question. Mistakes are a chance to practise.</p>
+          <p className="mt-4 text-xs text-[#6E5E4F]">One first-try point per question. Mistakes are a chance to practise.</p>
         </div>
       ) : finished ? (
         <div className="px-5 py-10 text-center sm:px-8 sm:py-14">

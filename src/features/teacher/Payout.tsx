@@ -197,7 +197,7 @@ export default function TeacherPayout() {
                 <p className="text-xs text-muted-foreground">Every batch you're taking, its rate per class, classes taken and total earned for the selected month.</p>
               </div>
               <Select value={`${summaryYear}-${summaryMonth}`} onValueChange={changeSummaryPeriod}>
-                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-48" aria-label="Month"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {monthOptions.map((o) => (
                     <SelectItem key={`${o.year}-${o.month}`} value={`${o.year}-${o.month}`}>{o.label}</SelectItem>

@@ -225,6 +225,21 @@ function contrastRatio(hexA: string, hexB: string): number {
  * accentStyle's own comment). Kept here, and still covered by tests, in case that
  * tradeoff is ever revisited for some or all portals.
  */
+/**
+ * Portal colours are deep enough for white text in light mode (6:1), which makes them too dark to
+ * read as text on dark-mode cards. This lifts the colour toward white until it reaches 5.5:1 against
+ * the dark card surface; dark mode then pairs it with near-black button text (see .portal-accent).
+ */
+export function accentForDarkMode(hex: string): string {
+  const card = "#15181E";
+  const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  for (let t = 0; t <= 1; t += 0.02) {
+    const mixed = "#" + channels.map((c) => Math.round(c + (255 - c) * t).toString(16).padStart(2, "0")).join("");
+    if (contrastRatio(mixed, card) >= 5.5) return mixed;
+  }
+  return "#FFFFFF";
+}
+
 export function pickAccentForegroundHsl(hex: string): string {
   const white = "#FFFFFF";
   const navy = "#161B33";

@@ -495,7 +495,7 @@ function NotificationRow({
             {!item.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
           </div>
           <p className="mt-0.5 text-sm text-muted-foreground">{item.description}</p>
-          <p className="mt-1 text-xs text-muted-foreground/70">{item.time}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{item.time}</p>
         </div>
       </div>
 

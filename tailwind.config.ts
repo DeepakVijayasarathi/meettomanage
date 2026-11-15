@@ -127,12 +127,12 @@ export default {
           "danger-soft": "#F28B82",
         },
         role: {
-          admin: "#1F6FE0",
-          subadmin: "#0E9C8C",
-          admission: "#8356E7", // kept in sync with ROLE_META.admission.hex in src/lib/roles.ts
+          admin: "#1B5FC1",
+          subadmin: "#0A6F63",
+          admission: "#6F49C4", // kept in sync with ROLE_META.admission.hex in src/lib/roles.ts
           teacher: "#C2410C",
-          parent: "#23A455",
-          student: "#3B82F6",
+          parent: "#18713B",
+          student: "#2C60B6",
           // Was #0D9488 — nearly indistinguishable from subadmin's #0E9C8C (the two read
           // as the same teal side-by-side on PortalSelect/marketing's all-8-roles grid) and
           // literally identical to CHART_PALETTE's own teal, double-booking one hex for two
@@ -141,7 +141,7 @@ export default {
           // and parent's green) — a goldenrod distinct from every other role, brand, and
           // status color. Navy clears 5.2:1 against it (picked automatically by
           // pickAccentForegroundHsl), same mechanism as every other role but admission.
-          coordinator: "#B8860B",
+          coordinator: "#7F5C08",
           // Was #7C3AED — one of five near-identical purples/violets in the system (with
           // admission's role color, brand.violet, CHART_PALETTE's violet and status.demo),
           // and the one most exposed by it: management sits beside admission in the same
@@ -150,11 +150,11 @@ export default {
           // and the purple cluster (admission) — a distinct indigo, not "another purple."
           management: "#4F46E5",
           // Kept in sync with ROLE_META.itadmin.hex in src/lib/roles.ts.
-          itadmin: "#0891B2",
+          itadmin: "#066B84",
           // Kept in sync with ROLE_META.executive.hex in src/lib/roles.ts.
-          executive: "#B45309",
+          executive: "#A04A08",
           // Kept in sync with ROLE_META.marketing.hex in src/lib/roles.ts.
-          marketing: "#EA580C",
+          marketing: "#AB4009",
         },
         status: {
           scheduled: "#EAB308",

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
 import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
+import { useEffect, useMemo, useState } from "react";
 import { Check, CheckCircle2, Loader2, Mail, Plus, RotateCcw, Save, ShieldCheck, Trash2, UserCog, Wand2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -324,8 +324,8 @@ function SubAdminMatrix({ menusByModule, modules }: MenusByModuleProp) {
             <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
               <div className="flex items-center gap-3">
                 <span
-                  className="flex h-10 w-10 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: `${s.avatarColor}1A`, color: s.avatarColor }}
+                  className={cn(INITIALS_TEXT, "flex h-10 w-10 items-center justify-center rounded-xl")}
+                  style={initialsStyle(s.avatarColor, "1A")}
                 >
                   <ShieldCheck className="h-5 w-5" />
                 </span>

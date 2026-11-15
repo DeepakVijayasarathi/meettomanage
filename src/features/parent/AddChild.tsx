@@ -329,7 +329,7 @@ export default function ParentAddChild() {
               </Select>
             </div>
             {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-            <Button type="submit" className="mt-2 !bg-brand-green !text-white hover:!bg-brand-greenDark">
+            <Button type="submit" className="mt-2">
               <CheckCircle2 className="h-4 w-4" /> Add child
             </Button>
           </form>

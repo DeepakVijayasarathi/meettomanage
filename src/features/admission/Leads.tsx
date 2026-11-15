@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Mail, MessageSquarePlus, Phone, Sparkles, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -235,10 +236,8 @@ export default function AdmissionLeads() {
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
               <AvatarFallback
-                style={{
-                  backgroundColor: `${CHART_PALETTE[row.childName.length % CHART_PALETTE.length]}22`,
-                  color: CHART_PALETTE[row.childName.length % CHART_PALETTE.length],
-                }}
+                style={initialsStyle(CHART_PALETTE[row.childName.length % CHART_PALETTE.length])}
+                className={INITIALS_TEXT}
               >
                 {getInitials(row.childName)}
               </AvatarFallback>

@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
@@ -57,7 +58,7 @@ import {
 import { listBatches } from "@/api/batches";
 import { useSession } from "@/state/session";
 import type { Resource } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import { CHART_PALETTE } from "@/lib/roles";
 
 const TYPE_META: Record<Resource["type"], { icon: typeof BookOpen; color: string; label: string }> = {
@@ -411,7 +412,7 @@ export default function AdminResources() {
           const Icon = meta.icon;
           return (
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${meta.color}1A`, color: meta.color }}>
+              <span className={cn(INITIALS_TEXT, "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg")} style={initialsStyle(meta.color, "1A")}>
                 <Icon className="h-[18px] w-[18px]" />
               </span>
               <div className="min-w-0">
@@ -468,7 +469,7 @@ export default function AdminResources() {
       {
         key: "downloadable",
         header: "Downloadable",
-        render: (row) => <Switch checked={row.downloadable} disabled={downloadBusyId === row.id} onCheckedChange={() => toggleDownloadable(row)} />,
+        render: (row) => <Switch aria-label={`Downloadable: ${row.title}`} checked={row.downloadable} disabled={downloadBusyId === row.id} onCheckedChange={() => toggleDownloadable(row)} />,
       },
       {
         key: "visibleToParents",
@@ -486,7 +487,7 @@ export default function AdminResources() {
               </TooltipContent>
             </Tooltip>
           ) : (
-            <Switch checked={row.visibleToParents ?? false} onCheckedChange={() => toggleField(row.id, "visibleToParents")} />
+            <Switch aria-label={`Visible to parents: ${row.title}`} checked={row.visibleToParents ?? false} onCheckedChange={() => toggleField(row.id, "visibleToParents")} />
           ),
       },
       ...(apiEnabled()

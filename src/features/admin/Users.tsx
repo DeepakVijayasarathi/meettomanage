@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
 import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
+import { useEffect, useMemo, useState } from "react";
 import { ChildSchedulePreferenceSummary } from "@/components/ChildSchedulePreferenceSummary";
 import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, Copy, GraduationCap, HeartHandshake, KeyRound, Loader2, Mail, Mic, MessageCircle, MonitorSmartphone, Plus, ShieldCheck, ShieldOff, Sparkles, Trash2, UserCog, Users as UsersIcon, Video } from "lucide-react";
@@ -1599,8 +1599,8 @@ export default function AdminUsers() {
         <DialogContent>
           <DialogHeader>
             <span
-              className="flex h-11 w-11 items-center justify-center rounded-xl"
-              style={{ backgroundColor: `${CHART_PALETTE[4]}1A`, color: CHART_PALETTE[4] }}
+              className={cn(INITIALS_TEXT, "flex h-11 w-11 items-center justify-center rounded-xl")}
+              style={initialsStyle(CHART_PALETTE[4], "1A")}
             >
               <HeartHandshake className="h-5 w-5" />
             </span>

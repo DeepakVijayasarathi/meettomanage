@@ -2240,7 +2240,7 @@ export default function JitsiLive({
                   variant="secondary"
                   aria-pressed={selfMicMuted}
                   disabled={!jitsiReady}
-                  className={cn(headerToggleClass, "aria-pressed:bg-destructive aria-pressed:text-white aria-pressed:shadow-destructive/25")}
+                  className={cn(headerToggleClass, "aria-pressed:bg-destructive aria-pressed:text-destructive-foreground aria-pressed:shadow-destructive/25")}
                   onClick={() => jitsiApiRef.current?.executeCommand("toggleAudio")}
                   title={selfMicMuted ? "Unmute your microphone" : "Mute your microphone"}
                 >

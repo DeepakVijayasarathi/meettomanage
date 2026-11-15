@@ -1,3 +1,4 @@
+import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Link2, Loader2, Plus, Users2, Video } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { SESSIONS } from "@/data/sessions";
 import type { ClassSession, SessionStatus } from "@/types";
-import { formatDate, formatTimeLabel } from "@/lib/utils";
+import { formatDate, formatTimeLabel, cn } from "@/lib/utils";
 import { getUserTimeZoneAbbreviation, localToUtcIso } from "@/lib/datetime";
 import { CHART_PALETTE } from "@/lib/roles";
 import { apiEnabled, userMessage } from "@/lib/api";
@@ -281,8 +282,8 @@ export default function SubAdminSessions() {
         render: (row) => (
           <div className="flex min-w-0 items-center gap-3">
             <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-              style={{ backgroundColor: `${CHART_PALETTE[row.title.length % CHART_PALETTE.length]}1A`, color: CHART_PALETTE[row.title.length % CHART_PALETTE.length] }}
+              className={cn(INITIALS_TEXT, "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg")}
+              style={initialsStyle(CHART_PALETTE[row.title.length % CHART_PALETTE.length], "1A")}
             >
               <CalendarClock className="h-[18px] w-[18px]" />
             </span>
