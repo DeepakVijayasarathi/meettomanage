@@ -74,7 +74,8 @@ export default function ChatbotAdmin() {
 }
 
 const DEFAULT_AI: AiChatConfiguration = {
-  enabled: false, endpoint: "https://inference.hetzner.com/api/v1", model: "Qwen/Qwen3.6-35B-A3B-FP8", systemPrompt: "Answer in 2-3 short sentences.",
+  // Placeholder until the server responds; real defaults come from server config (HetznerAi section).
+  enabled: false, endpoint: "", model: "", systemPrompt: "",
   maxTokens: 500, temperature: 0.3, hasApiKey: false, maskedApiKey: "", inputCostPerMillionTokensUsd: 0, outputCostPerMillionTokensUsd: 0, monthlyBudgetUsd: 0,
 };
 
@@ -130,7 +131,7 @@ function AiProviderPanel() {
         {(loadError || error) && <InlineAlert variant="error">{error ?? loadError ?? "Unable to load."}</InlineAlert>}
         <div className="flex items-center justify-between rounded-lg border p-4"><div><Label>Use AI answers</Label><p className="text-xs text-muted-foreground">When unavailable, the chatbot safely falls back to FAQs and teacher escalation.</p></div><Switch aria-label="Use AI answers" checked={form.enabled} onCheckedChange={(enabled) => setForm((f) => ({ ...f, enabled }))} /></div>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2"><Label htmlFor="ai-endpoint">API base URL or chat endpoint</Label><Input id="ai-endpoint" placeholder="https://inference.hetzner.com/api/v1" value={form.endpoint} onChange={(e) => setForm((f) => ({ ...f, endpoint: e.target.value }))} /><p className="text-xs text-muted-foreground">Hetzner: https://inference.hetzner.com/api/v1</p></div>
+          <div className="space-y-2 md:col-span-2"><Label htmlFor="ai-endpoint">API base URL or chat endpoint</Label><Input id="ai-endpoint" placeholder="https://provider.example/v1" value={form.endpoint} onChange={(e) => setForm((f) => ({ ...f, endpoint: e.target.value }))} /><p className="text-xs text-muted-foreground">OpenAI-compatible base URL (ending in /v1) or an Ollama chat endpoint. Defaults come from server configuration.</p></div>
           <div className="space-y-2"><div className="flex items-center justify-between"><Label htmlFor="ai-model">Model</Label><button type="button" className="text-xs font-semibold text-primary hover:underline" onClick={() => void loadModels()} disabled={loadingModels}>{loadingModels ? "Loading…" : "Load models"}</button></div>{models.length > 0 ? <select id="ai-model" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.model} onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}>{!models.includes(form.model) && <option value={form.model}>{form.model}</option>}{models.map((model) => <option key={model} value={model}>{model}</option>)}</select> : <Input id="ai-model" value={form.model} onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))} />}</div>
           <div className="space-y-2"><Label htmlFor="ai-key">Bearer key</Label><div className="relative"><Input id="ai-key" type={showKey ? "text" : "password"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={form.hasApiKey ? "Key saved — enter only to replace" : "Enter bearer key (optional)"} className="pr-10" /><button type="button" onClick={() => setShowKey((v) => !v)} className="absolute right-3 top-2.5 text-muted-foreground" aria-label={showKey ? "Hide key" : "Show key"}>{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
           <div className="space-y-2 md:col-span-2"><Label htmlFor="ai-prompt">System prompt</Label><Textarea id="ai-prompt" value={form.systemPrompt} onChange={(e) => setForm((f) => ({ ...f, systemPrompt: e.target.value }))} /></div>
