@@ -9,6 +9,7 @@ import { useBrand } from "@/lib/branding";
 import { useLang } from "@/lib/i18n";
 import { useLightBrandScope } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { trackMarketingEvent } from "@/lib/analytics";
 import { detectMarketCurrency, formatMarketPrice, INR_PER_USD } from "@/lib/region";
 import { ChaosToOne } from "./ChaosToOne";
 import { MarketingFooter } from "./MarketingFooter";
@@ -204,6 +205,11 @@ export default function MarketingHome() {
 
               <div className="mt-8">
                 <AccessForm c={c.hero.form} watch={{ label: c.hero.watch, cta: c.hero.demo }} />
+                {/* Three paths by readiness: demo (the form above), start free now, or plan a move from current tools. */}
+                <div className="mt-4 flex flex-wrap gap-2.5">
+                  <Link to="/signup?plan=free" onClick={() => trackMarketingEvent("sales_cta_clicked", "/", "sales-intent:free")} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#E8C8AD] bg-white px-5 text-sm font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]"><Sparkles aria-hidden="true" className="h-4 w-4" />{c.hero.startFree}</Link>
+                  <Link to="/get-started?intent=migration&from=home-hero" onClick={() => trackMarketingEvent("sales_cta_clicked", "/", "sales-intent:migration")} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#E8C8AD] bg-white px-5 text-sm font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]"><Upload aria-hidden="true" className="h-4 w-4" />{c.hero.migrate}</Link>
+                </div>
                 <Link to="/demo-login" className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#9A3412] underline-offset-4 hover:underline">{c.hero.liveDemo} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" /></Link>
               </div>
 
@@ -561,6 +567,7 @@ export default function MarketingHome() {
             </ul>
             <p className="mt-8 max-w-3xl text-sm leading-relaxed text-[#57534E]">
               {c.security.note}{" "}
+              {lang === "en" && <><Link to="/security" className="font-semibold text-[#C2410C] underline underline-offset-4">How we protect your data</Link>{" · "}</>}
               <Link to="/legal/terms" className="font-semibold text-[#C2410C] underline underline-offset-4">{c.security.terms}</Link>
               {" · "}
               <Link to="/privacy" className="font-semibold text-[#C2410C] underline underline-offset-4">{c.security.privacy}</Link>

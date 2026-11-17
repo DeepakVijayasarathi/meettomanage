@@ -193,6 +193,7 @@ const T = {
       "Pay yearly and save — the saving is shown on each plan.",
       "Change or cancel your plan any time from your admin panel. See our",
       "Prices are shown in INR for India and USD everywhere else. Need AED or another currency? Ask us and we'll quote you.",
+      "Reached a student, staff or live-class-hours limit? New additions pause until you add an add-on or move up a plan. Nothing already in your account is removed.",
     ],
     termsLink: "Terms of Service",
     and: "and",
@@ -286,6 +287,7 @@ const T = {
       "ادفع سنويًا ووفّر — يظهر التوفير على كل خطة.",
       "يمكنك تغيير خطتك أو إلغاؤها في أي وقت من لوحة الإدارة. اطلع على",
       "تُعرض الأسعار بالروبية الهندية في الهند وبالدولار الأمريكي في بقية الدول. تحتاج الدرهم أو عملة أخرى؟ اسألنا وسنرسل لك عرضًا.",
+      "وصلت إلى حد الطلاب أو الموظفين أو ساعات الحصص المباشرة؟ تتوقف الإضافات الجديدة حتى تضيف إضافة أو تنتقل إلى خطة أعلى. لا يُحذف أي شيء موجود في حسابك.",
     ],
     termsLink: "شروط الخدمة",
     and: "و",
@@ -647,6 +649,7 @@ export default function Pricing() {
             <Link to="/privacy" className="font-semibold text-[#C2410C] hover:underline">{t.privacyLink}</Link>.
           </p>
           <p>{t.notes[3]}</p>
+          <p>{t.notes[4]}</p>
         </div>
       </section>
 

@@ -48,7 +48,7 @@ const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
 const MarketingLogin = lazy(() => import("@/features/marketingConsole/MarketingLogin"));
 const MarketingDashboard = lazy(() => import("@/features/marketingConsole/MarketingDashboard"));
 const MarketingSeo = lazy(() => import("@/features/marketingConsole/MarketingSeo"));
-const MarketingOutreach = lazy(() => import("@/features/marketingConsole/MarketingOutreach"));
+const MarketingAutomation = lazy(() => import("@/features/marketingConsole/MarketingAutomation"));
 const MarketingAnalytics = lazy(() => import("@/features/marketingConsole/MarketingAnalytics"));
 const MarketingDemoRequests = lazy(() => import("@/features/admin/DemoRequests"));
 const MarketingChats = lazy(() => import("@/features/marketingConsole/MarketingChats"));
@@ -83,6 +83,7 @@ const TuitionCentreSolution = lazy(() => import("@/features/marketing/TuitionCen
 const AdmissionCrmSolution = lazy(() => import("@/features/marketing/AdmissionCrmSolution"));
 const PlatformTerms = lazy(() => import("@/features/marketing/PlatformTerms"));
 const PlatformPrivacy = lazy(() => import("@/features/marketing/PlatformPrivacy"));
+const SecurityPage = lazy(() => import("@/features/marketing/SecurityPage"));
 
 const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
 const FounderDashboard = lazy(() => import("@/features/founder/Dashboard"));
@@ -278,6 +279,7 @@ export default function App() {
             {NICHE_SLUGS.map((slug, i) => { const Page = NichePages[i]; return <Route key={slug} path={`/solutions/${slug}`} element={<MarketingTranslationLayer><Page /></MarketingTranslationLayer>} />; })}
             <Route path="/careers" element={<MarketingTranslationLayer><Careers /></MarketingTranslationLayer>} />
             <Route path="/privacy" element={<MarketingTranslationLayer><PlatformPrivacy /></MarketingTranslationLayer>} />
+            <Route path="/security" element={<MarketingTranslationLayer><SecurityPage /></MarketingTranslationLayer>} />
             <Route path="/legal/terms" element={<MarketingTranslationLayer><PlatformTerms /></MarketingTranslationLayer>} />
             <Route path="/login" element={<Login />} />
             <Route path="/demo-login" element={<Login mode="demo" />} />
@@ -458,7 +460,8 @@ export default function App() {
               <Route index element={<MarketingDashboard />} />
               <Route path="demo-requests" element={<MarketingDemoRequests />} />
               <Route path="chats" element={<MarketingChats />} />
-              <Route path="outreach" element={<MarketingOutreach />} />
+              <Route path="automation" element={<MarketingAutomation />} />
+              <Route path="outreach" element={<Navigate to="/marketing/automation" replace />} />
               <Route path="visitors" element={<MarketingVisitors />} />
               <Route path="journeys" element={<MarketingJourneys />} />
               <Route path="journeys/:visitorId" element={<MarketingVisitorDetail />} />

@@ -26,7 +26,49 @@ export interface ApiPlatformDemoRequest {
   scoreReasons?: string[];
   assignedToUserId?: string | null;
   archivedAtUtc?: string | null;
+  stage?: ApiLeadStage;
+  stageChangedAtUtc?: string | null;
+  firstContactedAtUtc?: string | null;
+  acknowledgedAtUtc?: string | null;
+  demoAtUtc?: string | null;
+  lostReason?: string | null;
+  /** The academy account this lead opened (matched by e-mail). */
+  tenantCode?: string | null;
+  highIntentAtUtc?: string | null;
 }
+
+export type ApiLeadStage = "New" | "Contacted" | "DemoBooked" | "DemoDone" | "Trial" | "ActiveTrial" | "Customer" | "Lost";
+export const LEAD_STAGE_LABEL: Record<ApiLeadStage, string> = {
+  New: "New", Contacted: "Contacted", DemoBooked: "Demo booked", DemoDone: "Demo done",
+  Trial: "Trial", ActiveTrial: "Active trial", Customer: "Customer", Lost: "Lost",
+};
+
+/** Moves a lead through the lifecycle; the server sends that stage's e-mail (demo confirmation, recap). */
+export const setLeadStage = (id: string, input: { stage: ApiLeadStage; demoAtUtc?: string; lostReason?: string; note?: string; recapNote?: string }) =>
+  apiFetch<ApiPlatformDemoRequest>(`/api/marketing/demo-requests/${id}/stage`, { method: "PUT", body: JSON.stringify(input) });
+
+export interface ApiLeadAutomationOverview {
+  days: number;
+  leads: number;
+  funnel: { stage: ApiLeadStage; label: string; current: number; reached: number }[];
+  lost: number;
+  medianFirstResponseHours: number | null;
+  contactedWithin24hPercent: number | null;
+  acknowledgedPercent: number | null;
+  uncontactedOver24h: number;
+  sources: { source: string; leads: number; demos: number; trials: number; customers: number }[];
+  lostReasons: { label: string; count: number }[];
+  upcomingDemos: ApiLeadRow[];
+  highIntent: ApiLeadRow[];
+  recentAutomation: { leadId: string; fullName: string; detail: string; atUtc: string }[];
+  settings: Record<string, string>;
+  accountSyncAvailable: boolean;
+}
+export interface ApiLeadRow { id: string; fullName: string; academyName: string; owner: string | null; atUtc: string | null; stage: ApiLeadStage }
+export const getLeadAutomation = (days: number) => apiFetch<ApiLeadAutomationOverview>(`/api/marketing/lead-automation?days=${days}`);
+export const saveLeadAutomationSettings = (values: Record<string, string>) =>
+  apiFetch<Record<string, string>>("/api/marketing/lead-automation/settings", { method: "PUT", body: JSON.stringify(values) });
+export const runLeadAutomation = () => apiFetch<void>("/api/marketing/lead-automation/run", { method: "POST" });
 
 /**
  * Public — no login required. A prospective academy owner asking to see the Meet to

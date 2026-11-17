@@ -4,7 +4,7 @@ export interface HomeCopy {
   skip: string;
   nav: { features: string; classroom: string; app: string; customers: string; pricing: string; faq: string; blog: string; signIn: string; liveDemo: string; demo: string; menu: string; closeMenu: string };
   ngo: { eyebrow: string; heading: string; body: string; cta: string; note: string };
-  hero: { words: string[]; accent: number[]; sub: string; demo: string; liveDemo: string; watch: string; trust: string[]; form: { label: string; placeholder: string; note: string; invalid: string }; room: { alt: string; caption: string } };
+  hero: { words: string[]; accent: number[]; sub: string; demo: string; liveDemo: string; startFree: string; migrate: string; watch: string; trust: string[]; form: { label: string; placeholder: string; note: string; invalid: string }; room: { alt: string; caption: string } };
   proof: { label: string; items: string[] };
   audience: { eyebrow: string; heading: string; sub: string; items: { key: string; title: string; body: string }[] };
   autopilot: { heading: string; items: string[] };
@@ -26,9 +26,11 @@ export const COPY: Record<Lang, HomeCopy> = {
     nav: { features: "Platform", classroom: "Live classroom", app: "Mobile app", customers: "Customers", pricing: "Pricing", faq: "FAQ", blog: "Blog", signIn: "Sign in", liveDemo: "Live demo", demo: "Book free demo", menu: "Open menu", closeMenu: "Close menu" },
     hero: {
       liveDemo: "Or try the live demo now, no sign-up",
-      words: ["Turn", "enquiries", "into", "paid", "classes."],
-      accent: [3, 4],
-      sub: "The operating system for growing coaching centres: convert enquiries, collect fees on time and run every live class without spreadsheets or scattered WhatsApp threads.",
+      startFree: "Start free",
+      migrate: "Talk about migration",
+      words: ["Run", "your", "coaching", "centre.", "Grow", "your", "business."],
+      accent: [4, 5, 6],
+      sub: "Manage everything in one platform: enquiries, admissions, live classes, attendance, fees and parent updates, without spreadsheets or scattered WhatsApp threads.",
       demo: "Book free demo",
       watch: "Watch the walkthrough",
       trust: ["One login, 8 role-based portals", "Parent mobile app included", "Live classroom, fees and admissions"],
@@ -159,6 +161,8 @@ export const COPY: Record<Lang, HomeCopy> = {
     nav: { features: "المنصة", classroom: "الفصل المباشر", app: "تطبيق الجوال", customers: "العملاء", pricing: "الأسعار", faq: "الأسئلة", blog: "المدونة", signIn: "تسجيل الدخول", liveDemo: "عرض تجريبي مباشر", demo: "احجز عرضًا", menu: "فتح القائمة", closeMenu: "إغلاق القائمة" },
     hero: {
       liveDemo: "أو جرّب العرض التجريبي المباشر الآن دون تسجيل",
+      startFree: "ابدأ مجانًا",
+      migrate: "تحدث معنا عن الانتقال",
       words: ["أتمت", "عملك.", "ادخل", "العصر", "الجديد", "للتدريب", "عبر", "الإنترنت."],
       accent: [3, 4],
       sub: "فصلك الافتراضي الخاص، مع تحصيل الرسوم والقبول وتطبيق لأولياء الأمور، كلها تعمل تلقائيًا لتقضي يومك في التدريس.",

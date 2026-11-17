@@ -209,13 +209,16 @@ export default function GetStarted() {
   const live = apiEnabled();
   const [lang] = useLang();
   const t = T[lang];
-  // ?for=coach arrives from the homepage's "Influencers & personal-brand coaches" Solutions
-  // card and the Pricing page's Pay As You Grow plan — same form and same sales-assisted
-  // flow underneath, just reframed so a solo coach isn't greeted with "academy owners" copy
-  // or forced to invent an academy name they don't have.
+  // ?for=coach arrives from coach-focused links (and the sales assistant) — same form and same
+  // sales-assisted flow underneath, just reframed so a solo coach isn't greeted with "academy
+  // owners" copy or forced to invent an academy name they don't have.
   const [searchParams] = useSearchParams();
   const isCoach = searchParams.get("for") === "coach";
-  const wantsCall = searchParams.get("intent") === "call";
+  // ?intent= says which button brought the visitor (call, migration, roi, ai-briefing). It rides on the
+  // lead's landing path so the sales team can see why each person asked.
+  const intent = (searchParams.get("intent") ?? "").toLowerCase().replace(/[^a-z-]/g, "").slice(0, 30);
+  const wantsCall = intent === "call";
+  const wantsMigration = intent === "migration";
   const rawSourcePage = (searchParams.get("from") ?? "").replace(/[^a-z0-9/_-]/gi, "").slice(0, 120);
   // Coaches see their own copy, so only academy visitors join the copy test.
   const [variant] = useState<Variant>(() => experimentVariant(EXPERIMENT, VARIANTS));
@@ -225,7 +228,7 @@ export default function GetStarted() {
     ? `${incomingExperiment}:${incomingVariant}`
     : undefined;
   const effectiveVariant: Variant = incomingTag ? incomingVariant as Variant : variant;
-  const tag = isCoach || wantsCall ? undefined : incomingTag ?? `${EXPERIMENT}:${variant}`;
+  const tag = isCoach || wantsCall || wantsMigration ? undefined : incomingTag ?? `${EXPERIMENT}:${variant}`;
   const pc = { ...PANEL[lang], cta: t.requestDemo, ...(tag && effectiveVariant === "b" ? PANEL_B[lang] : {}) };
   // The homepage hero hands over whatever the visitor typed (an email or a mobile number) as ?contact=.
   const [form, setForm] = useState(() => {
@@ -234,8 +237,15 @@ export default function GetStarted() {
     // ?plan=&cycle= come from the pricing page, so the team knows which plan the visitor was weighing.
     const plan = (searchParams.get("plan") ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 40);
     const cycle = searchParams.get("cycle") === "Year" ? "yearly" : "monthly";
+    // ?hours=&rate= come from the homepage's admin-cost calculator.
+    const hours = Number(searchParams.get("hours"));
+    const rate = Number(searchParams.get("rate"));
     const base = wantsCall
       ? { ...EMPTY_FORM, message: "I would like to schedule a call about Meet to Manage." }
+      : wantsMigration
+      ? { ...EMPTY_FORM, message: "I'd like help moving to Meet to Manage. Today we use: " }
+      : intent === "roi" && hours > 0 && rate > 0
+      ? { ...EMPTY_FORM, message: `Our admin work today: about ${Math.round(hours)} hours a week at ₹${Math.round(rate)} an hour. Which of it can be automated?` }
       : searchParams.get("offer") === "ngo"
       ? { ...EMPTY_FORM, message: "NGO / non-profit offer: please confirm eligibility and next steps." }
       : plan ? { ...EMPTY_FORM, message: `Interested in the ${plan} plan (${cycle} billing).` } : EMPTY_FORM;
@@ -302,7 +312,7 @@ export default function GetStarted() {
           : "Preferred time: Please contact me to arrange",
       ].join("\n");
       const leadContext = new URLSearchParams();
-      if (wantsCall) leadContext.set("intent", "call");
+      if (intent) leadContext.set("intent", intent);
       if (rawSourcePage) leadContext.set("from", rawSourcePage);
       const leadQuery = leadContext.toString();
       await requestPlatformDemo({
@@ -380,8 +390,8 @@ export default function GetStarted() {
                 </div>
               ) : (
                 <>
-                  <h2 className="font-display text-[clamp(1.6rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{wantsCall ? (lang === "en" ? "Schedule your free call" : "حدد موعد مكالمتك المجانية") : pc.formTitle}</h2>
-                  <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-[#57534E]">{wantsCall ? (lang === "en" ? "Choose how and when you prefer to talk. We will confirm the exact time with you." : "اختر طريقة ووقت التواصل المناسبين لك، وسنؤكد الموعد معك.") : pc.formSub}</p>
+                  <h2 className="font-display text-[clamp(1.6rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[#1C1917] rtl:tracking-normal">{wantsCall ? (lang === "en" ? "Schedule your free call" : "حدد موعد مكالمتك المجانية") : wantsMigration ? (lang === "en" ? "Plan your move" : "خطط لانتقالك") : pc.formTitle}</h2>
+                  <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed text-[#57534E]">{wantsCall ? (lang === "en" ? "Choose how and when you prefer to talk. We will confirm the exact time with you." : "اختر طريقة ووقت التواصل المناسبين لك، وسنؤكد الموعد معك.") : wantsMigration ? (lang === "en" ? "Tell us what you use today: spreadsheets, another app or WhatsApp groups. We'll map your students, batches and fees, and plan the move with you." : "أخبرنا بما تستخدمه اليوم: جداول بيانات أو تطبيق آخر أو مجموعات واتساب. سنطابق طلابك ومجموعاتك ورسومك ونخطط للانتقال معك.") : pc.formSub}</p>
                   {lang === "en" && (
                     <ol aria-label="What happens next" className="mt-5 grid grid-cols-3 gap-2 text-center">
                       {[
@@ -450,7 +460,7 @@ export default function GetStarted() {
                     </div>
                     {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
                     <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
-                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{wantsCall ? (lang === "en" ? "Request this call" : "اطلب هذه المكالمة") : pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
+                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{wantsCall ? (lang === "en" ? "Request this call" : "اطلب هذه المكالمة") : wantsMigration ? (lang === "en" ? "Get my migration plan" : "احصل على خطة الانتقال") : pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
                     </button>
                     <p className="text-center text-xs leading-relaxed text-[#78716C]">
                       {lang === "en" ? "We only use these details to arrange your walkthrough." : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}

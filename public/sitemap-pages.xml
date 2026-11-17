@@ -143,6 +143,11 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://meettomanage.cloud/security</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://meettomanage.cloud/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
