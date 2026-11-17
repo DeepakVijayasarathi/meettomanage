@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type FormEvent, type Re
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useConsoleView, type ConsoleView } from "./consoleView";
 import {
-  Activity, AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Radio, Receipt, Settings2, ShieldCheck, SlidersHorizontal, TrendingUp,
+  Activity, AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Radio, Receipt, Settings2, ShieldCheck, SlidersHorizontal, TrendingUp, Users,
   type LucideIcon,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -22,6 +22,7 @@ const groups: { title: string; items: NavItem[] }[] = [
     items: [
       { to: "/platform/overview", label: "Overview", icon: LayoutDashboard, hint: "What needs your attention today", simple: true },
       { to: "/platform/tenants", label: "Tenant management", icon: Building2, hint: "Create and manage client workspaces", simple: true },
+      { to: "/platform/users", label: "Tenant users", icon: Users, hint: "Usernames, emails and roles per tenant", simple: true },
       { to: "/platform/menus", label: "Menu management", icon: ListTree, hint: "Shape each client's navigation" },
       { to: "/platform/configuration", label: "Tenant configuration", icon: Settings2, hint: "Branding, integrations and settings" },
       { to: "/platform/email-mappings", label: "Simple SSO", icon: AtSign, hint: "One sign-in page for every client" },

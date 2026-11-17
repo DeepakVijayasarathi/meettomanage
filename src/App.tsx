@@ -13,6 +13,7 @@ import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { tenantPath } from "@/lib/tenantPath";
 const PlatformTenants = lazy(() => import("@/features/platform/Tenants"));
 const PlatformOverview = lazy(() => import("@/features/platform/Overview"));
+const PlatformUsers = lazy(() => import("@/features/platform/Users"));
 const PlatformRules = lazy(() => import("@/features/platform/Rules"));
 const PlatformMenus = lazy(() => import("@/features/platform/Menus"));
 const PlatformConfiguration = lazy(() => import("@/features/platform/Configuration"));
@@ -238,6 +239,7 @@ export default function App() {
           <Routes>
             <Route path="/platform/tenants" element={<PlatformTenants />} />
             <Route path="/platform/overview" element={<PlatformOverview />} />
+            <Route path="/platform/users" element={<PlatformUsers />} />
             <Route path="/platform/rules" element={<PlatformRules />} />
             <Route path="/platform" element={<Navigate to="/platform/overview" replace />} />
             <Route path="/platform/menus" element={<PlatformMenus />} />
