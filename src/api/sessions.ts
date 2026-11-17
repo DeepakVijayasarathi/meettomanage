@@ -319,6 +319,8 @@ export interface ApiGuestJoin {
   /** True for a student-bound link — the bridge page should skip its own name-entry step
    *  entirely and join straight in with `displayName` already set. */
   skipPrejoin: boolean;
+  /** Demo lead's own link: joins with the mic on (see JitsiLive startWithAudioMuted). */
+  isDemoGuest?: boolean;
   /** ClassroomHub-only token (passed to JitsiLive's `hubToken` prop, same mechanism the Jibri
    *  recording-observer page already uses) — lets the guest join the real interactive
    *  classroom (whiteboard, quiz, roster, gamification), not a bare Jitsi call. */

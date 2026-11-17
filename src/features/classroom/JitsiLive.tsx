@@ -28,6 +28,9 @@ import { primeAudioUnlock } from "@/lib/sounds";
 import InteractivePanel from "./InteractivePanel";
 import { useMeetingPip } from "./useMeetingPip";
 import ClassroomBlocked from "./ClassroomBlocked";
+import { isPortraitPhone } from "./portraitPhone";
+import { loadJitsiScript } from "./jitsiScript";
+import { micErrorAction } from "./micError";
 import { detectPlatform, getMediaHelp } from "@/lib/mediaPermissionHelp";
 import GamificationOverlay from "./GamificationOverlay";
 import AnnotationOverlay, { type AnnotationOverlayHandle, type AnnotationOp } from "./AnnotationOverlay";
@@ -74,6 +77,10 @@ type JitsiExternalApi = {
       handRaised?: boolean;
       // participantRoleChanged only: "moderator" or "none" (Jitsi's own two roles).
       role?: string;
+      // participantKickedOut only: who was removed; `local` is true when it was this viewer.
+      kicked?: { id?: string; local?: boolean };
+      // micError / cameraError only: Jitsi's error constant, e.g. "gum.permission_denied".
+      type?: string;
       // knockingParticipant only: someone waiting in the lobby to be let in.
       participant?: { id?: string; name?: string };
       // recordingStatusChanged only: Jitsi's own reason when a recording request is
@@ -104,46 +111,12 @@ declare global {
   }
 }
 
-const scriptPromises = new Map<string, Promise<void>>();
+// Script loading (3 attempts x 30s, friendly slow-network message) lives in ./jitsiScript.
 
-// Bug fixed 2026-09-16: this cache is module-level, so it outlives every unmount/remount of
-// JitsiLive across the whole SPA session. A stale entry here reproduced exactly as "host
-// clicks Start Class repeatedly, same stuck screen every time" -- one transient script-load
-// failure (or a request that never fires onload/onerror at all, e.g. a flaky network hiccup)
-// used to leave a dead/never-settling promise permanently cached for that domain, so every
-// later click just re-awaited the same broken promise forever instead of retrying the actual
-// <script> load. Now a failed or timed-out attempt removes its own cache entry so the next
-// click gets a fresh load.
-function loadJitsiScript(domain: string): Promise<void> {
-  if (window.JitsiMeetExternalAPI) return Promise.resolve();
-  let promise = scriptPromises.get(domain);
-  if (!promise) {
-    promise = new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = `https://${domain}/external_api.js`;
-      script.async = true;
-      const timeout = setTimeout(() => {
-        script.remove();
-        reject(new Error("Timed out loading the Jitsi Meet API."));
-      }, 15_000);
-      script.onload = () => {
-        clearTimeout(timeout);
-        resolve();
-      };
-      script.onerror = () => {
-        clearTimeout(timeout);
-        script.remove();
-        reject(new Error("Could not load the Jitsi Meet API."));
-      };
-      document.head.appendChild(script);
-    }).catch((err) => {
-      scriptPromises.delete(domain);
-      throw err;
-    });
-    scriptPromises.set(domain, promise);
-  }
-  return promise;
-}
+// How long an announced staff/teacher rejoin, or an "arriving" notice, stays valid.
+const STAFF_ADMIT_WINDOW_MS = 3 * 60_000;
+// How long a child the server let in but who hasn't reached the call stays on the teacher's list.
+const ARRIVING_VISIBLE_MS = 10 * 60_000;
 
 /**
  * One-click live classroom: embeds the Jitsi room generated for the session.
@@ -162,6 +135,7 @@ export default function JitsiLive({
   isRecordingObserver,
   hubToken,
   isPersonalRoom,
+  startUnmuted,
   roleLabel,
   onLeave,
 }: {
@@ -203,6 +177,9 @@ export default function JitsiLive({
    *  (whiteboard/quiz/roster/chat) still mounts normally off `sessionId` alone, same as a
    *  real class. */
   isPersonalRoom?: boolean;
+  /** Demo guests (GuestJoin with a named-guest link) join with the mic on, like a personal room: a demo
+   *  is a talk with the teacher, and parents arriving muted were never heard. */
+  startUnmuted?: boolean;
   /** Overrides the header's role badge (default "Teacher"/"Student") — e.g. "Monitor" for an
    *  admin-team member dropping into a class (StaffLiveClassroom.tsx). */
   roleLabel?: string;
@@ -460,6 +437,23 @@ export default function JitsiLive({
   // Whether Jitsi has made this client the room's moderator -- muteEveryone is silently ignored
   // otherwise, which read as a broken "Mute all kids" button.
   const [selfIsModerator, setSelfIsModerator] = useState(false);
+  // A parent/student only gets into the room once the teacher is in it (backend answers 409 until
+  // then); the join lookup is retried on a timer while this screen says so.
+  const [waitingForTeacher, setWaitingForTeacher] = useState(false);
+  // When this child started waiting for the teacher, so the screen can say how long and offer a
+  // refresh tip instead of looking frozen.
+  const [waitingSince, setWaitingSince] = useState<number | null>(null);
+  const [, setWaitTick] = useState(0);
+  useEffect(() => {
+    if (!waitingForTeacher) {
+      setWaitingSince(null);
+      return;
+    }
+    setWaitingSince((prev) => prev ?? Date.now());
+    const t = setInterval(() => setWaitTick((n) => n + 1), 15_000);
+    return () => clearInterval(t);
+  }, [waitingForTeacher]);
+  const waitedMinutes = waitingSince ? Math.floor((Date.now() - waitingSince) / 60_000) : 0;
   // Phone/tablet browsers can't share a screen (no getDisplayMedia, or a touch-first device
   // where it isn't offered); screen-share prompts are pointless clutter there.
   const [canShareScreen] = useState(
@@ -528,7 +522,6 @@ export default function JitsiLive({
   // host is the moderator who can admit); anyone else still waits for the teacher as before.
   const expectedStaffRef = useRef(new Map<string, number>());
   const knockingRef = useRef(new Map<string, string>());
-  const STAFF_ADMIT_WINDOW_MS = 3 * 60_000;
   function admitIfExpectedStaff(knockId: string) {
     // Any mode, not just the teacher's: when the teacher drops out or exits by accident, the
     // child's client becomes the room's moderator and her rejoin knock used to wait for the child
@@ -541,7 +534,54 @@ export default function JitsiLive({
     jitsiApiRef.current?.executeCommand("answerKnockingParticipant", knockId, true);
     knockingRef.current.delete(knockId);
   }
-  function onStaffJoining(displayName: string) {
+  // Who is at the door right now, as the teacher sees it. A knock (knockId set) can be answered
+  // with Admit; an "arriving" entry (no knockId) is a child the server has just authorized who
+  // hasn't knocked yet -- shown at once so a child stuck outside is never invisible to the teacher.
+  const [waitingRoom, setWaitingRoom] = useState<{ name: string; knockId?: string; since: number }[]>([]);
+  // True only once the teacher has switched the Waiting Room on by hand. Until then every knock
+  // is from someone the server already authorized (a signed token is required to reach the
+  // lobby at all), so the teacher's classroom lets them straight in instead of idling for a click.
+  const manualWaitingRoomRef = useRef(false);
+  const selfIsModeratorRef = useRef(false);
+  function addWaiting(name: string, knockId?: string) {
+    const key = name.trim().toLowerCase();
+    setWaitingRoom((prev) => {
+      const rest = prev.filter((w) => (knockId ? w.knockId !== knockId : true) && w.name.trim().toLowerCase() !== key);
+      return [...rest, { name, knockId, since: Date.now() }];
+    });
+  }
+  function removeWaiting(match: { name?: string; knockId?: string }) {
+    const key = match.name?.trim().toLowerCase();
+    setWaitingRoom((prev) => prev.filter((w) => !(
+      (match.knockId && w.knockId === match.knockId) || (key && w.name.trim().toLowerCase() === key)
+    )));
+  }
+  function admitWaiting(knockId: string) {
+    jitsiApiRef.current?.executeCommand("answerKnockingParticipant", knockId, true);
+    removeWaiting({ knockId });
+  }
+  // An "arriving" notice that never turns into a join (closed tab, lost connection) shouldn't
+  // sit on the teacher's screen for the rest of the class.
+  useEffect(() => {
+    if (waitingRoom.length === 0) return;
+    const t = setInterval(() => {
+      setWaitingRoom((prev) => prev.filter((w) => w.knockId || Date.now() - w.since < ARRIVING_VISIBLE_MS));
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [waitingRoom.length]);
+  function onParticipantArriving(displayName: string) {
+    if (mode !== "teacher" || !displayName.trim()) return;
+    addWaiting(displayName);
+  }
+  function onStaffJoining(displayName: string, isTeacher?: boolean) {
+    // The class's own teacher is coming back after a drop. If a child's client holds the room's
+    // host role it is the only one who could admit her, and it may never answer (tab in the
+    // background, name mismatch). Dropping the waiting room while she re-enters means she walks
+    // in with no one's permission; her own classroom switches it back on once she is host again,
+    // and every joiner already holds a signed token.
+    if (isTeacher && mode !== "teacher" && selfIsModeratorRef.current) {
+      jitsiApiRef.current?.executeCommand("toggleLobby", false);
+    }
     expectedStaffRef.current.set(displayName.trim().toLowerCase(), Date.now() + STAFF_ADMIT_WINDOW_MS);
     // The knock can arrive before this push (the staff tab opens as soon as the join call returns).
     for (const knockId of Array.from(knockingRef.current.keys())) admitIfExpectedStaff(knockId);
@@ -604,6 +644,11 @@ export default function JitsiLive({
   const [callDegraded, setCallDegraded] = useState(false);
   // Recording-observer only — see the readyToClose listener below.
   const [callEnded, setCallEnded] = useState(false);
+  // False while Jitsi's own lobby screen is up: the iframe is loaded but this client has not been
+  // let into the conference yet (videoConferenceJoined fires only on admission).
+  const [inConference, setInConference] = useState(false);
+  // A student/parent whose class the teacher just ended (kicked out of the room).
+  const [classOver, setClassOver] = useState(false);
   const [recording, setRecording] = useState(false);
   // Auto-recording has no success confirmation of its own — startRecording is a fire-and-
   // forget IFrame command, so the only signals that it actually took are recordingStatusChanged
@@ -768,9 +813,6 @@ export default function JitsiLive({
   // recording for a teacher who already relies on it.
   const autoRecordRef = useRef(true);
   const defaultLobbyRef = useRef(true);
-  // Guards the one-time enable-lobby-on-join attempt below (see participantRoleChanged) so a
-  // role event that fires more than once in one call never issues the command twice.
-  const lobbyEnableAttemptedRef = useRef(false);
   // Lower-cased display names of staff (Admin/RM/Coordinator/Counselor/Admission/Management)
   // who may enter without knocking — filled from the join response (teacher/admin only).
   const staffNamesRef = useRef<Set<string>>(new Set());
@@ -837,6 +879,12 @@ export default function JitsiLive({
     const next = !lobbyEnabled;
     jitsiApiRef.current.executeCommand("toggleLobby", next);
     setLobbyEnabled(next);
+    manualWaitingRoomRef.current = next;
+    // Turning it off lets everyone still waiting in.
+    if (!next) {
+      for (const w of waitingRoom) if (w.knockId) jitsiApiRef.current.executeCommand("answerKnockingParticipant", w.knockId, true);
+      setWaitingRoom([]);
+    }
   }
 
   // The interactive layer needs a real session id for the hub group + engagement.
@@ -1105,6 +1153,7 @@ export default function JitsiLive({
   useEffect(() => {
     let api: JitsiExternalApi | undefined;
     let cancelled = false;
+    let waitTimer: ReturnType<typeof setTimeout> | undefined;
     // conference.authenticationRequired retry budget -- see the conferenceFailed listener.
     // Lives here (not a ref) so it resets naturally whenever this effect re-runs (room/mode
     // change), same lifetime as `api`/`cancelled` above.
@@ -1278,6 +1327,7 @@ export default function JitsiLive({
       } else if (interactive) {
         try {
           const join = await getJitsiJoin(sessionId!);
+          setWaitingForTeacher(false);
           joinRoom = join.room;
           joinDomain = join.domain;
           joinToken = join.token ?? undefined;
@@ -1301,6 +1351,15 @@ export default function JitsiLive({
           // rejection look like a flaky server. Only a genuine network/offline failure
           // (no ApiError, the request never got a response) still falls back to a
           // best-effort room-only join, matching demo-mode/offline behavior.
+          if (err instanceof ApiError && err.status === 409) {
+            if (!cancelled) {
+              setWaitingForTeacher(true);
+              waitTimer = setTimeout(() => {
+                if (!cancelled) init().catch((e: Error) => setError(userMessage(e)));
+              }, 4000);
+            }
+            return;
+          }
           if (err instanceof ApiError) {
             // Real teacher report: clicking Start Class repeatedly showed "the same screen"
             // every time with no explanation. Root cause was here -- the toast alone
@@ -1393,7 +1452,9 @@ export default function JitsiLive({
         userInfo: { displayName: userName },
         configOverwrite: {
           prejoinConfig: { enabled: false },
-          startWithAudioMuted: mode === "student",
+          // A personal room is mostly demos: a parent talking 1:1 with the teacher. Joining them muted
+          // meant finding the unmute button on a phone, and every rejoin muted them again. Classes still start muted.
+          startWithAudioMuted: mode === "student" && !isPersonalRoom && !startUnmuted,
           disableDeepLinking: true,
           // Force every call through the JVB media bridge instead of a direct
           // peer-to-peer WebRTC connection. P2P has much weaker NAT traversal (no
@@ -1487,11 +1548,11 @@ export default function JitsiLive({
           // middle of the teacher's shared screen, covering the lesson -- it auto-hides there and
           // a tap brings it back.
           toolbarConfig: {
-            // Except the landscape-phone case below, where a persistent overlay consumes too
-            // much of the short viewport and a tap remains the appropriate reveal gesture.
-            alwaysVisible:
-              typeof window !== "undefined" &&
-              !window.matchMedia("(orientation: landscape) and (max-height: 520px)").matches,
+            // Client report (2026-10-21): the pinned bar covered the bottom of the teacher's
+            // shared screen (the lesson text under it was unreadable) on laptop, landscape and
+            // portrait alike. It now auto-hides everywhere and a tap/move brings it back; the
+            // header above still carries an always-visible "Mute me" for the teacher.
+            alwaysVisible: false,
             initialTimeout: 8000,
             timeout: 5000,
           },
@@ -1503,6 +1564,11 @@ export default function JitsiLive({
           // Suppressing just these keeps join/lobby/raise-hand notifications intact.
           disabledNotifications: [
             "notify.moderator",
+            // Waiting-room "X wants to join -- Admit / Reject" pop-ups. Jitsi hands the host role to
+            // whoever is first into an empty room, so a child who arrived before the teacher (or stayed
+            // after she dropped) got these and could let other children in. Only the teacher's /
+            // admin's classroom admits anyone; the announced teacher/staff rejoin still works everywhere.
+            ...(mode === "teacher" ? [] : ["notify.participantWantsToJoin", "notify.participantsWantToJoin"]),
             "dialog.cameraPermissionDeniedError",
             "dialog.micPermissionDeniedError",
             "dialog.cameraNotFoundError",
@@ -1519,6 +1585,10 @@ export default function JitsiLive({
           // Video-tile letterbox before a camera loads, matched to our own dark panel color.
           DEFAULT_BACKGROUND: "#E8EBEF",
           MOBILE_APP_PROMO: false,
+          // On a phone held upright the faces column down the side takes about a third of the narrow
+          // width, so the teacher's shared slide is tiny. Upright, the faces go in a strip along the
+          // bottom instead. Decided once when the class opens (Jitsi reads this only at start).
+          VERTICAL_FILMSTRIP: !isPortraitPhone(),
           HIDE_INVITE_MORE_HEADER: true,
           // Teacher feedback: tile view only showed 4 students at once. Never overridden here
           // before — the self-hosted deployment's own default interface_config.js was the only
@@ -1541,7 +1611,9 @@ export default function JitsiLive({
             // reachable on phones without adding more buttons to our compact app header.
             // participants-pane is also the only complete roster for personal/guest rooms,
             // whose visitors do not always have an authenticated classroom-hub identity.
-            "participants-pane",
+            // Not for a child in a class: when Jitsi has made her client the room's host, this pane
+            // lists the waiting room with Admit buttons. Her roster is the Interactive panel's People tab.
+            ...(mode === "teacher" || !hasClassSession ? (["participants-pane"] as const) : []),
             "reactions",
             "closedcaptions",
             "tileview",
@@ -1609,7 +1681,9 @@ export default function JitsiLive({
           exitClassroom();
         }
       });
+      api.addListener("videoConferenceLeft", () => setInConference(false));
       api.addListener("videoConferenceJoined", (payload) => {
+        setInConference(true);
         setReconnecting(null);
         media.selfId = payload?.id ?? "";
         if (mode === "teacher") {
@@ -1741,13 +1815,15 @@ export default function JitsiLive({
       // see the long comment on videoConferenceJoined above for why enabling the lobby waits
       // for this instead of firing the instant we believe we've joined.
       api.addListener("participantRoleChanged", (payload) => {
-        if (payload?.id === media.selfId) setSelfIsModerator(payload?.role === "moderator");
-        if (payload?.id !== media.selfId || payload?.role !== "moderator") return;
-        if (mode === "teacher" && defaultLobbyRef.current && !lobbyEnableAttemptedRef.current) {
-          lobbyEnableAttemptedRef.current = true;
-          api?.executeCommand("toggleLobby", true);
-          setLobbyEnabled(true);
+        if (payload?.id === media.selfId) {
+          selfIsModeratorRef.current = payload?.role === "moderator";
+          setSelfIsModerator(payload?.role === "moderator");
         }
+        // The lobby is no longer switched on automatically (admin "defaultLobby" setting): with it
+        // on, a teacher whose connection dropped mid-class landed on "Asking to join meeting..."
+        // together with the child, in a room nobody could open. Everyone here already holds a
+        // signed token and a parent gets none until the teacher is in the room, so the lobby only
+        // adds that deadlock. It is on only when the teacher turns the Waiting Room on herself.
       });
       // Staff walk in without knocking: the moderator's client answers a waiting-room knock
       // immediately when it's either a known, unambiguous staff name (join.staffNames) or the
@@ -1765,6 +1841,13 @@ export default function JitsiLive({
         }
         knockingRef.current.set(knocker.id, knocker.name ?? "");
         admitIfExpectedStaff(knocker.id);
+        if (!knockingRef.current.has(knocker.id) || mode !== "teacher") return;
+        if (!manualWaitingRoomRef.current) {
+          api?.executeCommand("answerKnockingParticipant", knocker.id, true);
+          knockingRef.current.delete(knocker.id);
+          return;
+        }
+        addWaiting(knocker.name?.trim() || "Student", knocker.id);
       });
       api.addListener("dominantSpeakerChanged", (payload) => {
         const now = Date.now();
@@ -1794,13 +1877,40 @@ export default function JitsiLive({
           setSelfMicMuted(payload.muted);
         }
       });
+      // The microphone failed to start (blocked, missing, or busy in another app). Jitsi only shows
+      // a small toast for this, easy to miss on a phone, so say it plainly and keep it on screen.
+      api.addListener("micError", (payload) => {
+        if (isRecordingObserver || cancelled) return;
+        const action = micErrorAction(payload?.type);
+        if (action.kind === "blocked") {
+          setMediaDialog("blocked");
+        } else {
+          setPreflightMediaIssue(action.message);
+          setDeviceHintDismissed(false);
+        }
+      });
       api.addListener("videoConferenceLeft", () => {
         flushMedia();
+      });
+      // End Class kicks everyone (see completeAndLeave); Jitsi's own "Ouch! X kicked you out of
+      // the meeting" dialog reads as a punishment to a child, so cover it with a friendly goodbye.
+      api.addListener("participantKickedOut", (payload) => {
+        if (mode !== "teacher" && !isRecordingObserver && payload?.kicked?.local) setClassOver(true);
       });
       api.addListener("participantJoined", (payload) => {
         const id = payload?.id;
         if (!id) return;
         const displayName = payload.displayName?.trim() || "Student";
+        // A parent joins under their child's name, but the server announced the account's own, so
+        // when nothing matches by name the oldest "arriving" notice is the one that just came in.
+        if (mode === "teacher") {
+          setWaitingRoom((prev) => {
+            const key = displayName.trim().toLowerCase();
+            const byName = prev.findIndex((w) => w.name.trim().toLowerCase() === key);
+            const idx = byName >= 0 ? byName : prev.findIndex((w) => !w.knockId);
+            return idx >= 0 ? prev.filter((_, i) => i !== idx) : prev;
+          });
+        }
         setParticipants((prev) => [...prev.filter((p) => p.id !== id), { id, displayName }]);
       });
       api.addListener("participantLeft", (payload) => {
@@ -2086,6 +2196,7 @@ export default function JitsiLive({
 
     return () => {
       cancelled = true;
+      if (waitTimer) clearTimeout(waitTimer);
       flushMedia();
       api?.dispose();
       jitsiApiRef.current = null;
@@ -2860,6 +2971,15 @@ export default function JitsiLive({
           </button>
         </div>
       )}
+      {classOver && (
+        <div role="dialog" aria-modal="true" aria-label="Class over" className="fixed inset-0 z-[100] flex items-center justify-center bg-call-surface px-6">
+          <div className="flex max-w-sm flex-col items-center gap-4 rounded-2xl border border-call-ink/10 bg-call-ink/5 px-6 py-6 text-center text-call-ink shadow-2xl shadow-black/40">
+            <p className="text-lg font-bold">The class is over!</p>
+            <p className="text-sm text-call-ink/70">See you in the next class. Happy Learning.</p>
+            <Button onClick={exitClassroom}>OK</Button>
+          </div>
+        </div>
+      )}
       {callEnded ? (
         // Recording observer only (see the readyToClose listener) -- an inert end state with
         // nowhere to navigate to, since Jibri opened this page directly, not through the app's
@@ -2867,6 +2987,26 @@ export default function JitsiLive({
         <div className="flex flex-1 items-center justify-center px-6">
           <div className="flex max-w-sm items-start gap-3 rounded-2xl border border-call-ink/10 bg-call-ink/5 px-5 py-4 text-sm text-call-ink/60 shadow-2xl shadow-black/10 backdrop-blur-md">
             <p className="font-medium">Call ended.</p>
+          </div>
+        </div>
+      ) : waitingForTeacher ? (
+        <div className="flex flex-1 items-center justify-center px-6">
+          <div className="max-w-sm rounded-2xl border border-call-ink/10 bg-call-ink/5 px-5 py-4 text-center text-sm text-call-ink/70 shadow-2xl shadow-black/40 backdrop-blur-md">
+            <p className="font-medium text-call-ink">Waiting for the teacher</p>
+            <p className="mt-1">The class opens as soon as your teacher is in the room. You'll be taken in automatically.</p>
+            {waitedMinutes >= 1 && (
+              <>
+                <p className="mt-2 text-xs text-call-ink/50">Waiting {waitedMinutes} min</p>
+                {waitedMinutes >= 2 && (
+                  <div className="mt-2 flex flex-col items-center gap-2 text-xs text-brand-amber">
+                    <p>Taking longer than usual? Please refresh, or check with your teacher that the class has started.</p>
+                    <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+                      Refresh
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       ) : error && errorStatus !== null ? (
@@ -3061,6 +3201,41 @@ export default function JitsiLive({
                 keeps it purely informational, never intercepting a click meant for Jitsi's
                 own controls around/behind it. Sits low, clear of Jitsi's centered avatar and
                 its own toolbar (~64px+ tall) at the very bottom. */}
+            {mode === "teacher" && waitingRoom.length > 0 && (
+              <div data-float-hide className="absolute left-3 top-3 z-30 w-72 max-w-[calc(100%-1.5rem)] overflow-hidden rounded-2xl border border-brand-amber/40 bg-call-surface/95 shadow-2xl shadow-black/40">
+                <div className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span className="text-sm font-semibold text-call-ink">Waiting room ({waitingRoom.length})</span>
+                  {waitingRoom.filter((w) => w.knockId).length > 1 && (
+                    <button type="button" className="rounded-full bg-brand-amber px-2.5 py-0.5 text-xs font-bold text-brand-navy hover:brightness-110" onClick={() => waitingRoom.forEach((w) => w.knockId && admitWaiting(w.knockId))}>
+                      Admit all
+                    </button>
+                  )}
+                </div>
+                <ul className="flex max-h-48 flex-col gap-1.5 overflow-y-auto px-3 pb-3">
+                  {waitingRoom.map((w) => (
+                    <li key={w.knockId ?? w.name} className="flex items-center gap-2 text-sm">
+                      <span className="min-w-0 flex-1 truncate text-call-ink/90">{w.name}</span>
+                      {w.knockId ? (
+                        <button type="button" className="shrink-0 rounded-full bg-success/20 px-2.5 py-0.5 text-xs font-semibold text-success hover:bg-success/30" onClick={() => admitWaiting(w.knockId!)}>
+                          Admit
+                        </button>
+                      ) : (
+                        <span className={cn("shrink-0 text-xs", Date.now() - w.since >= 120_000 ? "text-brand-amber" : "text-call-ink/50")}>
+                          {Date.now() - w.since >= 120_000 ? "Still connecting — ask the parent to refresh" : "Joining…"}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {mode === "student" && !isRecordingObserver && jitsiReady && !inConference && !classOver && (
+              <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-4">
+                <p className="rounded-full border border-brand-amber/40 bg-call-surface/90 px-4 py-2 text-center text-xs font-medium text-call-ink shadow-xl backdrop-blur-xl" role="status">
+                  You're in the waiting room — your teacher can see you're here and will let you in shortly.
+                </p>
+              </div>
+            )}
             {mode === "teacher" && jitsiReady && participants.length === 0 && (
               <div data-float-hide className="pointer-events-none absolute inset-x-0 bottom-20 z-10 flex justify-center px-6">
                 <p className="flex items-center gap-2.5 rounded-full border border-call-ink/10 bg-call-surface/80 px-4 py-2 text-xs font-medium text-call-ink/70 shadow-xl shadow-black/10 ring-1 ring-call-ink/5 backdrop-blur-xl">
@@ -3254,6 +3429,7 @@ export default function JitsiLive({
                 }}
                 onReloadRequested={(message) => setReloadNotice(message)}
                 onStaffJoining={onStaffJoining}
+                onParticipantArriving={onParticipantArriving}
                 onTeacherActivity={() => setPanelOpen(true)}
               />
             </aside>

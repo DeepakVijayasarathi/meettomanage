@@ -43,7 +43,9 @@ export interface ClassroomHubEvents {
    *  mid-class would be worse than the deploy it's trying to deliver. */
   reloadRequested: (message: string) => void;
   /** An admin-team member was just authorized to join (GET jitsi-join) — the host admits their lobby knock. */
-  staffJoining: (displayName: string) => void;
+  staffJoining: (displayName: string, isTeacher?: boolean) => void;
+  /** A parent/student was just authorized to join (GET jitsi-join) and is about to wait at the door. */
+  participantArriving: (displayName: string) => void;
   /** Fired after an automatic reconnect, just before re-joining the session. JoinSession
    *  replays the whole board history to a (re)joining connection, and not every board op is
    *  idempotent (strokeAppend re-appends points, removePage removes another page), so the
@@ -140,6 +142,7 @@ export class ClassroomHubClient {
     if (handlers.muteAll) connection.on("MuteAll", handlers.muteAll);
     if (handlers.reloadRequested) connection.on("ReloadRequested", handlers.reloadRequested);
     if (handlers.staffJoining) connection.on("StaffJoining", handlers.staffJoining);
+    if (handlers.participantArriving) connection.on("ParticipantArriving", handlers.participantArriving);
 
     // SignalR's own retry loop — surface it so the UI can stop pretending sync
     // is healthy the instant it isn't, instead of only knowing "connected" once

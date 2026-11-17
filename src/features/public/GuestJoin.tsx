@@ -72,6 +72,7 @@ export default function GuestJoin() {
         room={join.room}
         mode="student"
         sessionId={join.sessionId}
+        startUnmuted={join.isDemoGuest}
         displayName={join.skipPrejoin ? join.displayName : typedName.trim() || "Guest"}
         joinOverride={{ domain: join.domain, token: join.token }}
         hubToken={join.hubToken}

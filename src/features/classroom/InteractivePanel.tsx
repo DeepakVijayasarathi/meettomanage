@@ -68,7 +68,9 @@ interface InteractivePanelProps {
   onReloadRequested?: (message: string) => void;
   /** Fires when the backend authorizes an admin-team member to join this class (see
    *  SessionsController.GetJitsiJoin) — the host (JitsiLive) admits their lobby knock. */
-  onStaffJoining?: (displayName: string) => void;
+  onStaffJoining?: (displayName: string, isTeacher?: boolean) => void;
+  /** Fires when a parent/student is authorized to join and is about to wait at the door. */
+  onParticipantArriving?: (displayName: string) => void;
   /** Student side: the teacher just started something the class should look at (a quiz, a
    *  slide change, the board, or board access for this student). The host keeps the panel
    *  closed by default, Meet/Zoom-style, and opens it on this. */
@@ -84,7 +86,7 @@ const BOARD_REPLAY_GRACE_MS = 5000;
  * board access — all synced through the classroom SignalR hub. If the hub is
  * unreachable everything still renders locally (the call itself is unaffected).
  */
-export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onMuteAllRequested, onReloadRequested, onStaffJoining, onTeacherActivity }: InteractivePanelProps) {
+export default function InteractivePanel({ sessionId, mode, displayName, hubToken, onCelebrate, onLeaderboard, onReady, onAnnotation, onBoardMaximizedChange, onPinChanged, onMuteAllRequested, onReloadRequested, onStaffJoining, onParticipantArriving, onTeacherActivity }: InteractivePanelProps) {
   const [tab, setTab] = useState<PanelTab>("board");
   const onTeacherActivityRef = useRef(onTeacherActivity);
   onTeacherActivityRef.current = onTeacherActivity;
@@ -193,7 +195,8 @@ export default function InteractivePanel({ sessionId, mode, displayName, hubToke
         pinned: (participantId) => onPinChanged?.(participantId),
         muteAll: () => onMuteAllRequested?.(),
         reloadRequested: (message) => onReloadRequested?.(message),
-        staffJoining: (name) => onStaffJoining?.(name),
+        staffJoining: (name, isTeacher) => onStaffJoining?.(name, isTeacher),
+        participantArriving: (name) => onParticipantArriving?.(name),
         resync: () => {
           boardHandlers.current.forEach((handler) => handler({ kind: "reset" }));
           // Rebuilt from the same Board history replay as the whiteboard.

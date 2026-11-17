@@ -122,28 +122,45 @@ declare global {
 
 const loads = new Map<string, Promise<void>>();
 
-function loadScript(src: string, timeoutMs = 20_000): Promise<void> {
+function loadScriptOnce(src: string, timeoutMs: number): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    const timer = setTimeout(() => {
+      script.remove();
+      reject(new Error(`Timed out loading ${src}`));
+    }, timeoutMs);
+    script.onload = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    script.onerror = () => {
+      clearTimeout(timer);
+      script.remove();
+      reject(new Error(`Could not load ${src}`));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// Same lesson as the iframe path's jitsiScript.ts: one short attempt on a weak phone connection
+// left a child stuck on "Joining..." -- up to 3 attempts of 30 seconds each before giving up.
+function loadScript(src: string, timeoutMs = 30_000, attempts = 3): Promise<void> {
   let promise = loads.get(src);
   if (!promise) {
-    promise = new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.async = true;
-      const timer = setTimeout(() => {
-        script.remove();
-        reject(new Error(`Timed out loading ${src}`));
-      }, timeoutMs);
-      script.onload = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-      script.onerror = () => {
-        clearTimeout(timer);
-        script.remove();
-        reject(new Error(`Could not load ${src}`));
-      };
-      document.head.appendChild(script);
-    }).catch((err) => {
+    promise = (async () => {
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+          await loadScriptOnce(src, timeoutMs);
+          return;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      throw lastError;
+    })().catch((err) => {
       // A failed attempt must not poison later retries (same lesson as loadJitsiScript).
       loads.delete(src);
       throw err;
