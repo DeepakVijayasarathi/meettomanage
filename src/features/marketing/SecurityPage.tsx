@@ -34,7 +34,7 @@ export default function SecurityPage() {
       eyebrow="Data and security"
       title="How we look after your academy's data."
       sub="Coaching centres trust us with children's details, family contacts and fee records. Here is how that data is kept apart, protected and removed."
-      seo={{ title: "Data Protection and Security | Meet to Manage", description: "How Meet to Manage protects academy data: a separate database per academy, role-based access, encrypted connections, gateway payments and recordings that expire on schedule.", path: "/security" }}
+      seo={{ title: "Data Protection and Security | Meet to Manage", description: "How Meet to Manage protects academy data: a separate database per academy, role-based access, encrypted connections and gateway payments.", path: "/security" }}
     >
       <section className="bg-white pb-[clamp(48px,6vw,88px)]">
         <ul className="mx-auto grid max-w-[1100px] gap-4 px-5 sm:grid-cols-2">
