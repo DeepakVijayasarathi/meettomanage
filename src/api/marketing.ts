@@ -35,6 +35,14 @@ export interface ApiPlatformDemoRequest {
   /** The academy account this lead opened (matched by e-mail). */
   tenantCode?: string | null;
   highIntentAtUtc?: string | null;
+  region?: string | null;
+  city?: string | null;
+  segment?: string | null;
+  website?: string | null;
+  studentCount?: number | null;
+  expectedPlan?: string | null;
+  expectedMonthlyValue?: number | null;
+  expectedCloseAtUtc?: string | null;
 }
 
 export type ApiLeadStage = "New" | "Contacted" | "DemoBooked" | "DemoDone" | "Trial" | "ActiveTrial" | "Customer" | "Lost";
@@ -120,9 +128,11 @@ export async function updatePlatformDemoRequest(id: string, input: { status?: Ap
 export interface ApiMarketingLeadActivity { id: string; type: string; detail: string; createdAtUtc: string }
 export interface ApiMarketingLeadDetail { lead: ApiPlatformDemoRequest; activity: ApiMarketingLeadActivity[] }
 export interface ApiPaged<T> { items: T[]; totalCount: number; page: number; pageSize: number }
-export async function listPlatformDemoRequestsPaged(input: { page: number; pageSize?: number; search?: string; status?: ApiPlatformDemoRequestStatus; overdueOnly?: boolean; archivedOnly?: boolean }): Promise<ApiPaged<ApiPlatformDemoRequest>> {
+export async function listPlatformDemoRequestsPaged(input: { page: number; pageSize?: number; search?: string; status?: ApiPlatformDemoRequestStatus; overdueOnly?: boolean; archivedOnly?: boolean; stage?: ApiLeadStage; assignedToUserId?: string; unassignedOnly?: boolean; region?: string; segment?: string }): Promise<ApiPaged<ApiPlatformDemoRequest>> {
   const q = new URLSearchParams({ page: String(input.page), pageSize: String(input.pageSize ?? 25) });
   if (input.search) q.set("search", input.search); if (input.status) q.set("status", input.status);
+  if (input.stage) q.set("stage", input.stage); if (input.assignedToUserId) q.set("assignedToUserId", input.assignedToUserId);
+  if (input.unassignedOnly) q.set("unassignedOnly", "true"); if (input.region) q.set("region", input.region); if (input.segment) q.set("segment", input.segment);
   if (input.overdueOnly) q.set("overdueOnly", "true"); if (input.archivedOnly) q.set("archivedOnly", "true");
   return apiFetch<ApiPaged<ApiPlatformDemoRequest>>(`/api/marketing/demo-requests/paged?${q}`);
 }

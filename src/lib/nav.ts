@@ -1,5 +1,5 @@
 import type { Role } from "@/types";
-import { Workflow,
+import { Workflow, ListTodo,
   LayoutDashboard,
   Users,
   ShieldCheck,
@@ -150,10 +150,19 @@ const MARKETING_NAV: NavSection[] = [
   {
     items: [
       { label: "Dashboard", to: "/marketing", icon: LayoutDashboard, end: true },
-      { label: "Demo Requests", to: "/marketing/demo-requests", icon: Handshake },
       { label: "Chats", to: "/marketing/chats", icon: MessagesSquare },
-      { label: "Lead automation", to: "/marketing/automation", icon: Workflow },
       { label: "Blog Posts", to: "/marketing/blog-posts", icon: Newspaper },
+    ],
+  },
+  {
+    title: "CRM",
+    items: [
+      { label: "My day", to: "/marketing/today", icon: ListTodo },
+      { label: "Leads", to: "/marketing/demo-requests", icon: Handshake },
+      { label: "Customers", to: "/marketing/customers", icon: Building2 },
+      { label: "Reports", to: "/marketing/reports", icon: TrendingUp },
+      { label: "Lead automation", to: "/marketing/automation", icon: Workflow },
+      { label: "Team", to: "/marketing/team", icon: UserCog },
     ],
   },
   {

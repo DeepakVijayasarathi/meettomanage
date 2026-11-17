@@ -49,6 +49,10 @@ const MarketingLogin = lazy(() => import("@/features/marketingConsole/MarketingL
 const MarketingDashboard = lazy(() => import("@/features/marketingConsole/MarketingDashboard"));
 const MarketingSeo = lazy(() => import("@/features/marketingConsole/MarketingSeo"));
 const MarketingAutomation = lazy(() => import("@/features/marketingConsole/MarketingAutomation"));
+const CrmToday = lazy(() => import("@/features/marketingConsole/crm/CrmToday"));
+const CrmCustomers = lazy(() => import("@/features/marketingConsole/crm/CrmCustomers"));
+const CrmReports = lazy(() => import("@/features/marketingConsole/crm/CrmReports"));
+const CrmTeam = lazy(() => import("@/features/marketingConsole/crm/CrmTeam"));
 const MarketingAnalytics = lazy(() => import("@/features/marketingConsole/MarketingAnalytics"));
 const MarketingDemoRequests = lazy(() => import("@/features/admin/DemoRequests"));
 const MarketingChats = lazy(() => import("@/features/marketingConsole/MarketingChats"));
@@ -461,6 +465,10 @@ export default function App() {
               <Route path="demo-requests" element={<MarketingDemoRequests />} />
               <Route path="chats" element={<MarketingChats />} />
               <Route path="automation" element={<MarketingAutomation />} />
+              <Route path="today" element={<CrmToday />} />
+              <Route path="customers" element={<CrmCustomers />} />
+              <Route path="reports" element={<CrmReports />} />
+              <Route path="team" element={<CrmTeam />} />
               <Route path="outreach" element={<Navigate to="/marketing/automation" replace />} />
               <Route path="visitors" element={<MarketingVisitors />} />
               <Route path="journeys" element={<MarketingJourneys />} />

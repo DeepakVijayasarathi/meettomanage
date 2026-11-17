@@ -31,6 +31,11 @@ import {
 } from "@/api/marketing";
 import { formatDate } from "@/lib/utils";
 import { LeadStageBadge, LeadStagePanel } from "./LeadStagePanel";
+import { LeadDealPanel, LeadLogPanel, LeadTasksPanel } from "./LeadCrmPanels";
+import { AddLeadDialog, ImportLeadsDialog } from "./LeadIntakeDialogs";
+import { useCrmMe, useCrmTeam } from "@/features/marketingConsole/crm/hooks";
+import { LEAD_STAGE_LABEL, type ApiLeadStage } from "@/api/marketing";
+import { FileUp, Plus } from "lucide-react";
 
 const DEMO_REQUESTS: ApiPlatformDemoRequest[] = [
   {
@@ -82,10 +87,20 @@ export default function DemoRequests() {
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const [search, setSearch] = useState("");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const me = useCrmMe();
+  const { active: team } = useCrmTeam();
+  const [ownerFilter, setOwnerFilter] = useState("");
+  const [stageFilter, setStageFilter] = useState<ApiLeadStage | "">("");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [segmentFilter, setSegmentFilter] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const ownerQuery = ownerFilter === "mine" ? { assignedToUserId: me.userId ?? undefined } : ownerFilter === "unassigned" ? { unassignedOnly: true } : ownerFilter ? { assignedToUserId: ownerFilter } : {};
+  const filterKey = `${ownerFilter}-${stageFilter}-${regionFilter.trim()}-${segmentFilter.trim()}`;
   // Sample rows only in offline demo mode; live mode starts (and stays, on error) empty.
   const fallbackPage = { items: DEMO_REQUESTS, totalCount: DEMO_REQUESTS.length, page: 1, pageSize: 25 };
   const emptyPage = { items: [] as ApiPlatformDemoRequest[], totalCount: 0, page: 1, pageSize: 25 };
-  const { data: pageData, loading, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, pageSize: view === "pipeline" ? 100 : 25, search: search.trim() || undefined, overdueOnly, archivedOnly }), fallbackPage, emptyPage, { cacheKey: `marketing-leads-${view}-${page}-${archivedOnly}-${overdueOnly}-${search.trim()}`, ttlMs: 15_000 });
+  const { data: pageData, loading, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, pageSize: view === "pipeline" ? 100 : 25, search: search.trim() || undefined, overdueOnly, archivedOnly, ...ownerQuery, stage: stageFilter || undefined, region: regionFilter.trim() || undefined, segment: segmentFilter.trim() || undefined }), fallbackPage, emptyPage, { cacheKey: `marketing-leads-${view}-${page}-${archivedOnly}-${overdueOnly}-${search.trim()}-${filterKey}`, ttlMs: 15_000 });
   const requests = pageData.items;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -173,7 +188,7 @@ export default function DemoRequests() {
   async function openLead(row: ApiPlatformDemoRequest) {
     if (!live) return;
     setDetail(null); setRecommendation(null); setNotes(""); setTeamUpdate(""); setDetailOpen(true);
-    const ok = await runAction(async () => { const value = await getMarketingLead(row.id); setDetail(value); setNotes(value.lead.internalNotes ?? ""); setOwner(value.lead.assignedTo ?? ""); setFollowUp(toLocalInput(value.lead.nextFollowUpAtUtc)); }, "Couldn't open lead");
+    const ok = await runAction(async () => { const value = await getMarketingLead(row.id); setDetail(value); setNotes(value.lead.internalNotes ?? ""); setOwner(value.lead.assignedToUserId ?? ""); setFollowUp(toLocalInput(value.lead.nextFollowUpAtUtc)); }, "Couldn't open lead");
     if (!ok) setDetailOpen(false);
   }
   async function saveNotes() {
@@ -189,7 +204,7 @@ export default function DemoRequests() {
   async function saveCrmFields() {
     if (!detail) return;
     const id = detail.lead.id;
-    await runAction(async () => { await updatePlatformDemoRequest(id, { assignedTo: owner.trim(), nextFollowUpAtUtc: followUp ? new Date(followUp).toISOString() : undefined }); const value = await getMarketingLead(id); setDetail(value); await reload(); }, "Couldn't update lead", "CRM details updated");
+    await runAction(async () => { const member = team.find((m) => m.userId === owner); await updatePlatformDemoRequest(id, { ...(member ? { assignedToUserId: member.userId, assignedTo: member.name } : {}), nextFollowUpAtUtc: followUp ? new Date(followUp).toISOString() : undefined }); const value = await getMarketingLead(id); setDetail(value); await reload(); }, "Couldn't update lead", "CRM details updated");
   }
   async function bulk(status?: ApiPlatformDemoRequestStatus, archive = false) {
     if (selected.size === 0) return;
@@ -251,7 +266,7 @@ export default function DemoRequests() {
           </div>
         ),
       },
-      { key: "academy", header: "Academy", sortable: true, accessor: (row) => row.academyName, render: (row) => <span className="text-sm">{row.academyName}</span> },
+      { key: "academy", header: "Academy", sortable: true, accessor: (row) => row.academyName, render: (row) => <div className="text-sm"><p>{row.academyName}</p>{(row.city || row.segment) && <p className="text-xs text-muted-foreground">{[row.segment, row.city ?? row.region].filter(Boolean).join(" · ")}</p>}{row.expectedMonthlyValue != null && <p className="text-xs font-semibold">₹{Math.round(row.expectedMonthlyValue).toLocaleString("en-IN")}/mo</p>}</div> },
       {
         key: "message",
         header: "Message",
@@ -314,9 +329,9 @@ export default function DemoRequests() {
                 <DropdownMenuItem onClick={() => void remindTomorrow(row)}>Follow up tomorrow, 10:00</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => prepareWhatsApp(row)}><MessageCircle className="mr-2 h-4 w-4" />Message on WhatsApp</DropdownMenuItem>
                 {archivedOnly && <DropdownMenuItem onClick={() => void restoreLead(row.id)}>Restore lead</DropdownMenuItem>}
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteRequest(row)}>
-                  <Trash2 className="mr-2 h-4 w-4" />Delete request
-                </DropdownMenuItem>
+                {me.isManager && <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteRequest(row)}>
+                  <Trash2 className="mr-2 h-4 w-4" />Delete lead
+                </DropdownMenuItem>}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -324,16 +339,16 @@ export default function DemoRequests() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [busyId, archivedOnly]
+    [busyId, archivedOnly, me.isManager]
   );
 
   return (
     <div>
       <PageHeader
         eyebrow="Marketing"
-        title="Demo Requests"
-        actions={<div className="flex gap-2"><Button variant={archivedOnly ? "default" : "outline"} onClick={() => { setArchivedOnly(v => !v); setPage(1); }}><Archive className="h-4 w-4" />{archivedOnly ? "Active leads" : "Archive"}</Button><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Export CSV</Button></div>}
-        description="Prospective academies asking to see the Meet to Manage platform itself — from the public /get-started page. Distinct from class-demo bookings, which are for an academy's own parents."
+        title="Leads"
+        actions={<div className="flex flex-wrap gap-2">{me.canWrite && <><Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" />Add lead</Button><Button variant="outline" onClick={() => setImportOpen(true)}><FileUp className="h-4 w-4" />Import CSV</Button></>}<Button variant={archivedOnly ? "default" : "outline"} onClick={() => { setArchivedOnly(v => !v); setPage(1); }}><Archive className="h-4 w-4" />{archivedOnly ? "Active leads" : "Archive"}</Button><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Export CSV</Button></div>}
+        description={me.role === "Sales" ? "Your leads and unassigned ones: website enquiries, chat bookings, imports and leads added by hand." : "Every academy that may buy Meet to Manage: website enquiries, chat bookings, imports and leads added by hand."}
       />
 
       {live && error && (
@@ -349,7 +364,7 @@ export default function DemoRequests() {
 
       <div className="mb-4 flex flex-col gap-3 rounded-xl border bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-md"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9" placeholder="Search lead, academy, email or phone…" /></div>
-        <div className="flex flex-wrap gap-2"><Button size="sm" variant={overdueOnly ? "default" : "outline"} onClick={() => { setOverdueOnly(v => !v); setPage(1); }}><Clock3 className="h-4 w-4" />Overdue</Button><div className="inline-flex rounded-md border p-0.5"><Button size="sm" variant={view === "pipeline" ? "default" : "ghost"} onClick={() => { setView("pipeline"); setPage(1); }}><LayoutGrid className="h-4 w-4" />Pipeline</Button><Button size="sm" variant={view === "table" ? "default" : "ghost"} onClick={() => { setView("table"); setPage(1); }}><List className="h-4 w-4" />List</Button></div></div>
+        <div className="flex flex-wrap gap-2"><select aria-label="Owner" className="h-9 rounded-md border bg-background px-2 text-sm" value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}><option value="">{me.role === "Sales" ? "Mine + unassigned" : "All owners"}</option><option value="mine">Mine</option><option value="unassigned">Unassigned</option>{me.role !== "Sales" && team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select><select aria-label="Stage" className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => { setStageFilter(e.target.value as ApiLeadStage | ""); setPage(1); }}><option value="">All stages</option>{(Object.keys(LEAD_STAGE_LABEL) as ApiLeadStage[]).map((s) => <option key={s} value={s}>{LEAD_STAGE_LABEL[s]}</option>)}</select><Input aria-label="Region" className="h-9 w-32" placeholder="Region" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value); setPage(1); }} /><Input aria-label="What they teach" className="h-9 w-36" placeholder="Phonics, Abacus…" value={segmentFilter} onChange={(e) => { setSegmentFilter(e.target.value); setPage(1); }} /><Button size="sm" variant={overdueOnly ? "default" : "outline"} onClick={() => { setOverdueOnly(v => !v); setPage(1); }}><Clock3 className="h-4 w-4" />Overdue</Button><div className="inline-flex rounded-md border p-0.5"><Button size="sm" variant={view === "pipeline" ? "default" : "ghost"} onClick={() => { setView("pipeline"); setPage(1); }}><LayoutGrid className="h-4 w-4" />Pipeline</Button><Button size="sm" variant={view === "table" ? "default" : "ghost"} onClick={() => { setView("table"); setPage(1); }}><List className="h-4 w-4" />List</Button></div></div>
       </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
@@ -393,6 +408,8 @@ export default function DemoRequests() {
         />
       )}
 
+      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onCreated={(id) => { reload(); void openLead({ id } as ApiPlatformDemoRequest); }} />
+      <ImportLeadsDialog open={importOpen} onOpenChange={setImportOpen} onImported={reload} />
       <ConfirmDialog
         open={deleteRequest !== null}
         onOpenChange={(open) => { if (!open) setDeleteRequest(null); }}
@@ -407,7 +424,10 @@ export default function DemoRequests() {
           <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Score</p><p className="font-bold">{detail.lead.leadTemperature} · {detail.lead.leadScore}</p>{detail.lead.scoreReasons && detail.lead.scoreReasons.length > 0 && <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">{detail.lead.scoreReasons.map((r) => <li key={r}>{r}</li>)}</ul>}</div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Source</p><p className="font-bold">{detail.lead.source ?? "Direct"}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Status</p><p className="font-bold">{detail.lead.status}</p></div></div>
           <Button className="w-full bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => prepareWhatsApp(detail.lead)}><MessageCircle className="h-4 w-4" />Prepare WhatsApp follow-up</Button>
           <LeadStagePanel lead={detail.lead} live={live} onError={(title, description) => toast({ variant: "error", title, description })} onChanged={(_, message) => { toast({ variant: "success", title: message }); void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })(); }} />
-          <div className="rounded-xl border p-4"><h3 className="mb-3 font-semibold">Lead management</h3><div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1 text-sm"><span className="font-medium">Owner</span><Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Sales or marketing owner" /></label><label className="space-y-1 text-sm"><span className="font-medium">Next follow-up</span><Input type="datetime-local" value={followUp} onChange={(e) => setFollowUp(e.target.value)} /></label></div><Button className="mt-3" size="sm" onClick={() => void saveCrmFields()}>Save CRM details</Button></div>
+          <LeadLogPanel lead={detail.lead} onSaved={() => void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })()} />
+          <LeadTasksPanel key={`tasks-${detail.lead.id}`} lead={detail.lead} />
+          <LeadDealPanel key={`deal-${detail.lead.id}-${detail.lead.expectedMonthlyValue}-${detail.lead.region}`} lead={detail.lead} onSaved={() => void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })()} />
+          <div className="rounded-xl border p-4"><h3 className="mb-3 font-semibold">Lead management</h3><div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1 text-sm"><span className="font-medium">Owner</span><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={owner} onChange={(e) => setOwner(e.target.value)} disabled={!me.canWrite}><option value="">{detail.lead.assignedTo && !detail.lead.assignedToUserId ? detail.lead.assignedTo : "Unassigned"}</option>{team.filter((m) => me.role !== "Sales" || m.userId === me.userId).map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select></label><label className="space-y-1 text-sm"><span className="font-medium">Next follow-up</span><Input type="datetime-local" value={followUp} onChange={(e) => setFollowUp(e.target.value)} /></label></div><Button className="mt-3" size="sm" onClick={() => void saveCrmFields()}>Save CRM details</Button></div>
           <div><p className="mb-2 text-sm font-semibold">Internal notes</p><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} /><Button className="mt-2" size="sm" onClick={() => void saveNotes()}>Save notes</Button></div>
           <div className="rounded-xl border bg-primary/5 p-4"><div className="flex justify-between gap-3"><h3 className="font-semibold">AI next action</h3><Button size="sm" variant="outline" onClick={() => void analyzeLead()}><Sparkles className="h-4 w-4" />Analyze</Button></div>{recommendation && <div className="mt-3 space-y-2 text-sm"><p>{recommendation.summary}</p><p><b>Next:</b> {recommendation.nextAction}</p><p><b>{recommendation.suggestedChannel}:</b> {recommendation.suggestedMessage}</p></div>}</div>
           <div className="rounded-xl border p-4"><h3 className="font-semibold">Share WhatsApp response with team</h3><p className="mb-2 text-xs text-muted-foreground">Paste or summarize what the lead replied. Everyone using the Marketing Console will see it in the timeline.</p><Textarea rows={3} value={teamUpdate} onChange={(e) => setTeamUpdate(e.target.value)} placeholder="Example: Customer asked for a demo on Friday at 4 PM…" /><Button className="mt-2" size="sm" onClick={() => void shareTeamUpdate()} disabled={!teamUpdate.trim()}>Share update</Button></div>
