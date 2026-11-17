@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { AlertCircle, Loader2, Lock, Mail, Megaphone } from "lucide-react";
+import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/Logo";
 import { apiEnabled, getAccessToken, setAccessToken, userMessage } from "@/lib/api";
 import { loginMarketing } from "@/api/auth";
 import { toFrontendRole } from "@/api/types";
@@ -70,9 +71,7 @@ export default function MarketingLogin() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <div className="w-full max-w-sm bg-white p-8 shadow-pop">
-        <span className="flex h-12 w-12 items-center justify-center bg-[#0D1024] text-[#F97316]">
-          <Megaphone className="h-6 w-6" />
-        </span>
+        <Logo platform showWordmark={false} imgClassName="h-12 w-12" />
         <h1 className="mt-5 text-xl font-extrabold tracking-tight text-[#111]">Marketing Console</h1>
         <p className="mt-1 text-sm text-[#5B6472]">Demo requests, blog, SEO and website analytics.</p>
 

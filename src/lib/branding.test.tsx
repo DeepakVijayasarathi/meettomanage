@@ -17,6 +17,14 @@ describe("tenant branding", () => {
     expect(screen.getByRole("img", { name: BRAND_NAME })).toHaveAttribute("src", "https://cdn.example/academy.png");
   });
 
+  it("keeps the platform lockup on platform-owned surfaces", () => {
+    setBrand({ name: "Academy One", logoUrl: "https://cdn.example/academy.png" });
+    render(<Logo platform />);
+
+    expect(screen.getByRole("img", { name: BRAND_NAME })).toHaveAttribute("src", "/logo-full.webp");
+    expect(screen.queryByRole("img", { name: "Academy One" })).not.toBeInTheDocument();
+  });
+
   it("keeps the platform browser icon when tenant branding changes", () => {
     const icon = document.createElement("link");
     icon.rel = "icon";

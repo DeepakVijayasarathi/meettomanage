@@ -14,6 +14,8 @@ interface SidebarProps {
   onClose: () => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  /** Platform-owned consoles must never inherit a tenant's uploaded identity. */
+  platformBrand?: boolean;
 }
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -22,7 +24,7 @@ const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigat
  * Quiet, light navigation rail: monochrome icons, compact rows, and the portal's role colour only on the
  * active item, so the page content stays the focus.
  */
-export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, collapsed, onToggleCollapse, platformBrand = false }: SidebarProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   // onClose is an inline arrow from AppShell (new identity every render), so it's read
   // through a ref — keeping it in the effect's deps would re-run the effect on every
@@ -61,8 +63,8 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
         )}
       >
         <div className={cn("flex h-14 items-center border-b border-sidebar-border px-4", collapsed ? "justify-center" : "justify-between")}>
-          <span className="dark:hidden"><Logo variant="dark" showWordmark={!collapsed} /></span>
-          <span className="hidden dark:inline-flex"><Logo variant="light" showWordmark={!collapsed} /></span>
+          <span className="dark:hidden"><Logo platform={platformBrand} variant="dark" showWordmark={!collapsed} /></span>
+          <span className="hidden dark:inline-flex"><Logo platform={platformBrand} variant="light" showWordmark={!collapsed} /></span>
           <button
             ref={closeRef}
             onClick={onClose}

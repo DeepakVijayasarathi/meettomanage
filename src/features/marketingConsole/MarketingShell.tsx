@@ -35,6 +35,7 @@ export function MarketingShell({ children }: { children: ReactNode }) {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <Sidebar
+        platformBrand
         sections={NAV_BY_ROLE.marketing}
         roleLabel={meta.label}
         roleHex={meta.hex}

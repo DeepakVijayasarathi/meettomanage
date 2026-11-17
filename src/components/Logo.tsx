@@ -15,7 +15,7 @@ interface LogoProps {
 
 export function Logo({ className, imgClassName, showWordmark = true, variant = "dark", wordmarkClassName, platform = false }: LogoProps) {
   const brand = useBrand();
-  const tenantLogo = variant === "light" ? brand.darkLogoUrl || brand.logoUrl : brand.logoUrl;
+  const tenantLogo = platform ? undefined : variant === "light" ? brand.darkLogoUrl || brand.logoUrl : brand.logoUrl;
   // logo-full.png (public/logo-full.png, sourced from Docs/newlogo.png) is the current mark —
   // the handshake "M" icon, "Meet to Manage" wordmark and "Connect · Plan · Achieve" tagline
   // baked into one image, used whole rather than cropped into separate icon/text pieces.
@@ -49,10 +49,10 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
         // The mark's dark figure otherwise disappears against a dark sidebar/hero — a
         // white backing keeps both figures visible wherever this variant is used.
         <span className="flex shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
-          <img src={tenantLogo ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
+          <img src={tenantLogo ?? "/logo-icon.png"} alt={platform ? BRAND_NAME : brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
         </span>
       ) : (
-        <img src={tenantLogo ?? "/logo-icon.png"} alt={brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
+        <img src={tenantLogo ?? "/logo-icon.png"} alt={platform ? BRAND_NAME : brand.name} className={cn("h-9 w-9 object-contain", imgClassName)} />
       )}
       {showWordmark && (
         <span
@@ -62,7 +62,7 @@ export function Logo({ className, imgClassName, showWordmark = true, variant = "
             wordmarkClassName
           )}
         >
-          {brand.name}
+          {platform ? BRAND_NAME : brand.name}
         </span>
       )}
     </div>

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, CalendarClock, Menu, X } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { useBrand } from "@/lib/branding";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { trackMarketingEvent } from "@/lib/analytics";
@@ -16,7 +15,6 @@ export const BTN_PRIMARY =
 /** The site-wide header: sticky, gains a shadow once scrolled, and collapses to a menu on phones.
  *  On the home page the section links are in-page anchors; elsewhere they go back to the home page. */
 export function MarketingNav({ home = false }: { home?: boolean }) {
-  const brand = useBrand();
   const [lang] = useLang();
   const c = COPY[lang];
   const scrolled = useScrolled();
@@ -97,8 +95,8 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
     // While the mobile menu is open the header (and its panel) must sit above the home page's sticky CTA bar and chat bubble, which share z-40.
     <header className={cn("sticky top-0 border-b bg-white transition-shadow", open ? "z-50" : "z-40", scrolled ? "border-[#F6E3D3] shadow-[0_14px_34px_-22px_rgba(194,65,12,0.45)]" : "border-transparent")}>
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-4 px-5 sm:h-[84px]">
-        <Link to="/" aria-label={`${brand.name} home`} className="shrink-0">
-          <img src="/logo-full.webp" alt={brand.name} width={420} height={150} className="h-11 w-auto object-contain mix-blend-multiply sm:h-[68px]" />
+        <Link to="/" aria-label="Meet to Manage home" className="shrink-0">
+          <img src="/logo-full.webp" alt="Meet to Manage" width={420} height={150} className="h-11 w-auto object-contain mix-blend-multiply sm:h-[68px]" />
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-4 whitespace-nowrap xl:flex 2xl:gap-5">
