@@ -22,7 +22,7 @@ function AuditLogPage() {
   const pages = Math.max(1, Math.ceil(log.data.total / log.data.pageSize));
 
   return <div className="space-y-6">
-    <ConsoleHeader title="Audit log" description="Every change made from this console and every sign-in attempt, with the operator, the client it touched and the outcome. Entries cannot be edited or deleted here." />
+    <ConsoleHeader title="Audit log" description="Every change made from this console and every sign-in attempt, with the operator, the tenant it touched and the outcome. Entries cannot be edited or deleted here." />
     <Notices error={log.error} notice="" />
     <section className={`${panel} overflow-hidden`}>
       <form className="flex flex-wrap items-center gap-3 border-b border-border p-4 sm:px-6" onSubmit={e => { e.preventDefault(); setPage(1); setAppliedActor(actor); }}>
@@ -32,7 +32,7 @@ function AuditLogPage() {
         <span className="ml-auto text-xs text-muted-foreground">{log.data.total} entr{log.data.total === 1 ? "y" : "ies"}</span>
       </form>
       <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-        <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr><th className={th}>When</th><th className={th}>Operator</th><th className={th}>Action</th><th className={th}>Client</th><th className={th}>Result</th><th className={th}>From</th></tr></thead>
+        <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr><th className={th}>When</th><th className={th}>Operator</th><th className={th}>Action</th><th className={th}>Tenant</th><th className={th}>Result</th><th className={th}>From</th></tr></thead>
         <tbody className="divide-y divide-border">{log.data.items.map(r => <tr key={r.id}>
           <td className={`${td} whitespace-nowrap text-xs text-muted-foreground`}>{new Date(r.occurredAtUtc).toLocaleString("en-IN")}</td>
           <td className={`${td} text-xs`}>{r.actor}</td>

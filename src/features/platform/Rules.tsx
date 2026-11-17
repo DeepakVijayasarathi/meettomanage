@@ -34,13 +34,13 @@ function RulesForm() {
   }
 
   return <div className="space-y-6">
-    <Hero title="Rules" text="How the platform behaves for every academy: when the Overview flags something, when academies are warned about plan limits, and what happens when a free trial ends." />
+    <Hero title="Rules" text="How the platform behaves for every tenant: when the Overview flags something, when tenants are warned about plan limits, and what happens when a free trial ends." />
     <Notices error={error || data.error} notice={notice} />
     {!form ? <p className="text-sm text-muted-foreground">{data.loaded ? "" : "Loading…"}</p> : (
       <form onSubmit={save} className={`${panel} space-y-6 p-6 sm:p-7`}>
         <section className="space-y-4">
           <h2 className="console-heading text-lg font-semibold">When a free trial ends</h2>
-          <label className={labelClass}><span>Move the academy to</span>
+          <label className={labelClass}><span>Move the tenant to</span>
             <select className={inputClass} value={form.trialFallbackPlanCode ?? PAUSE} onChange={(e) => set({ trialFallbackPlanCode: e.target.value || null })}>
               {(data.data?.fallbackPlans ?? []).map((p) => <option key={p.code} value={p.code}>{p.name} plan (keeps working, paid modules lock)</option>)}
               <option value={PAUSE}>Nothing: pause the workspace until they pay</option>
@@ -51,7 +51,7 @@ function RulesForm() {
 
         <section className="space-y-4">
           <h2 className="console-heading text-lg font-semibold">Plan limit warnings</h2>
-          <label className={labelClass}><span>Warn academies at this share of a limit (%)</span>
+          <label className={labelClass}><span>Warn tenants at this share of a limit (%)</span>
             <input type="number" min={50} max={99} className={inputClass} value={form.usageWarningPercent} onChange={(e) => set({ usageWarningPercent: Number(e.target.value) })} />
           </label>
           <p className="text-xs text-muted-foreground">Shows the "close to a plan limit" banner with an Upgrade button, and sends the usage warning e-mail. Reaching 100% always shows "limit reached".</p>
@@ -60,14 +60,14 @@ function RulesForm() {
         <section className="space-y-4">
           <h2 className="console-heading text-lg font-semibold">Overview alerts</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className={labelClass}><span>Flag a new academy that hasn't started after (days)</span>
+            <label className={labelClass}><span>Flag a new tenant that hasn't started after (days)</span>
               <input type="number" min={1} max={60} className={inputClass} value={form.notStartedAfterDays} onChange={(e) => set({ notStartedAfterDays: Number(e.target.value) })} />
             </label>
             <label className={labelClass}><span>Flag trials ending within (days)</span>
               <input type="number" min={1} max={30} className={inputClass} value={form.trialEndingWindowDays} onChange={(e) => set({ trialEndingWindowDays: Number(e.target.value) })} />
             </label>
           </div>
-          <p className="text-xs text-muted-foreground">"Hasn't started" means a Free or trial academy with no students and no classes yet.</p>
+          <p className="text-xs text-muted-foreground">"Hasn't started" means a Free or trial tenant with no students and no classes yet.</p>
         </section>
 
         <button disabled={busy} className={primaryButton}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? "Saving…" : "Save rules"}</button>

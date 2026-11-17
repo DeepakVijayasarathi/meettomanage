@@ -44,7 +44,7 @@ function EmailMappingsPage() {
 
   const inputClass = "w-full rounded-xl border border-input bg-card px-4 py-2.5 text-sm shadow-[0_1px_2px_rgba(31,41,55,0.04)] outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/20";
   return <div className="space-y-6">
-    <PageHeader eyebrow="Platform" title="Simple SSO" description="Give every client one shared login experience. Route organisation domains automatically, or map an exact Gmail address to the correct tenant." className="mb-0" />
+    <PageHeader eyebrow="Platform" title="Simple SSO" description="Give every tenant one shared login experience. Route organisation domains automatically, or map an exact Gmail address to the correct tenant." className="mb-0" />
     <TenantSelector {...selection} onChange={selection.select} />
     {selection.error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{selection.error}</p>}
     {error && <p role="alert" className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p>}

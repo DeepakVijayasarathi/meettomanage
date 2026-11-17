@@ -33,14 +33,15 @@ function PlanManagement() {
   const [notice, setNotice] = useState("");
 
   function edit(plan: PlanView) {
-    const price = (interval: "Month" | "Year") => plan.prices.find(p => p.billingInterval === interval && p.isActive);
+    // An inactive price still has an amount; show it (unticked) instead of an empty field that would look like "not sold".
+    const price = (interval: "Month" | "Year") => plan.prices.find(p => p.billingInterval === interval && p.isActive) ?? plan.prices.filter(p => p.billingInterval === interval).at(-1);
     const values = Object.fromEntries(catalog.data.map(d => [d.key, defaultValue(d)]));
     for (const e of plan.entitlements) values[e.key] = e.value;
     setDraft({
       id: plan.id, code: plan.code, name: plan.name, description: plan.description ?? "", isPublic: plan.isPublic, isActive: plan.isActive,
       trialDays: plan.trialDays, sortOrder: plan.sortOrder, values,
-      monthly: { id: price("Month")?.id, amount: price("Month")?.amount.toString() ?? "", isActive: !!price("Month") },
-      yearly: { id: price("Year")?.id, amount: price("Year")?.amount.toString() ?? "", isActive: !!price("Year") },
+      monthly: { id: price("Month")?.id, amount: price("Month")?.amount.toString() ?? "", isActive: !!price("Month")?.isActive },
+      yearly: { id: price("Year")?.id, amount: price("Year")?.amount.toString() ?? "", isActive: !!price("Year")?.isActive },
     });
     setError(""); setNotice(""); window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -79,8 +80,10 @@ function PlanManagement() {
         <label className={labelClass}><span>Code</span><input required readOnly={!!draft.id} pattern="[a-z][a-z0-9_\-]{1,49}" title="Lowercase letters, digits, - or _" className={inputClass} value={draft.code} onChange={e => set({ code: e.target.value })} /></label>
         <label className={labelClass}><span>Name</span><input required maxLength={150} className={inputClass} value={draft.name} onChange={e => set({ name: e.target.value })} /></label>
         <label className={`${labelClass} sm:col-span-2`}><span>Description</span><input maxLength={1000} className={inputClass} value={draft.description} onChange={e => set({ description: e.target.value })} /></label>
-        <label className={labelClass}><span>Monthly price (INR, excl. GST)</span><input type="number" min={0} step="0.01" className={inputClass} placeholder="Leave empty if not sold monthly" value={draft.monthly.amount} onChange={e => set({ monthly: { ...draft.monthly, amount: e.target.value } })} /></label>
-        <label className={labelClass}><span>Yearly price (INR, excl. GST)</span><input type="number" min={0} step="0.01" className={inputClass} placeholder="Leave empty if not sold yearly" value={draft.yearly.amount} onChange={e => set({ yearly: { ...draft.yearly, amount: e.target.value } })} /></label>
+        <label className={labelClass}><span>Monthly price (INR, excl. GST)</span><input type="number" min={0} step="0.01" className={inputClass} placeholder="Leave empty if not sold monthly" value={draft.monthly.amount} onChange={e => set({ monthly: { ...draft.monthly, amount: e.target.value } })} />
+          {draft.monthly.id && <span className="mt-1 flex items-center gap-2 text-xs font-normal text-muted-foreground"><input type="checkbox" checked={draft.monthly.isActive} onChange={e => set({ monthly: { ...draft.monthly, isActive: e.target.checked } })} />Sold monthly (untick to stop selling this price)</span>}</label>
+        <label className={labelClass}><span>Yearly price (INR, excl. GST)</span><input type="number" min={0} step="0.01" className={inputClass} placeholder="Leave empty if not sold yearly" value={draft.yearly.amount} onChange={e => set({ yearly: { ...draft.yearly, amount: e.target.value } })} />
+          {draft.yearly.id && <span className="mt-1 flex items-center gap-2 text-xs font-normal text-muted-foreground"><input type="checkbox" checked={draft.yearly.isActive} onChange={e => set({ yearly: { ...draft.yearly, isActive: e.target.checked } })} />Sold yearly (untick to stop selling this price)</span>}</label>
         <label className={labelClass}><span>Free-trial days (0 = no trial)</span><input type="number" min={0} max={365} className={inputClass} value={draft.trialDays} onChange={e => set({ trialDays: Number(e.target.value) })} /></label>
         <label className={labelClass}><span>Display order</span><input type="number" className={inputClass} value={draft.sortOrder} onChange={e => set({ sortOrder: Number(e.target.value) })} /></label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.isPublic} onChange={e => set({ isPublic: e.target.checked })} />Visible to buyers (untick for hidden, operator-assigned plans)</label>
@@ -97,7 +100,7 @@ function PlanManagement() {
       </div>
       {catalog.data.some(d => isModuleKey(d.key)) && <div>
         <h3 className="mb-1 text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Modules</h3>
-        <p className="mb-3 text-xs text-muted-foreground">Unticked modules are hidden from the sidebar and blocked for everyone in the academy, Admins included.</p>
+        <p className="mb-3 text-xs text-muted-foreground">Unticked modules are hidden from the sidebar and blocked for everyone in the tenant, Admins included.</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {catalog.data.filter(d => isModuleKey(d.key)).map(def => <label key={def.key} className="flex items-center gap-2 rounded-xl border border-border p-3 text-sm">
             <input type="checkbox" checked={(draft.values[def.key] ?? 1) === 1} onChange={e => set({ values: { ...draft.values, [def.key]: e.target.checked ? 1 : 0 } })} />{def.label.replace(/^Module: /, "")}</label>)}

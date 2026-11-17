@@ -8,7 +8,7 @@ type Integration = {
 };
 const secretLike = /secret|password|token|key|pass/i;
 
-/** The selected client's integrations, read from and saved to that client's own database. */
+/** The selected tenant's integrations, read from and saved to that tenant's own database. */
 export default function TenantIntegrations({ tenantId, token }: { tenantId: string; token: string }) {
   const [items, setItems] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);

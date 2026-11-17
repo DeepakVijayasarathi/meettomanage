@@ -21,11 +21,11 @@ const groups: { title: string; items: NavItem[] }[] = [
     title: "Workspaces",
     items: [
       { to: "/platform/overview", label: "Overview", icon: LayoutDashboard, hint: "What needs your attention today", simple: true },
-      { to: "/platform/tenants", label: "Tenant management", icon: Building2, hint: "Create and manage client workspaces", simple: true },
+      { to: "/platform/tenants", label: "Tenant management", icon: Building2, hint: "Create and manage tenant workspaces", simple: true },
       { to: "/platform/users", label: "Tenant users", icon: Users, hint: "Usernames, emails and roles per tenant", simple: true },
-      { to: "/platform/menus", label: "Menu management", icon: ListTree, hint: "Shape each client's navigation" },
+      { to: "/platform/menus", label: "Menu management", icon: ListTree, hint: "Shape each tenant's navigation" },
       { to: "/platform/configuration", label: "Tenant configuration", icon: Settings2, hint: "Branding, integrations and settings" },
-      { to: "/platform/email-mappings", label: "Simple SSO", icon: AtSign, hint: "One sign-in page for every client" },
+      { to: "/platform/email-mappings", label: "Simple SSO", icon: AtSign, hint: "One sign-in page for every tenant" },
       { to: "/platform/operations", label: "Tenant operations", icon: Gauge, hint: "Health, usage, onboarding and recovery" },
       { to: "/platform/monitoring", label: "Server monitoring", icon: Activity, hint: "SaaS CPU, memory, disk and runtime health" },
       { to: "/platform/status-settings", label: "Status page", icon: Radio, hint: "Outages, maintenance and public service status" },
@@ -57,6 +57,7 @@ function useConsoleTheme() {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add("console-light");
+    document.title = "Platform administration — Meet to Manage";
     // The console's typeface is fetched only when a Tenant Admin page opens; no other page downloads or uses it.
     if (!document.getElementById("console-font")) {
       const link = document.createElement("link");
@@ -109,7 +110,7 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
         <div className="relative flex items-center gap-3"><BrandMark /><div><p className="console-heading text-lg font-semibold leading-tight">Meet to Manage</p><p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Platform administration</p></div></div>
         <div className="relative max-w-md">
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-medium text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5 text-primary" />Tenant Admin workspace</span>
-          <h1 className="console-heading mt-7 text-5xl font-semibold leading-[1.08]">One calm place to run every client.</h1>
+          <h1 className="console-heading mt-7 text-5xl font-semibold leading-[1.08]">One calm place to run every tenant.</h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground">Create workspaces, shape their branding and menus, set plans and keep billing on track, all from a single, secure console.</p>
         </div>
         <ul className="relative grid max-w-md gap-4">
@@ -120,7 +121,7 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
         <form onSubmit={login} className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-card p-8 shadow-[0_20px_60px_-30px_rgba(31,58,95,0.35)]">
           <div className="space-y-3">
             <BrandMark size="h-12 w-12" />
-            <div><h2 className="console-heading text-2xl font-semibold">Platform administrator sign in</h2><p className="mt-1.5 text-sm text-muted-foreground">Use your Tenant Admin credentials to continue. This is separate from any client login.</p></div>
+            <div><h2 className="console-heading text-2xl font-semibold">Platform administrator sign in</h2><p className="mt-1.5 text-sm text-muted-foreground">Use your Tenant Admin credentials to continue. This is separate from any tenant login.</p></div>
           </div>
           {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
           <div className="space-y-2"><label htmlFor="platform-email" className="text-sm font-medium">Email</label>
@@ -132,7 +133,7 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
             </div></div>
           <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60">
             {busy ? <><Loader2 className="h-4 w-4 animate-spin" />Signing in…</> : "Sign in"}</button>
-          <p className="text-center text-xs text-muted-foreground">Looking for your own workspace? <Link to="/login" className="font-medium text-primary underline-offset-4 hover:underline">Client login</Link></p>
+          <p className="text-center text-xs text-muted-foreground">Looking for your own workspace? <Link to="/login" className="font-medium text-primary underline-offset-4 hover:underline">Tenant login</Link></p>
         </form>
       </section>
     </div>
@@ -152,7 +153,7 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
           <div role="radiogroup" aria-label="Console view" className="flex rounded-full border border-border bg-muted/60 p-0.5 text-xs font-semibold">
             {(["simple", "advanced"] as const).map(v => <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}
-              title={v === "simple" ? "Everyday pages: overview, academies, billing and revenue" : "Every page, including plans, menus, SSO, operations and logs"}
+              title={v === "simple" ? "Everyday pages: overview, tenants, billing and revenue" : "Every page, including plans, menus, SSO, operations and logs"}
               className={`rounded-full px-3 py-1.5 capitalize transition ${view === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{v}</button>)}
           </div>
           <DropdownMenu>
@@ -193,7 +194,7 @@ export default function PlatformShell({ children }: { children: ReactNode }) {
           <p className="mt-8 hidden border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground lg:block">
             {view === "simple"
               ? <>Simple view shows the everyday pages. <button type="button" className="font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setView("advanced")}>Switch to Advanced</button> for plans, menus, SSO, operations and logs.</>
-              : "Changes apply to the client you select. Each client keeps its own workspace and configuration."}
+              : "Changes apply to the tenant you select. Each tenant keeps its own workspace and configuration."}
           </p>
         </aside>
         <main className="min-w-0 space-y-6">

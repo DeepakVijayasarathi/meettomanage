@@ -2,17 +2,17 @@ import { formatDay, formatMoney, type ReminderLogRow, type SubscriptionRow } fro
 
 export type Attention = { key: string; tone: "warn" | "bad" | "info"; title: string; detail: string; to: string; action: string };
 
-/** Signup date per academy (from the tenant list). */
+/** Signup date per tenant (from the tenant list). */
 export type TenantAge = { id: string; createdAtUtc?: string | null };
 
 const DAY = 86_400_000;
-/** A new academy that has added no students and run no classes this long after signing up is worth a call. */
+/** A new tenant that has added no students and run no classes this long after signing up is worth a call. */
 export const NOT_STARTED_AFTER_DAYS = 3;
 
 const order: Record<Attention["tone"], number> = { bad: 0, warn: 1, info: 2 };
 
 /**
- * What an operator should look at today: payment problems, trials ending, unpaid invoices, academies that closed
+ * What an operator should look at today: payment problems, trials ending, unpaid invoices, tenants that closed
  * themselves (data waiting to be deleted), signups that never got started, and billing e-mail that failed to send.
  */
 /** The Rules that drive the list (Platform console → Rules), with the built-in defaults. */
@@ -35,7 +35,7 @@ export function needsAttention(rows: SubscriptionRow[], now = Date.now(), tenant
     }
     if (s.openInvoices > 0)
       items.push({ key: `${s.tenantId}:invoice`, tone: "warn", title: `${s.tenantName} has ${s.openInvoices} unpaid invoice${s.openInvoices === 1 ? "" : "s"}`, detail: formatMoney(s.openAmount), to: "/platform/subscriptions", action: "See invoices" });
-    // Signed up, then nothing: no students and no classes this month, a few days in. Paid or legacy academies are left alone.
+    // Signed up, then nothing: no students and no classes this month, a few days in. Paid or legacy tenants are left alone.
     const signedUp = created.get(s.tenantId);
     if (signedUp && (s.planCode === "free" || s.status === "Trialing") && s.usage && s.usage.activeStudents === 0 && s.usage.sessionsMonth === 0) {
       const age = Math.floor((now - signedUp) / DAY);
@@ -49,7 +49,7 @@ export function needsAttention(rows: SubscriptionRow[], now = Date.now(), tenant
   return items.sort((a, b) => order[a.tone] - order[b.tone]);
 }
 
-/** Academies that signed up within the last <paramref name="days"/> days, newest first. */
+/** Tenants that signed up within the last <paramref name="days"/> days, newest first. */
 export function recentSignups<T extends TenantAge>(tenants: T[], now = Date.now(), days = 7): T[] {
   return tenants
     .filter(t => t.createdAtUtc && now - new Date(t.createdAtUtc).getTime() <= days * DAY)

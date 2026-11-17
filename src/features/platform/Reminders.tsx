@@ -34,7 +34,7 @@ function ReminderCenter() {
     <TabBar tabs={[{ id: "log", label: "Delivery log" }, { id: "templates", label: "Templates" }]} value={tab} onChange={setTab} />
 
     {tab === "log" && <section className={`${panel} overflow-hidden`}><div className="overflow-x-auto"><table className="w-full text-left text-sm">
-      <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr><th className={th}>When</th><th className={th}>Client</th><th className={th}>Reminder</th><th className={th}>Sent to</th><th className={th}>Status</th></tr></thead>
+      <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr><th className={th}>When</th><th className={th}>Tenant</th><th className={th}>Reminder</th><th className={th}>Sent to</th><th className={th}>Status</th></tr></thead>
       <tbody className="divide-y divide-border">{log.data.map(r => <tr key={r.id}>
         <td className={`${td} text-xs text-muted-foreground`}>{new Date(r.createdAtUtc).toLocaleString("en-IN")}</td>
         <td className={td}>{r.tenantName}</td>

@@ -22,7 +22,7 @@ const withWidgetDefaults = (list: ApiSetting[]): ApiSetting[] => [
   ...list,
   ...Object.entries(WIDGET_DEFAULTS).filter(([key]) => !list.some(s => s.key === key))
     .map(([key, value]): ApiSetting => ({ key, value, category: "Widgets", isPublic: true })),
-  // Typefaces only exist in a client's database once someone saves them; show the built-in defaults so they can be changed.
+  // Typefaces only exist in a tenant's database once someone saves them; show the built-in defaults so they can be changed.
   ...Object.entries(BRAND_DEFAULTS).filter(([key]) => !list.some(s => s.key === key))
     .map(([key, value]): ApiSetting => ({ key, value, category: "Branding", isPublic: true })),
   // Parent-app content only exists once saved. Not public: a signed-in family reads it through /api/app/config.
@@ -46,7 +46,7 @@ function ConfigurationPage() {
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   return <div className="space-y-6">
-    <PageHeader eyebrow="Platform" title="Tenant configuration" description="Manage organization details, branding, notifications, and workspace preferences for each client." className="mb-0" />
+    <PageHeader eyebrow="Platform" title="Tenant configuration" description="Manage organization details, branding, notifications, and workspace preferences for each tenant." className="mb-0" />
     <TenantSelector {...selection} disabled={saving} onChange={id => { if (dirty) setPending(id); else selection.select(id); }} />
     {selection.error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{selection.error}</p>}
     {!selection.loading && selection.tenants.length === 0 && !selection.error && <p className="rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(31,41,55,0.04)] p-8 text-muted-foreground">Create and provision a tenant before configuring its workspace.</p>}
@@ -102,7 +102,7 @@ function ConfigurationEditor({ tenantId, token, appAccessGranted, onDirty, onSav
   }
   function addSetting(event: FormEvent) {
     event.preventDefault(); const key = newKey.trim();
-    if (!key || key.length > 100 || key === "storage.provider" || settings.some(s => s.key === key)) { setError("Use a unique setting key. Manage storage provider changes from the client's File storage page."); return; }
+    if (!key || key.length > 100 || key === "storage.provider" || settings.some(s => s.key === key)) { setError("Use a unique setting key. Manage storage provider changes from the tenant's File storage page."); return; }
     setSettings(previous => [...previous, { key, value: null, category: category === "App" ? "General" : category, isPublic: false }]);
     setNewKeys(previous => new Set([...previous, key]));
     setDraft(previous => ({ ...previous, [key]: newValue }));

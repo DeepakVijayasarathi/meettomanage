@@ -22,7 +22,7 @@ describe("needsAttention", () => {
     expect(items.map(i => i.title)).toContain("Trial Co's trial ends in 3 days");
     expect(items.map(i => i.title)).toContain("Late Co has 1 unpaid invoice");
   });
-  it("flags closed academies, stalled signups and failed e-mails", () => {
+  it("flags closed tenants, stalled signups and failed e-mails", () => {
     const usage = { activeStudents: 0, staffCount: 1, storageMb: 0, sessionMinutesMonth: 0, sessionsMonth: 0, recordingsMonth: 0, date: "2026-11-01" };
     const items = needsAttention(
       [row({ tenantId: "c", tenantName: "Gone Co", status: "Cancelled" }), row({ tenantId: "n", tenantName: "Quiet Co", usage }), row({ tenantId: "y", tenantName: "Fresh Co", usage })],
@@ -36,7 +36,7 @@ describe("needsAttention", () => {
     expect(titles).toContain("Quiet Co hasn't started yet");
     expect(titles).not.toContain("Fresh Co hasn't started yet"); // only 1 day old
   });
-  it("lists academies that signed up in the last 7 days, newest first", () => {
+  it("lists tenants that signed up in the last 7 days, newest first", () => {
     const list = recentSignups([{ id: "old", createdAtUtc: "2026-10-01T00:00:00Z" }, { id: "a", createdAtUtc: "2026-10-30T00:00:00Z" }, { id: "b", createdAtUtc: "2026-11-01T08:00:00Z" }], now);
     expect(list.map(t => t.id)).toEqual(["b", "a"]);
   });

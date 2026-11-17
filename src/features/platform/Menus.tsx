@@ -74,7 +74,8 @@ function MenuEditor({ tenantId, token, onDirty, onSaving }: { tenantId: string; 
       setItems(previous => previous.filter(item => item.id !== deleting.id));
       if (editing === deleting.id) { setEditing(null); setDraft(null); }
       setNotice("Tenant menu removed.");
-    } finally { setSaving(false); onSaving(false); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not remove this menu."); }
+    finally { setSaving(false); onSaving(false); }
   }
   const portalItems = items.filter(item => item.portal === portal).sort((a, b) => a.sectionOrder - b.sectionOrder || a.sortOrder - b.sortOrder);
   const visible = portalItems.filter(item => `${item.label} ${item.path} ${item.section ?? ""}`.toLowerCase().includes(search.toLowerCase()));

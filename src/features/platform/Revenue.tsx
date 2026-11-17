@@ -30,7 +30,7 @@ function RevenueDashboard() {
   const s = summary.data;
   const total = s ? s.planDistribution.reduce((a, b) => a + b.count, 0) : 0;
   return <div className="space-y-6">
-    <Hero title="Revenue" text="Recurring revenue, trial conversion, churn and collections across all clients." />
+    <Hero title="Revenue" text="Recurring revenue, trial conversion, churn and collections across all tenants." />
     <Notices error={error || summary.error} notice={notice} />
     <div className="flex flex-wrap items-center gap-3">
       <button disabled={busy} className={primaryButton} onClick={() => { void runCycle(); }}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Run billing cycle now</button>
@@ -43,7 +43,7 @@ function RevenueDashboard() {
     {s && <>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label="MRR" value={formatMoney(s.mrr)} hint={`ARR ${formatMoney(s.arr)}`} />
-        <StatCard label="Paying clients" value={s.payingTenants} hint={`ARPA ${formatMoney(s.arpa)}`} />
+        <StatCard label="Paying tenants" value={s.payingTenants} hint={`ARPA ${formatMoney(s.arpa)}`} />
         <StatCard label="Collected (30 days)" value={formatMoney(s.collected30d)} tone="text-emerald-700" />
         <StatCard label="Overdue invoices" value={formatMoney(s.overdueAmount)} tone={s.overdueAmount > 0 ? "text-amber-700" : undefined} />
         <StatCard label="Trialing" value={s.trialing} hint={`Trial → paid: ${s.trialConversionPercent}% (90 days)`} />
@@ -57,9 +57,9 @@ function RevenueDashboard() {
             <div className="mt-1 h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-[hsl(214_52%_28%)]" style={{ width: `${total ? (p.count / total) * 100 : 0}%` }} /></div></li>)}</ul>
           <p className="mt-4 text-xs text-muted-foreground">Past due {s.pastDue} · Suspended {s.suspended} · Expired {s.expired} · Cancelled {s.cancelled}</p></section>
         <section className={`${panel} overflow-hidden`}><h2 className="p-6 pb-3 console-heading text-xl font-semibold">Collections queue</h2>
-          <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr><th className={th}>Client</th><th className={th}>Owes</th><th className={th}>Suspends</th></tr></thead>
+          <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr><th className={th}>Tenant</th><th className={th}>Owes</th><th className={th}>Suspends</th></tr></thead>
             <tbody className="divide-y divide-border">{queue.data.map(q => <tr key={q.id}><td className={td}>{q.tenantName}<div><Pill value={q.status} /></div></td><td className={td}>{formatMoney(q.openAmount)}</td><td className={td}>{formatDay(q.graceEndsAtUtc)}</td></tr>)}</tbody></table></div>
-          {queue.loaded && queue.data.length === 0 && <p className="p-6 pt-2 text-sm text-muted-foreground">No overdue clients.</p>}</section>
+          {queue.loaded && queue.data.length === 0 && <p className="p-6 pt-2 text-sm text-muted-foreground">No overdue tenants.</p>}</section>
       </div>
     </>}
   </div>;

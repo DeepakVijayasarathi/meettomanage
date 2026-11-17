@@ -63,7 +63,7 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
         )}
       >
         <div className={cn("flex h-14 items-center border-b border-sidebar-border px-4", collapsed ? "justify-center" : "justify-between")}>
-          <span className="dark:hidden"><Logo platform={platformBrand} variant="dark" showWordmark={!collapsed} /></span>
+          <span className="dark:hidden"><Logo platform={platformBrand} variant="dark" showWordmark={!collapsed} imgClassName={platformBrand ? "h-10" : undefined} /></span>
           <span className="hidden dark:inline-flex"><Logo platform={platformBrand} variant="light" showWordmark={!collapsed} /></span>
           <button
             ref={closeRef}

@@ -69,7 +69,7 @@ function TenantManagement() {
   const refresh = useCallback(async () => {
     if (!token) return;
     try { setTenants(await request<Tenant[]>("/tenants", token)); }
-    catch (err) { setError(err instanceof Error ? err.message : "Could not load clients."); }
+    catch (err) { setError(err instanceof Error ? err.message : "Could not load tenants."); }
     finally { setLoaded(true); }
     // Billing details enrich the cards; the page still works without them.
     try { setSubs(Object.fromEntries((await saasPlatform.subscriptions(token)).map(s => [s.tenantId, s]))); } catch { setSubs({}); }
@@ -111,20 +111,20 @@ function TenantManagement() {
   }
   const toggleApp = (t: Tenant) => run(() => request(`/tenants/${t.id}/app-access`, token, "PUT", { granted: t.appAccessGranted === false }), "Could not change app access.",
     `${t.name}: mobile app access ${t.appAccessGranted === false ? "granted" : "withdrawn"}.`);
-  const toggle = (t: Tenant) => run(() => request(`/tenants/${t.id}/status`, token, "PUT", { suspended: t.status === "Active" }), "Could not change client status.");
+  const toggle = (t: Tenant) => run(() => request(`/tenants/${t.id}/status`, token, "PUT", { suspended: t.status === "Active" }), "Could not change tenant status.");
   const synchronize = (t: Tenant) => run(async () => {
     const result = await request<{ skippedPhones?: string[] }>(`/tenants/${t.id}/synchronize-logins`, token, "POST");
     const skipped = result?.skippedPhones ?? [];
     setNotice(`Login directory synchronized for ${t.name}.`
       + (skipped.length ? ` ${skipped.length} phone number${skipped.length === 1 ? " is" : "s are"} shared by several users and was left unregistered (those users can still sign in with their email): ${skipped.map(k => k.replace("phone:", "")).join(", ")}.` : "")
-      + " You can activate this client when the import is ready.");
+      + " You can activate this tenant when the import is ready.");
   }, "Could not synchronize logins.");
 
   const confirmDelete = async (event: FormEvent) => {
     event.preventDefault();
     if (!deleting) return;
     const target = deleting;
-    await run(() => request(`/tenants/${target.id}`, token, "DELETE", { confirmCode }), "Could not delete the client.",
+    await run(() => request(`/tenants/${target.id}`, token, "DELETE", { confirmCode }), "Could not delete the tenant.",
       `${target.name} and all of its data were permanently deleted.`);
     setDeleting(null); setConfirmCode("");
   };
@@ -146,14 +146,14 @@ function TenantManagement() {
 
   return <div className="space-y-6">
     <ConsoleHeader title="Tenant management"
-      description="Create client workspaces, see where each one stands on its plan, and manage their lifecycle from one place."
+      description="Create tenant workspaces, see where each one stands on its plan, and manage their lifecycle from one place."
       actions={<>
         <Button asChild variant="outline"><Link to="/platform/email-mappings"><AtSign />Simple SSO</Link></Button>
-        <Button onClick={openCreate}><Plus />New client</Button>
+        <Button onClick={openCreate}><Plus />New tenant</Button>
       </>} />
 
     <StatStrip items={[
-      { label: "Total clients", value: loaded ? counts.total : "–" },
+      { label: "Total tenants", value: loaded ? counts.total : "–" },
       { label: "Active", value: loaded ? counts.active : "–", tone: "good" },
       { label: "On free trial", value: loaded ? counts.trial : "–" },
       { label: "Needs attention", value: loaded ? counts.attention : "–", hint: "Suspended, overdue or not set up", tone: counts.attention > 0 ? "warn" : "default" },
@@ -164,20 +164,20 @@ function TenantManagement() {
 
     <section className={`${panel} overflow-hidden`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 sm:px-6">
-        <Segmented label="Filter clients" options={FILTERS} value={filter} onChange={setFilter} />
+        <Segmented label="Filter tenants" options={FILTERS} value={filter} onChange={setFilter} />
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input aria-label="Search tenants" placeholder="Search by name or code…" className="bg-card pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 
-      {!loaded && <div role="status" aria-label="Loading clients" className="space-y-3 p-6">{[0, 1, 2].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>}
+      {!loaded && <div role="status" aria-label="Loading tenants" className="space-y-3 p-6">{[0, 1, 2].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>}
 
-      {loaded && tenants.length === 0 && <div className="p-8"><EmptyState icon={Building2} title="No clients yet"
-        description="Each client gets its own workspace, database, users and settings. Create the first one to get started."
-        action={<Button onClick={openCreate}><Plus />Create your first client</Button>} /></div>}
+      {loaded && tenants.length === 0 && <div className="p-8"><EmptyState icon={Building2} title="No tenants yet"
+        description="Each tenant gets its own workspace, database, users and settings. Create the first one to get started."
+        action={<Button onClick={openCreate}><Plus />Create your first tenant</Button>} /></div>}
 
-      {loaded && tenants.length > 0 && visible.length === 0 && <div className="p-8"><EmptyState icon={Search} title="No clients match"
+      {loaded && tenants.length > 0 && visible.length === 0 && <div className="p-8"><EmptyState icon={Search} title="No tenants match"
         description="Try a different search or filter." action={<Button variant="outline" onClick={() => { setSearch(""); setFilter("all"); }}>Clear filters</Button>} /></div>}
 
       <ul className="divide-y divide-border">
@@ -223,18 +223,19 @@ function TenantManagement() {
                 <DropdownMenuContent align="end" className="w-56">
                   {isLive(t) && <>
                     <DropdownMenuItem asChild><Link to={`/platform/menus?tenant=${t.id}`}><ListTree className="h-4 w-4" />Menus</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link to={`/platform/users?tenant=${t.id}`}><Users className="h-4 w-4" />Users &amp; roles</Link></DropdownMenuItem>
                     <DropdownMenuItem asChild><Link to={`/platform/email-mappings?tenant=${t.id}`}><AtSign className="h-4 w-4" />Simple SSO</Link></DropdownMenuItem>
-                    <DropdownMenuItem asChild><Link to="/platform/subscriptions"><CreditCard className="h-4 w-4" />Subscription &amp; invoices</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link to={`/platform/subscriptions?tenant=${t.id}`}><CreditCard className="h-4 w-4" />Subscription &amp; invoices</Link></DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>}
                   <DropdownMenuItem onSelect={() => { void copyUrl(t); }}><Copy className="h-4 w-4" />Copy sign-in URL</DropdownMenuItem>
                   {isLive(t) && <DropdownMenuItem disabled={busy} onSelect={() => { void toggleApp(t); }}><Smartphone className="h-4 w-4" />{t.appAccessGranted === false ? "Grant mobile app access" : "Withdraw mobile app access"}</DropdownMenuItem>}
                   {isLive(t) && <DropdownMenuItem disabled={busy} onSelect={() => { void toggle(t); }}>
-                    {t.status === "Active" ? <><PauseCircle className="h-4 w-4" />Suspend client</> : <><Play className="h-4 w-4" />Activate client</>}</DropdownMenuItem>}
+                    {t.status === "Active" ? <><PauseCircle className="h-4 w-4" />Suspend tenant</> : <><Play className="h-4 w-4" />Activate tenant</>}</DropdownMenuItem>}
                   {t.status === "Suspended" && <DropdownMenuItem disabled={busy} onSelect={() => { void synchronize(t); }}><RefreshCw className="h-4 w-4" />Sync imported logins</DropdownMenuItem>}
                   {needsSetup(t) && <DropdownMenuItem disabled={busy} onSelect={() => openRetry(t)}><RotateCcw className="h-4 w-4" />Retry setup</DropdownMenuItem>}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled={busy} className="text-destructive focus:text-destructive" onSelect={() => { setConfirmCode(""); setDeleting(t); }}><Trash2 className="h-4 w-4" />Delete client and all data</DropdownMenuItem>
+                  <DropdownMenuItem disabled={busy} className="text-destructive focus:text-destructive" onSelect={() => { setConfirmCode(""); setDeleting(t); }}><Trash2 className="h-4 w-4" />Delete tenant and all data</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -249,7 +250,7 @@ function TenantManagement() {
           <DialogHeader>
             <DialogTitle>Delete {deleting?.name}?</DialogTitle>
             <DialogDescription>
-              This permanently deletes the client's database (students, teachers, classes, fees, recordings records, settings) and its subscription, invoices and sign-in records. It cannot be undone.
+              This permanently deletes the tenant's database (students, teachers, classes, fees, recordings records, settings) and its subscription, invoices and sign-in records. It cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
@@ -268,24 +269,24 @@ function TenantManagement() {
       <DialogContent className="max-w-2xl">
         <form onSubmit={submit} className="space-y-5">
           <DialogHeader>
-            <DialogTitle>{retry ? "Retry client setup" : "Create client"}</DialogTitle>
-            <DialogDescription>{retry ? "Finish setting up this workspace." : "Each client gets its own database, users and settings."}</DialogDescription>
+            <DialogTitle>{retry ? "Retry tenant setup" : "Create tenant"}</DialogTitle>
+            <DialogDescription>{retry ? "Finish setting up this workspace." : "Each tenant gets its own database, users and settings."}</DialogDescription>
           </DialogHeader>
           {formError && <InlineAlert variant="error" bordered>{formError}</InlineAlert>}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5"><Label htmlFor="tenant-code">Client code</Label><Input id="tenant-code" required maxLength={50} pattern="[a-z][a-z0-9-]{2,49}" title="3–50 lowercase letters, numbers or hyphens; start with a letter" readOnly={!!retry} value={draft.code} onChange={e => setDraft({ ...draft, code: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label htmlFor="tenant-name">Client name</Label><Input id="tenant-name" required maxLength={200} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label htmlFor="tenant-code">Tenant code</Label><Input id="tenant-code" required maxLength={50} pattern="[a-z][a-z0-9-]{2,49}" title="3–50 lowercase letters, numbers or hyphens; start with a letter" readOnly={!!retry} value={draft.code} onChange={e => setDraft({ ...draft, code: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label htmlFor="tenant-name">Tenant name</Label><Input id="tenant-name" required maxLength={200} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="tenant-database" className="flex items-center gap-1.5"><Database className="h-3.5 w-3.5 text-primary" />{retry ? "Database" : "Existing database name (optional)"}</Label>
-              <Input id="tenant-database" maxLength={63} pattern="[a-z_][a-z0-9_]{0,62}" title="Lowercase letters, digits and underscores. Leave empty to create a new database." readOnly={!!retry} placeholder={retry ? "Uses the database already registered for this client" : "Leave empty to create a new database"} value={draft.databaseName} onChange={e => setDraft({ ...draft, databaseName: e.target.value })} />
-              <p className="text-xs text-muted-foreground">{retry ? "A retry reuses the database already registered for this client. If it exists, its data is kept and only missing migrations are applied (the client then starts Suspended); the administrator email and PIN are only needed if a new database has to be created." : "If this database already exists on the server its data is kept and only missing migrations are applied; the client then starts Suspended."}</p>
+              <Input id="tenant-database" maxLength={63} pattern="[a-z_][a-z0-9_]{0,62}" title="Lowercase letters, digits and underscores. Leave empty to create a new database." readOnly={!!retry} placeholder={retry ? "Uses the database already registered for this tenant" : "Leave empty to create a new database"} value={draft.databaseName} onChange={e => setDraft({ ...draft, databaseName: e.target.value })} />
+              <p className="text-xs text-muted-foreground">{retry ? "A retry reuses the database already registered for this tenant. If it exists, its data is kept and only missing migrations are applied (the tenant then starts Suspended); the administrator email and PIN are only needed if a new database has to be created." : "If this database already exists on the server its data is kept and only missing migrations are applied; the tenant then starts Suspended."}</p>
             </div>
             <div className="space-y-1.5"><Label htmlFor="tenant-admin-email">Administrator email{newDatabase ? "" : " (only for a new database)"}</Label><Input id="tenant-admin-email" type="email" required={newDatabase} autoComplete="off" value={draft.adminEmail} onChange={e => setDraft({ ...draft, adminEmail: e.target.value })} /></div>
             <div className="space-y-1.5"><Label htmlFor="tenant-admin-pin">Initial four-digit PIN</Label><Input id="tenant-admin-pin" type="password" inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required={newDatabase} autoComplete="new-password" value={draft.adminPin} onChange={e => setDraft({ ...draft, adminPin: e.target.value })} /></div>
             {!retry && <label className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:col-span-2" htmlFor="tenant-app-access">
               <input id="tenant-app-access" type="checkbox" className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]" checked={draft.appAccessGranted} onChange={e => setDraft({ ...draft, appAccessGranted: e.target.checked })} />
               <span><span className="flex items-center gap-1.5 text-sm font-medium"><Smartphone className="h-3.5 w-3.5 text-primary" />Grant mobile app access</span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">Lets this client's families sign in to the parent app. You can change it later from the client's menu or Tenant configuration.</span></span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">Lets this tenant's families sign in to the parent app. You can change it later from the tenant's menu or Tenant configuration.</span></span>
             </label>}
             {sellable.length > 0 && <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="tenant-plan">Starting plan</Label>
@@ -298,7 +299,7 @@ function TenantManagement() {
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button disabled={busy}>{busy && <Loader2 className="animate-spin" />}{busy ? "Setting up client…" : retry ? "Retry setup" : "Create client"}</Button>
+            <Button disabled={busy}>{busy && <Loader2 className="animate-spin" />}{busy ? "Setting up tenant…" : retry ? "Retry setup" : "Create tenant"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

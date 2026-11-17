@@ -71,7 +71,7 @@ export default function MarketingLogin() {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <div className="w-full max-w-sm bg-white p-8 shadow-pop">
-        <Logo platform showWordmark={false} imgClassName="h-12 w-12" />
+        <Logo platform imgClassName="h-14" />
         <h1 className="mt-5 text-xl font-extrabold tracking-tight text-[#111]">Marketing Console</h1>
         <p className="mt-1 text-sm text-[#5B6472]">Demo requests, blog, SEO and website analytics.</p>
 

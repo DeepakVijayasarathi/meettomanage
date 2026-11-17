@@ -12,7 +12,7 @@ const catalog = [
   { key: "feature_white_label", label: "White-label branding", type: "Bool", unit: "" },
 ];
 const plan = {
-  id: "p1", code: "starter", name: "Starter", description: "For one academy.", isPublic: true, isActive: true, trialDays: 0, sortOrder: 1, subscribers: 3,
+  id: "p1", code: "starter", name: "Starter", description: "For one tenant.", isPublic: true, isActive: true, trialDays: 0, sortOrder: 1, subscribers: 3,
   prices: [{ id: "pr1", billingInterval: "Month", currency: "INR", amount: 2999, isActive: true }],
   entitlements: [{ key: "max_students", value: 100 }, { key: "feature_white_label", value: 1 }],
 };

@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FileText, Link2, Loader2, X } from "lucide-react";
 import PlatformShell, { usePlatformAdmin } from "./PlatformShell";
 import {
@@ -17,7 +18,12 @@ function SubscriptionManagement() {
   const { token } = usePlatformAdmin();
   const [tab, setTab] = useState<"subs" | "invoices">("subs");
   const [filter, setFilter] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [search, setSearch] = useSearchParams();
+  // Deep links (Tenant operations, Tenant management) arrive as ?tenant=<id> and open that tenant's panel.
+  const [selected, setSelected] = useState<string | null>(search.get("tenant"));
+  const detailRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (selected) detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [selected]);
+  const closeDetail = () => { setSelected(null); if (search.has("tenant")) { const next = new URLSearchParams(search); next.delete("tenant"); setSearch(next, { replace: true }); } };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -33,8 +39,9 @@ function SubscriptionManagement() {
   }
 
   return <div className="space-y-6">
-    <Hero title="Subscriptions & invoices" text="See every client's plan, status and usage; extend trials, assign plans, override limits and settle invoices." />
+    <Hero title="Subscriptions & invoices" text="See every tenant's plan, status and usage; extend trials, assign plans, override limits and settle invoices." />
     <Notices error={error || subs.error || invoices.error} notice={notice} />
+    {selected && <div ref={detailRef} className="scroll-mt-24"><Detail tenantId={selected} token={token} plans={plans.data} busy={busy} run={run} onClose={closeDetail} /></div>}
     <div className="flex flex-wrap items-center justify-between gap-3">
       <TabBar tabs={[{ id: "subs", label: "Subscriptions" }, { id: "invoices", label: "Invoices" }]} value={tab} onChange={setTab} />
       {tab === "subs" && <select aria-label="Filter by status" className={`${inputClass} !w-52`} value={filter} onChange={e => setFilter(e.target.value)}>
@@ -43,7 +50,7 @@ function SubscriptionManagement() {
 
     {tab === "subs" && <section className={`${panel} overflow-hidden`}><div className="overflow-x-auto"><table className="w-full text-left text-sm">
       <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr>
-        <th className={th}>Client</th><th className={th}>Plan</th><th className={th}>Status</th><th className={th}>Renews / ends</th><th className={th}>Usage</th><th className={th}>Open</th><th className={th} /></tr></thead>
+        <th className={th}>Tenant</th><th className={th}>Plan</th><th className={th}>Status</th><th className={th}>Renews / ends</th><th className={th}>Usage</th><th className={th}>Open</th><th className={th} /></tr></thead>
       <tbody className="divide-y divide-border">{subs.data.map(s => <tr key={s.id} className="hover:bg-muted/40">
         <td className={td}><div className="font-medium">{s.tenantName}</div><div className="font-mono text-xs text-muted-foreground">{s.tenantCode}</div></td>
         <td className={td}>{s.planName}{s.price && <div className="text-xs text-muted-foreground">{formatMoney(s.price.amount, s.price.currency)}/{s.price.interval === "Month" ? "mo" : "yr"}</div>}</td>
@@ -58,7 +65,7 @@ function SubscriptionManagement() {
 
     {tab === "invoices" && <section className={`${panel} overflow-hidden`}><div className="overflow-x-auto"><table className="w-full text-left text-sm">
       <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr>
-        <th className={th}>Invoice</th><th className={th}>Client</th><th className={th}>Total</th><th className={th}>Status</th><th className={th}>Due</th><th className={th}>Actions</th></tr></thead>
+        <th className={th}>Invoice</th><th className={th}>Tenant</th><th className={th}>Total</th><th className={th}>Status</th><th className={th}>Due</th><th className={th}>Actions</th></tr></thead>
       <tbody className="divide-y divide-border">{invoices.data.map(i => <tr key={i.id} className="hover:bg-muted/40">
         <td className={`${td} font-mono text-xs`}>{i.invoiceNumber}<div className="font-sans text-muted-foreground">{formatDay(i.periodStartUtc)} → {formatDay(i.periodEndUtc)}</div></td>
         <td className={td}>{i.tenantName}</td>
@@ -75,7 +82,6 @@ function SubscriptionManagement() {
     </table></div>
       {invoices.loaded && invoices.data.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">No invoices have been issued yet.</p>}</section>}
 
-    {selected && <Detail tenantId={selected} token={token} plans={plans.data} busy={busy} run={run} onClose={() => setSelected(null)} />}
   </div>;
 }
 
@@ -120,21 +126,21 @@ function Detail({ tenantId, token, plans, busy, run, onClose }: {
             <select className={inputClass} value={priceId} onChange={e => setPriceId(e.target.value)}><option value="">{mode === "complimentary" ? "Choose a priced plan, or pick a plan code below" : "Choose…"}</option>{priced.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>}
           {mode !== "invoice" && <label className={labelClass}><span>Plan code{mode === "trial" ? " (trial plan)" : " (used when no price is chosen)"}</span>
             <select className={inputClass} value={planCode} onChange={e => setPlanCode(e.target.value)}>{plans.map(p => <option key={p.id} value={p.code}>{p.name} ({p.code})</option>)}</select></label>}
-          {mode === "trial" && <label className={labelClass}><span>Trial days</span><input type="number" min={1} max={365} className={inputClass} value={days} onChange={e => setDays(Number(e.target.value))} /></label>}
-          <p className="text-xs text-muted-foreground">{mode === "invoice" ? "Issues an invoice; the plan changes once it is paid." : mode === "complimentary" ? "Active immediately, never invoiced or renewed." : "Starts a fresh trial and reactivates a billing-suspended client."}</p>
+          {mode === "trial" && <label className={labelClass}><span>Trial days</span><input type="number" min={1} max={365} className={inputClass} value={days} onChange={e => setDays(Math.min(365, Math.max(1, Number(e.target.value) || 1)))} /></label>}
+          <p className="text-xs text-muted-foreground">{mode === "invoice" ? "Issues an invoice; the plan changes once it is paid." : mode === "complimentary" ? "Active immediately, never invoiced or renewed." : "Starts a fresh trial and reactivates a billing-suspended tenant."}</p>
           <button disabled={busy || (mode === "invoice" && !priceId)} className={smallButton} onClick={() => { void withReload(() => saasPlatform.assign(token, tenantId, { mode, planCode: mode === "invoice" ? undefined : planCode, planPriceId: priceId || undefined, trialDays: mode === "trial" ? days : undefined }), "Plan assigned."); }}>
             {busy && <Loader2 className="h-3 w-3 animate-spin" />}Apply</button>
         </div>
         <div className="space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Actions</h3>
           <div className="flex flex-wrap gap-2">
-            <button disabled={busy} className={smallButton} onClick={() => { const v = window.prompt("Extend the trial by how many days?", "7"); if (v) void withReload(() => saasPlatform.extendTrial(token, tenantId, Number(v)), "Trial extended."); }}>Extend trial</button>
+            <button disabled={busy} className={smallButton} onClick={() => { const v = window.prompt("Extend the trial by how many days? (1-365)", "7"); const n = Number(v); if (v && (!Number.isInteger(n) || n < 1 || n > 365)) { window.alert("Enter a whole number of days between 1 and 365."); return; } if (v) void withReload(() => saasPlatform.extendTrial(token, tenantId, Number(v)), "Trial extended."); }}>Extend trial</button>
             <button disabled={busy} className={smallButton} onClick={() => { void withReload(() => saasPlatform.resume(token, tenantId), "Subscription resumed."); }}>Resume</button>
             <button disabled={busy} className={smallButton} onClick={() => { if (window.confirm("Cancel at the end of the current period?")) void withReload(() => saasPlatform.cancel(token, tenantId, false), "Cancellation scheduled."); }}>Cancel at period end</button>
-            <button disabled={busy} className={smallButton} onClick={() => { if (window.confirm("Cancel NOW and suspend this client? Its data is kept.")) void withReload(() => saasPlatform.cancel(token, tenantId, true), "Subscription cancelled."); }}>Cancel now</button>
+            <button disabled={busy} className={smallButton} onClick={() => { if (window.confirm("Cancel NOW and suspend this tenant? Its data is kept.")) void withReload(() => saasPlatform.cancel(token, tenantId, true), "Subscription cancelled."); }}>Cancel now</button>
           </div>
           <h3 className="pt-2 text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Limit &amp; feature overrides</h3>
-          <ul className="space-y-1 text-sm">{d.overrides.length === 0 && <li className="text-muted-foreground">None. The client gets exactly what its plan includes.</li>}
+          <ul className="space-y-1 text-sm">{d.overrides.length === 0 && <li className="text-muted-foreground">None. The tenant gets exactly what its plan includes.</li>}
             {d.overrides.map(o => <li key={o.key} className="flex items-center justify-between gap-2"><span><b>{catalog.data.find(c => c.key === o.key)?.label ?? o.key}</b>: {o.value}{o.reason ? ` (${o.reason})` : ""}</span>
               <button className={smallButton} disabled={busy} onClick={() => { void withReload(() => saasPlatform.setOverrides(token, tenantId, d.overrides.filter(x => x.key !== o.key)), "Override removed."); }}>Remove</button></li>)}</ul>
           <div className="grid gap-2 sm:grid-cols-[1fr_90px_1fr_auto]">

@@ -10,14 +10,14 @@ export const BRAND_EDITOR_KEYS = new Set([
   "brand.name", "brand.logoUrl", "brand.logoFile", "brand.primaryColor", "brand.accentColor", "brand.fontFamily", "brand.headingFont",
 ]);
 
-/** Defaults shown for branding keys a client has never saved (created on first save). */
+/** Defaults shown for branding keys a tenant has never saved (created on first save). */
 export const BRAND_DEFAULTS: Record<string, string> = {
   "brand.fontFamily": DEFAULT_BODY_FONT,
   "brand.headingFont": DEFAULT_HEADING_FONT,
 };
 
 /**
- * Operator-side branding for one client: name, logo, colours and typefaces, with a live preview.
+ * Operator-side branding for one tenant: name, logo, colours and typefaces, with a live preview.
  * Edits go through the page's normal draft/Save flow, except the logo, which is uploaded straight away
  * (it is a file, not a value) and reported back through onLogoChanged.
  */
