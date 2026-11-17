@@ -3,10 +3,10 @@ import { Loader2, PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useApiData } from "@/api/hooks";
-import { inr, listCrmTasks, logCrmInteraction, updateCrmDeal, type CrmTask } from "@/api/crm";
+import { createCrmTask, inr, listCrmTasks, logCrmInteraction, startFollowUpPlan, updateCrmDeal, type CrmTask } from "@/api/crm";
 import type { ApiPlatformDemoRequest } from "@/api/marketing";
 import { TaskForm, TaskList } from "@/features/marketingConsole/crm/shared";
-import { localInput, SELECT, useCrmMe, useRun } from "@/features/marketingConsole/crm/hooks";
+import { localInput, planSummary, SELECT, useCrmMe, useFollowUpPlans, useRun } from "@/features/marketingConsole/crm/hooks";
 
 const PLANS = [
   { code: "", label: "Not decided" },
@@ -106,11 +106,42 @@ export function LeadLogPanel({ lead, onSaved }: { lead: ApiPlatformDemoRequest; 
 }
 
 /** The lead's open and finished tasks, with a quick add. */
-export function LeadTasksPanel({ lead }: { lead: ApiPlatformDemoRequest }) {
-  const { data, reload } = useApiData(() => listCrmTasks({ leadId: lead.id, status: "all" }), [] as CrmTask[], [] as CrmTask[], { cacheKey: `crm-lead-tasks-${lead.id}`, ttlMs: 5_000 });
+export function LeadTasksPanel({ lead, version = 0 }: { lead: ApiPlatformDemoRequest; version?: number }) {
+  // `version` changes when the lead's timeline grows (e.g. a call logged with a next step), which refetches the tasks.
+  const { data, reload } = useApiData(() => listCrmTasks({ leadId: lead.id, status: "all" }), [] as CrmTask[], [] as CrmTask[], { cacheKey: `crm-lead-tasks-${lead.id}-${version}`, ttlMs: 5_000 });
+  const me = useCrmMe();
+  const run = useRun();
+  const plans = useFollowUpPlans();
+  const [plan, setPlan] = useState("");
+  const closed = lead.stage === "Customer" || lead.stage === "Lost";
+
+  const followUpIn = (days: number, label: string) => void run(
+    () => createCrmTask({ title: `Follow up with ${lead.fullName}`, type: "FollowUp", dueAtUtc: new Date(localInput(days)).toISOString(), leadId: lead.id }),
+    `Follow-up set for ${label}`).then((ok) => ok && reload());
+
   return (
     <div className="rounded-xl border p-4">
-      <h3 className="mb-3 font-semibold">Tasks</h3>
+      <h3 className="mb-3 font-semibold">Follow-up</h3>
+      {me.canWrite && !closed && (
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Follow up</span>
+            <Button size="sm" variant="outline" onClick={() => followUpIn(1, "tomorrow")}>Tomorrow</Button>
+            <Button size="sm" variant="outline" onClick={() => followUpIn(3, "in 3 days")}>In 3 days</Button>
+            <Button size="sm" variant="outline" onClick={() => followUpIn(7, "next week")}>Next week</Button>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select aria-label="Follow-up plan" className={SELECT} value={plan} onChange={(e) => setPlan(e.target.value)}>
+              <option value="">Start a follow-up plan…</option>
+              {plans.map((p) => <option key={p.key} value={p.key}>{p.name}: {planSummary(p)}</option>)}
+            </select>
+            <Button size="sm" className="shrink-0" disabled={!plan} onClick={() => void run(async () => {
+              const result = await startFollowUpPlan(lead.id, plan);
+              if (result.done === 0) throw new Error(result.skipped[0] ?? "The plan wasn't started.");
+            }, "Follow-up plan started").then((ok) => { if (ok) { setPlan(""); reload(); } })}>Start plan</Button>
+          </div>
+        </div>
+      )}
       <TaskForm leadId={lead.id} defaultAssignee={lead.assignedToUserId} onSaved={reload} compact />
       <div className="mt-3"><TaskList tasks={data} onChanged={reload} showContext={false} empty="No tasks for this lead yet." /></div>
     </div>

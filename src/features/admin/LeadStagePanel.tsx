@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LEAD_STAGE_LABEL, setLeadStage, type ApiLeadStage, type ApiPlatformDemoRequest } from "@/api/marketing";
+import { useCrmMe } from "@/features/marketingConsole/crm/hooks";
 
 const STAGE_VARIANT: Record<ApiLeadStage, "warning" | "default" | "success" | "outline" | "muted" | "destructive"> = {
   New: "warning", Contacted: "default", DemoBooked: "default", DemoDone: "default",
@@ -38,6 +39,7 @@ type Mode = null | "book" | "done" | "lost";
  */
 export function LeadStagePanel({ lead, live, onChanged, onError }: { lead: ApiPlatformDemoRequest; live: boolean; onChanged: (lead: ApiPlatformDemoRequest, message: string) => void; onError: (title: string, message: string) => void }) {
   const stage = lead.stage ?? "New";
+  const { canWrite } = useCrmMe();
   const [mode, setMode] = useState<Mode>(null);
   const [demoAt, setDemoAt] = useState(defaultDemoSlot);
   const [note, setNote] = useState("");
@@ -76,14 +78,14 @@ export function LeadStagePanel({ lead, live, onChanged, onError }: { lead: ApiPl
       </div>
       {facts.length > 0 && <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">{facts.map((f) => <li key={f.text} className="flex items-start gap-2"><f.icon className="mt-0.5 h-4 w-4 shrink-0" />{f.text}</li>)}</ul>}
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      {canWrite && <div className="mt-4 flex flex-wrap gap-2">
         {stage === "New" && <Button size="sm" variant="outline" disabled={busy} onClick={() => void move({ stage: "Contacted" }, "Marked contacted")}>Mark contacted</Button>}
         {stage !== "Customer" && <Button size="sm" variant={mode === "book" ? "default" : "outline"} disabled={busy} onClick={() => setMode(mode === "book" ? null : "book")}><CalendarCheck2 className="h-4 w-4" />{stage === "DemoBooked" ? "Reschedule demo" : "Book demo"}</Button>}
         {(stage === "DemoBooked" || stage === "Contacted") && <Button size="sm" variant={mode === "done" ? "default" : "outline"} disabled={busy} onClick={() => setMode(mode === "done" ? null : "done")}><CheckCircle2 className="h-4 w-4" />Demo done</Button>}
         {stage !== "Customer" && <Button size="sm" variant="outline" disabled={busy} onClick={() => void move({ stage: "Customer" }, "Marked as customer")}>Mark customer</Button>}
         {stage !== "Lost" && stage !== "Customer" && <Button size="sm" variant={mode === "lost" ? "destructive" : "outline"} disabled={busy} onClick={() => setMode(mode === "lost" ? null : "lost")}><XCircle className="h-4 w-4" />Lost</Button>}
         {stage === "Lost" && <Button size="sm" variant="outline" disabled={busy} onClick={() => void move({ stage: "Contacted" }, "Lead reopened")}>Reopen</Button>}
-      </div>
+      </div>}
 
       {mode === "book" && (
         <div className="mt-4 space-y-3 rounded-lg bg-muted/40 p-3">

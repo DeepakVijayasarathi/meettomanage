@@ -32,7 +32,7 @@ import {
 import { formatDate } from "@/lib/utils";
 import { LeadStageBadge, LeadStagePanel } from "./LeadStagePanel";
 import { LeadDealPanel, LeadLogPanel, LeadTasksPanel } from "./LeadCrmPanels";
-import { AddLeadDialog, ImportLeadsDialog } from "./LeadIntakeDialogs";
+import { AddLeadDialog, BulkLeadsDialog, ImportLeadsDialog } from "./LeadIntakeDialogs";
 import { useCrmMe, useCrmTeam } from "@/features/marketingConsole/crm/hooks";
 import { LEAD_STAGE_LABEL, type ApiLeadStage } from "@/api/marketing";
 import { FileUp, Plus } from "lucide-react";
@@ -95,6 +95,7 @@ export default function DemoRequests() {
   const [segmentFilter, setSegmentFilter] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const ownerQuery = ownerFilter === "mine" ? { assignedToUserId: me.userId ?? undefined } : ownerFilter === "unassigned" ? { unassignedOnly: true } : ownerFilter ? { assignedToUserId: ownerFilter } : {};
   const filterKey = `${ownerFilter}-${stageFilter}-${regionFilter.trim()}-${segmentFilter.trim()}`;
   // Sample rows only in offline demo mode; live mode starts (and stays, on error) empty.
@@ -403,13 +404,14 @@ export default function DemoRequests() {
           selectable
           selectedKeys={selected}
           onSelectionChange={setSelected}
-          bulkActions={<div className="flex gap-2"><Button size="sm" onClick={() => void bulk("Contacted")}>Mark contacted</Button><Button size="sm" variant="outline" onClick={() => void bulk(undefined, true)}>Archive</Button></div>}
+          bulkActions={<div className="flex flex-wrap gap-2">{me.canWrite && <Button size="sm" onClick={() => setBulkOpen(true)}>Assign / follow-up plan</Button>}<Button size="sm" variant="outline" onClick={() => void bulk("Contacted")}>Mark contacted</Button><Button size="sm" variant="outline" onClick={() => void bulk(undefined, true)}>Archive</Button></div>}
           serverPagination={{ page: pageData.page, pageSize: pageData.pageSize, totalCount: pageData.totalCount, onPageChange: setPage }}
         />
       )}
 
       <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onCreated={(id) => { reload(); void openLead({ id } as ApiPlatformDemoRequest); }} />
       <ImportLeadsDialog open={importOpen} onOpenChange={setImportOpen} onImported={reload} />
+      <BulkLeadsDialog leadIds={[...selected]} open={bulkOpen} onOpenChange={(v) => { setBulkOpen(v); if (!v) setSelected(new Set()); }} onDone={reload} />
       <ConfirmDialog
         open={deleteRequest !== null}
         onOpenChange={(open) => { if (!open) setDeleteRequest(null); }}
@@ -425,7 +427,7 @@ export default function DemoRequests() {
           <Button className="w-full bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => prepareWhatsApp(detail.lead)}><MessageCircle className="h-4 w-4" />Prepare WhatsApp follow-up</Button>
           <LeadStagePanel lead={detail.lead} live={live} onError={(title, description) => toast({ variant: "error", title, description })} onChanged={(_, message) => { toast({ variant: "success", title: message }); void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })(); }} />
           <LeadLogPanel lead={detail.lead} onSaved={() => void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })()} />
-          <LeadTasksPanel key={`tasks-${detail.lead.id}`} lead={detail.lead} />
+          <LeadTasksPanel key={`tasks-${detail.lead.id}`} lead={detail.lead} version={detail.activity.length} />
           <LeadDealPanel key={`deal-${detail.lead.id}-${detail.lead.expectedMonthlyValue}-${detail.lead.region}`} lead={detail.lead} onSaved={() => void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })()} />
           <div className="rounded-xl border p-4"><h3 className="mb-3 font-semibold">Lead management</h3><div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1 text-sm"><span className="font-medium">Owner</span><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={owner} onChange={(e) => setOwner(e.target.value)} disabled={!me.canWrite}><option value="">{detail.lead.assignedTo && !detail.lead.assignedToUserId ? detail.lead.assignedTo : "Unassigned"}</option>{team.filter((m) => me.role !== "Sales" || m.userId === me.userId).map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select></label><label className="space-y-1 text-sm"><span className="font-medium">Next follow-up</span><Input type="datetime-local" value={followUp} onChange={(e) => setFollowUp(e.target.value)} /></label></div><Button className="mt-3" size="sm" onClick={() => void saveCrmFields()}>Save CRM details</Button></div>
           <div><p className="mb-2 text-sm font-semibold">Internal notes</p><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} /><Button className="mt-2" size="sm" onClick={() => void saveNotes()}>Save notes</Button></div>

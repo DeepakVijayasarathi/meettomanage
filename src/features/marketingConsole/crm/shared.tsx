@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Loader2, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock3, Loader2, MessageCircle, Phone, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { completeCrmTask, createCrmTask, deleteCrmTask, TASK_TYPE_LABEL, type CrmTask, type CrmTaskType } from "@/api/crm";
+import { completeCrmTask, createCrmTask, deleteCrmTask, TASK_TYPE_LABEL, updateCrmTask, whatsAppUrl, type CrmTask, type CrmTaskType } from "@/api/crm";
 import { localInput, SELECT, useCrmMe, useCrmTeam, useRun, when } from "./hooks";
 
 /** Add-a-task form, for a lead, a customer or on its own. */
@@ -70,10 +70,21 @@ export function TaskList({ tasks, onChanged, showContext = true, empty = "No tas
                 </p>
                 {t.outcome && <p className="mt-1 text-sm text-muted-foreground">Outcome: {t.outcome}</p>}
               </div>
-              {me.canWrite && (t.completedAtUtc
-                ? <Button size="sm" variant="ghost" title="Reopen" onClick={() => void run(() => completeCrmTask(t.id, { reopen: true }), "Task reopened").then((ok) => ok && onChanged())}><RotateCcw className="h-4 w-4" /></Button>
-                : <Button size="sm" variant="outline" onClick={() => { setClosing(closing === t.id ? null : t.id); setOutcome(""); }}><CheckCircle2 className="h-4 w-4" />Done</Button>)}
-              {me.canWrite && <Button size="sm" variant="ghost" title="Delete task" onClick={() => void run(() => deleteCrmTask(t.id), "Task deleted").then((ok) => ok && onChanged())}><Trash2 className="h-4 w-4" /></Button>}
+              <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                {/* One tap to reach the lead: the phone dialler on mobile, WhatsApp anywhere. */}
+                {!t.completedAtUtc && t.leadPhone && <>
+                  <Button size="sm" variant="ghost" asChild title={`Call ${t.leadPhone}`}><a href={`tel:${t.leadPhone.replace(/[^\d+]/g, "")}`}><Phone className="h-4 w-4" /><span className="sr-only">Call</span></a></Button>
+                  <Button size="sm" variant="ghost" asChild title="WhatsApp" className="text-emerald-700"><a href={whatsAppUrl(t.leadPhone)} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4" /><span className="sr-only">WhatsApp</span></a></Button>
+                </>}
+                {me.canWrite && !t.completedAtUtc && <Button size="sm" variant="ghost" title="Move to tomorrow" onClick={() => void run(() => updateCrmTask(t.id, {
+                  title: t.title, type: t.type, dueAtUtc: new Date(localInput(1, new Date(t.dueAtUtc).getHours() || 10)).toISOString(),
+                  assignedToUserId: t.assignedToUserId, leadId: t.leadId, tenantId: t.tenantId, notes: t.notes ?? undefined,
+                }), "Moved to tomorrow").then((ok) => ok && onChanged())}><Clock3 className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Tomorrow</span></Button>}
+                {me.canWrite && (t.completedAtUtc
+                  ? <Button size="sm" variant="ghost" title="Reopen" onClick={() => void run(() => completeCrmTask(t.id, { reopen: true }), "Task reopened").then((ok) => ok && onChanged())}><RotateCcw className="h-4 w-4" /></Button>
+                  : <Button size="sm" variant="outline" onClick={() => { setClosing(closing === t.id ? null : t.id); setOutcome(""); }}><CheckCircle2 className="h-4 w-4" />Done</Button>)}
+                {me.canWrite && <Button size="sm" variant="ghost" title="Delete task" onClick={() => void run(() => deleteCrmTask(t.id), "Task deleted").then((ok) => ok && onChanged())}><Trash2 className="h-4 w-4" /></Button>}
+              </div>
             </div>
             {closing === t.id && (
               <div className="mt-2 flex flex-col gap-2 sm:flex-row">

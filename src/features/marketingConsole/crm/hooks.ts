@@ -1,7 +1,17 @@
 import { useToast } from "@/hooks/use-toast";
 import { useApiData } from "@/api/hooks";
 import { apiEnabled, userMessage } from "@/lib/api";
-import { getCrmMe, listCrmTeam, type CrmMe, type CrmMember } from "@/api/crm";
+import { getCrmMe, listCrmTeam, listFollowUpPlans, type CrmMe, type CrmMember, type FollowUpPlan } from "@/api/crm";
+
+/** The ready-made follow-up plans (call / WhatsApp sequences). */
+export function useFollowUpPlans() {
+  const { data } = useApiData(listFollowUpPlans, [] as FollowUpPlan[], [] as FollowUpPlan[], { cacheKey: "crm-plans", ttlMs: 10 * 60_000 });
+  return data;
+}
+
+/** "Day 0 call, day 1 WhatsApp, ..." in one short line. */
+export const planSummary = (plan: FollowUpPlan) =>
+  plan.steps.map((s) => `day ${s.day} ${s.type === "WhatsApp" ? "WhatsApp" : s.type === "Call" ? "call" : s.type.toLowerCase()}`).join(", ");
 
 const ME_FALLBACK: CrmMe = { userId: null, name: "", role: "Manager" };
 
@@ -13,7 +23,8 @@ export function useCrmMe() {
 
 export function useCrmTeam() {
   const { data, reload } = useApiData(listCrmTeam, [] as CrmMember[], [] as CrmMember[], { cacheKey: "crm-team", ttlMs: 60_000 });
-  return { team: data, active: data.filter((m) => m.active), reload };
+  // `active` is who can own leads and tasks: active managers and sales reps. Viewers are read-only.
+  return { team: data, active: data.filter((m) => m.active && m.role !== "Viewer"), reload };
 }
 
 export const when = (iso: string | null | undefined) => iso ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso)) : "";

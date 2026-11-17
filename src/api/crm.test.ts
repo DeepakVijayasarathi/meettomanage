@@ -19,6 +19,18 @@ describe("parseLeadCsv", () => {
     expect(ignored).toEqual(["Fax"]);
   });
 
+  it("reads cells pasted from Excel or Google Sheets (tab-separated, commas inside cells)", () => {
+    const pasted = "Name\tAcademy\tPhone\tCity\tNotes\nAsha Rao\tBright Abacus\t98765 43210\tPune\t6 batches, fees in Excel\n";
+    expect(parseLeadCsv(pasted).rows).toEqual([{ fullName: "Asha Rao", academyName: "Bright Abacus", phone: "98765 43210", city: "Pune", notes: "6 batches, fees in Excel" }]);
+  });
+
+  it("the downloadable template imports cleanly", async () => {
+    const { LEAD_TEMPLATE_CSV } = await import("./crm");
+    const { rows, ignored } = parseLeadCsv(LEAD_TEMPLATE_CSV);
+    expect(ignored).toEqual([]);
+    expect(rows[0]).toMatchObject({ fullName: "Asha Rao", academyName: "Bright Abacus Academy", studentCount: 120, segment: "Abacus", source: "Referral" });
+  });
+
   it("returns nothing for a header-only file", () => {
     expect(parseLeadCsv("Email,Name\n").rows).toEqual([]);
   });
