@@ -21,6 +21,7 @@ const PlatformEmailMappings = lazy(() => import("@/features/platform/EmailMappin
 const PlatformPlans = lazy(() => import("@/features/platform/Plans"));
 const PlatformSubscriptions = lazy(() => import("@/features/platform/Subscriptions"));
 const PlatformRevenue = lazy(() => import("@/features/platform/Revenue"));
+const PlatformAiUsage = lazy(() => import("@/features/platform/AiUsage"));
 const PlatformReminders = lazy(() => import("@/features/platform/Reminders"));
 const PlatformAuditLog = lazy(() => import("@/features/platform/AuditLog"));
 const PlatformOperations = lazy(() => import("@/features/platform/Operations"));
@@ -248,6 +249,7 @@ export default function App() {
             <Route path="/platform/plans" element={<PlatformPlans />} />
             <Route path="/platform/subscriptions" element={<PlatformSubscriptions />} />
             <Route path="/platform/revenue" element={<PlatformRevenue />} />
+            <Route path="/platform/ai-usage" element={<PlatformAiUsage />} />
             <Route path="/platform/reminders" element={<PlatformReminders />} />
             <Route path="/platform/audit-log" element={<PlatformAuditLog />} />
             <Route path="/platform/operations" element={<PlatformOperations />} />

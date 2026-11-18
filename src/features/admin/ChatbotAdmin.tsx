@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useApiData } from "@/api/hooks";
+import { AI_FEATURE_LABELS, formatTokens, saasTenant, type TenantAiUsage } from "@/api/saas";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/utils";
 import {
@@ -73,6 +74,26 @@ export default function ChatbotAdmin() {
   );
 }
 
+/** The academy's monthly AI allowance on the platform key, and what has used it. */
+export function AiAllowancePanel({ usage, onRefresh }: { usage: TenantAiUsage; onRefresh: () => void }) {
+  const month = new Date(`${usage.month}-01T00:00:00Z`).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+  const pct = usage.limit ? Math.min(100, Math.round(100 * usage.usedTokens / usage.limit)) : 0;
+  return <div className="space-y-3 rounded-lg border p-4">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div><Label className="flex items-center gap-2 text-base"><Gauge className="h-4 w-4 text-primary" />AI allowance · {month}</Label>
+        <p className="mt-1 text-sm">{usage.limit === null
+          ? <><b>{formatTokens(usage.usedTokens)}</b> tokens used. Your plan has no monthly AI limit.</>
+          : usage.limit === 0 ? "AI isn't included in your plan." : <><b>{formatTokens(usage.usedTokens)}</b> of {formatTokens(usage.limit)} tokens used ({pct}%).</>}</p></div>
+      <Button variant="outline" size="sm" onClick={onRefresh}><RefreshCw className="mr-2 h-3.5 w-3.5" />Refresh</Button>
+    </div>
+    {usage.limit !== null && usage.limit > 0 && <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="AI allowance used">
+      <div className={`h-full rounded-full ${pct >= 100 ? "bg-destructive" : pct >= 80 ? "bg-warning" : "bg-primary"}`} style={{ width: `${pct}%` }} /></div>}
+    {usage.exhausted && <InlineAlert variant="warning">This month&apos;s allowance is used up. AI answers pause until the 1st (the chatbot falls back to FAQs). Upgrade your plan under Billing for more.</InlineAlert>}
+    {usage.features.length > 0 && <ul className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+      {usage.features.map(f => <li key={f.feature}>{AI_FEATURE_LABELS[f.feature] ?? f.feature}: <span className="font-medium text-foreground">{formatTokens(f.totalTokens)}</span> · {formatNumber(f.requests)} requests</li>)}</ul>}
+  </div>;
+}
+
 const DEFAULT_AI: AiChatConfiguration = {
   // Placeholder until the server responds; real defaults come from server config (HetznerAi section).
   enabled: false, endpoint: "", model: "", systemPrompt: "",
@@ -83,6 +104,10 @@ function AiProviderPanel() {
   const { toast } = useToast();
   const { data: loaded, loading, error: loadError, reload } = useApiData(() => getAiChatConfiguration(), DEFAULT_AI);
   const { data: cost, error: costError, reload: reloadCost } = useApiData(() => getAiCostMonitor(), null);
+  // Multi-tenant platforms answer this: the academy then runs on the platform's AI key with a monthly allowance, and
+  // the provider, key and price fields below belong to the platform, not the academy. Single-client installs don't.
+  const { data: allowance, reload: reloadAllowance } = useApiData<TenantAiUsage | null>(() => saasTenant.aiUsage().catch(() => null), null);
+  const managed = allowance !== null;
   const [form, setForm] = useState<AiChatConfiguration>(DEFAULT_AI);
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -98,7 +123,7 @@ function AiProviderPanel() {
   useEffect(() => setForm(loaded), [loaded]);
 
   async function save() {
-    if (!form.endpoint.trim() || !form.model.trim()) { setError("Enter the endpoint URL and model."); return; }
+    if (!managed && (!form.endpoint.trim() || !form.model.trim())) { setError("Enter the endpoint URL and model."); return; }
     setSaving(true); setError(null);
     try {
       await updateAiChatConfiguration({ ...form, endpoint: form.endpoint.trim(), model: form.model.trim(), apiKey: apiKey.trim() || undefined });
@@ -110,7 +135,7 @@ function AiProviderPanel() {
 
   async function test() {
     setTesting(true); setError(null); setTestAnswer("");
-    try { setTestAnswer((await testAiChat(testQuestion)).answer); reloadCost(); }
+    try { setTestAnswer((await testAiChat(testQuestion)).answer); reloadCost(); reloadAllowance(); }
     catch (err) { setError(userMessage(err, "The AI connection test failed.")); }
     finally { setTesting(false); }
   }
@@ -126,11 +151,18 @@ function AiProviderPanel() {
   return (
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> Portal AI assistant</CardTitle>
-        <CardDescription>Configure Hetzner Inference or another OpenAI/Ollama-compatible provider used by every portal. The authorization key is encrypted and only sent by the server.</CardDescription></CardHeader>
+        <CardDescription>{managed
+          ? "AI for your academy (portal chatbot, business copilot and Mito) is provided by the platform. Usage counts against your plan's monthly AI allowance."
+          : "Configure Hetzner Inference or another OpenAI/Ollama-compatible provider used by every portal. The authorization key is encrypted and only sent by the server."}</CardDescription></CardHeader>
       <CardContent className="space-y-5">
         {(loadError || error) && <InlineAlert variant="error">{error ?? loadError ?? "Unable to load."}</InlineAlert>}
         <div className="flex items-center justify-between rounded-lg border p-4"><div><Label>Use AI answers</Label><p className="text-xs text-muted-foreground">When unavailable, the chatbot safely falls back to FAQs and teacher escalation.</p></div><Switch aria-label="Use AI answers" checked={form.enabled} onCheckedChange={(enabled) => setForm((f) => ({ ...f, enabled }))} /></div>
-        <div className="grid gap-4 md:grid-cols-2">
+        {managed && allowance && <AiAllowancePanel usage={allowance} onRefresh={reloadAllowance} />}
+        {managed ? <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2"><Label htmlFor="ai-prompt">System prompt</Label><Textarea id="ai-prompt" value={form.systemPrompt} onChange={(e) => setForm((f) => ({ ...f, systemPrompt: e.target.value }))} /></div>
+          <div className="space-y-2"><Label htmlFor="ai-tokens">Maximum output tokens</Label><Input id="ai-tokens" type="number" min={1} max={2000} value={form.maxTokens} onChange={(e) => setForm((f) => ({ ...f, maxTokens: Number(e.target.value) }))} /><p className="text-xs text-muted-foreground">Longer replies use more of your allowance.</p></div>
+          <div className="space-y-2"><Label htmlFor="ai-temp">Temperature (0–2)</Label><Input id="ai-temp" type="number" min={0} max={2} step={0.1} value={form.temperature} onChange={(e) => setForm((f) => ({ ...f, temperature: Number(e.target.value) }))} /></div>
+        </div> : <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2"><Label htmlFor="ai-endpoint">API base URL or chat endpoint</Label><Input id="ai-endpoint" placeholder="https://provider.example/v1" value={form.endpoint} onChange={(e) => setForm((f) => ({ ...f, endpoint: e.target.value }))} /><p className="text-xs text-muted-foreground">OpenAI-compatible base URL (ending in /v1) or an Ollama chat endpoint. Defaults come from server configuration.</p></div>
           <div className="space-y-2"><div className="flex items-center justify-between"><Label htmlFor="ai-model">Model</Label><button type="button" className="text-xs font-semibold text-primary hover:underline" onClick={() => void loadModels()} disabled={loadingModels}>{loadingModels ? "Loading…" : "Load models"}</button></div>{models.length > 0 ? <select id="ai-model" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.model} onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}>{!models.includes(form.model) && <option value={form.model}>{form.model}</option>}{models.map((model) => <option key={model} value={model}>{model}</option>)}</select> : <Input id="ai-model" value={form.model} onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))} />}</div>
           <div className="space-y-2"><Label htmlFor="ai-key">Bearer key</Label><div className="relative"><Input id="ai-key" type={showKey ? "text" : "password"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={form.hasApiKey ? "Key saved — enter only to replace" : "Enter bearer key (optional)"} className="pr-10" /><button type="button" onClick={() => setShowKey((v) => !v)} className="absolute right-3 top-2.5 text-muted-foreground" aria-label={showKey ? "Hide key" : "Show key"}>{showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
@@ -140,9 +172,9 @@ function AiProviderPanel() {
           <div className="space-y-2"><Label htmlFor="ai-input-price">Input price / 1M tokens (USD)</Label><Input id="ai-input-price" type="number" min={0} step={0.000001} value={form.inputCostPerMillionTokensUsd} onChange={(e) => setForm((f) => ({ ...f, inputCostPerMillionTokensUsd: Number(e.target.value) }))} /></div>
           <div className="space-y-2"><Label htmlFor="ai-output-price">Output price / 1M tokens (USD)</Label><Input id="ai-output-price" type="number" min={0} step={0.000001} value={form.outputCostPerMillionTokensUsd} onChange={(e) => setForm((f) => ({ ...f, outputCostPerMillionTokensUsd: Number(e.target.value) }))} /></div>
           <div className="space-y-2"><Label htmlFor="ai-budget">Monthly AI budget (USD)</Label><Input id="ai-budget" type="number" min={0} step={0.01} value={form.monthlyBudgetUsd} onChange={(e) => setForm((f) => ({ ...f, monthlyBudgetUsd: Number(e.target.value) }))} /><p className="text-xs text-muted-foreground">Set 0 to monitor usage without a budget alert.</p></div>
-        </div>
+        </div>}
         <Button onClick={() => void save()} disabled={saving}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save configuration</Button>
-        <div className="space-y-3 border-t pt-5"><div className="flex flex-wrap items-center justify-between gap-2"><div><Label className="flex items-center gap-2 text-base"><CircleDollarSign className="h-4 w-4 text-primary" />AI cost monitor</Label><p className="mt-1 text-xs text-muted-foreground">Provider usage for {cost?.periodLabel ?? "this month"}; estimates use the prices configured above.</p></div><Button variant="outline" size="sm" onClick={reloadCost}><RefreshCw className="mr-2 h-3.5 w-3.5" />Refresh</Button></div>{costError && <InlineAlert variant="error">{costError}</InlineAlert>}{cost && <><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><AiCostMetric label="Estimated spend" value={cost.pricingConfigured ? `$${cost.estimatedCostUsd.toFixed(4)}` : "Set pricing"} detail={cost.monthlyBudgetUsd > 0 ? `${cost.budgetUsedPercent}% of $${cost.monthlyBudgetUsd.toFixed(2)} budget` : "No monthly budget set"} warning={cost.monthlyBudgetUsd > 0 && cost.budgetUsedPercent >= 80} /><AiCostMetric label="Requests" value={formatNumber(cost.requests)} detail={`${cost.successfulRequests} successful · ${cost.failedRequests} failed`} warning={cost.failedRequests > 0} /><AiCostMetric label="Total tokens" value={formatNumber(cost.totalTokens)} detail={`${formatNumber(cost.inputTokens)} input · ${formatNumber(cost.outputTokens)} output`} /><AiCostMetric label="Success rate" value={cost.requests === 0 ? "No usage" : `${Math.round(100 * cost.successfulRequests / cost.requests)}%`} detail={`Updated ${formatDate(cost.generatedAtUtc, "datetime")}`} icon={<Gauge className="h-4 w-4" />} /></div>{cost.monthlyBudgetUsd > 0 && <div className="h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full transition-all ${cost.budgetUsedPercent >= 100 ? "bg-destructive" : cost.budgetUsedPercent >= 80 ? "bg-warning" : "bg-primary"}`} style={{ width: `${Math.min(100, cost.budgetUsedPercent)}%` }} /></div>}{!cost.pricingConfigured && <InlineAlert variant="warning">Enter your provider&apos;s input and output token prices to calculate estimated spend.</InlineAlert>}</>}</div>
+        {!managed && <div className="space-y-3 border-t pt-5"><div className="flex flex-wrap items-center justify-between gap-2"><div><Label className="flex items-center gap-2 text-base"><CircleDollarSign className="h-4 w-4 text-primary" />AI cost monitor</Label><p className="mt-1 text-xs text-muted-foreground">Provider usage for {cost?.periodLabel ?? "this month"}; estimates use the prices configured above.</p></div><Button variant="outline" size="sm" onClick={reloadCost}><RefreshCw className="mr-2 h-3.5 w-3.5" />Refresh</Button></div>{costError && <InlineAlert variant="error">{costError}</InlineAlert>}{cost && <><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><AiCostMetric label="Estimated spend" value={cost.pricingConfigured ? `$${cost.estimatedCostUsd.toFixed(4)}` : "Set pricing"} detail={cost.monthlyBudgetUsd > 0 ? `${cost.budgetUsedPercent}% of $${cost.monthlyBudgetUsd.toFixed(2)} budget` : "No monthly budget set"} warning={cost.monthlyBudgetUsd > 0 && cost.budgetUsedPercent >= 80} /><AiCostMetric label="Requests" value={formatNumber(cost.requests)} detail={`${cost.successfulRequests} successful · ${cost.failedRequests} failed`} warning={cost.failedRequests > 0} /><AiCostMetric label="Total tokens" value={formatNumber(cost.totalTokens)} detail={`${formatNumber(cost.inputTokens)} input · ${formatNumber(cost.outputTokens)} output`} /><AiCostMetric label="Success rate" value={cost.requests === 0 ? "No usage" : `${Math.round(100 * cost.successfulRequests / cost.requests)}%`} detail={`Updated ${formatDate(cost.generatedAtUtc, "datetime")}`} icon={<Gauge className="h-4 w-4" />} /></div>{cost.monthlyBudgetUsd > 0 && <div className="h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full transition-all ${cost.budgetUsedPercent >= 100 ? "bg-destructive" : cost.budgetUsedPercent >= 80 ? "bg-warning" : "bg-primary"}`} style={{ width: `${Math.min(100, cost.budgetUsedPercent)}%` }} /></div>}{!cost.pricingConfigured && <InlineAlert variant="warning">Enter your provider&apos;s input and output token prices to calculate estimated spend.</InlineAlert>}</>}</div>}
         <div className="space-y-3 border-t pt-5"><Label htmlFor="ai-test">Test saved configuration</Label><div className="flex gap-2"><Input id="ai-test" value={testQuestion} onChange={(e) => setTestQuestion(e.target.value)} /><Button variant="outline" onClick={() => void test()} disabled={testing || !testQuestion.trim()}>{testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}<span className="ml-2">Test</span></Button></div>{testAnswer && <div className="rounded-lg bg-muted p-3 text-sm">{testAnswer}</div>}</div>
       </CardContent>
     </Card>

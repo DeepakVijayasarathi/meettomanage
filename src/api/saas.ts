@@ -88,6 +88,7 @@ export const saasPlatform = {
   voidInvoice: (token: string, id: string) => platformRequest<void>(`/invoices/${id}/void`, token, "POST"),
   paymentLink: (token: string, id: string) => platformRequest<{ paymentUrl: string | null }>(`/invoices/${id}/payment-link`, token, "POST"),
   revenue: (token: string) => platformRequest<RevenueSummary>("/revenue", token),
+  aiUsage: (token: string, month?: string) => platformRequest<PlatformAiUsage>(`/ai-usage${month ? `?month=${month}` : ""}`, token),
   reminders: (token: string) => platformRequest<ReminderLogRow[]>("/reminders", token),
   auditLog: (token: string, query: { page: number; failedOnly?: boolean; actor?: string; tenantId?: string }) => {
     const params = new URLSearchParams({ page: String(query.page), pageSize: "50" });
@@ -135,9 +136,41 @@ export interface TenantSaasStatus {
 export interface TenantPlan { id: string; code: string; name: string; description: string | null; prices: { id: string; billingInterval: BillingInterval; currency: string; amount: number }[]; entitlements: { key: string; value: number }[] }
 export interface BillingProfile { legalName: string | null; billingEmail: string | null; billingPhone: string | null; gstin: string | null; address: string | null; state: string | null }
 
+/** Tokens used on the platform AI key in one month: every academy against its plan allowance, marketing apart. */
+export interface AiFeatureRow { feature: string; requests: number; promptTokens: number; completionTokens: number; totalTokens: number }
+export interface PlatformAiUsage {
+  month: string;
+  tenantTotalTokens: number;
+  removedTenantTokens: number;
+  marketing: { requests: number; usedTokens: number; features: AiFeatureRow[] };
+  tenants: { tenantId: string; code: string; name: string; status: string; plan: string | null; requests: number; usedTokens: number; limit: number | null; percentUsed: number | null; features: AiFeatureRow[] }[];
+}
+/** This academy's AI allowance on the platform key this month. limit null = unlimited. */
+export interface TenantAiUsage { month: string; usedTokens: number; limit: number | null; remaining: number | null; exhausted: boolean; features: { feature: string; requests: number; totalTokens: number }[] }
+
+export const AI_FEATURE_LABELS: Record<string, string> = {
+  mito: "Mito (students)", chatbot: "Portal chatbot", copilot: "Business copilot", "business-brief": "Business brief",
+  "site-chat": "Website chat", "marketing-tools": "Marketing tools", other: "Other",
+};
+
+/** The current month and the eleven before it, newest first, as yyyy-MM. */
+export function recentMonths(now = new Date()): string[] {
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  });
+}
+
+export function formatTokens(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}k`;
+  return String(value);
+}
+
 export const saasTenant = {
   status: () => apiFetch<TenantSaasStatus>("/api/saas-billing/status"),
   banner: () => apiFetch<{ banner: TenantSaasStatus["banner"] }>("/api/saas-billing/banner"),
+  aiUsage: () => apiFetch<TenantAiUsage>("/api/saas-billing/ai-usage"),
   plans: () => apiFetch<TenantPlan[]>("/api/saas-billing/plans"),
   changePlan: (planPriceId: string) => apiFetch<PlanChangeResult>("/api/saas-billing/change-plan", { method: "POST", body: JSON.stringify({ planPriceId }) }),
   cancel: () => apiFetch<void>("/api/saas-billing/cancel", { method: "POST", body: JSON.stringify({}) }),

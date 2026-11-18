@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type FormEvent, type Re
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useConsoleView, type ConsoleView } from "./consoleView";
 import {
-  Activity, AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Radio, Receipt, Settings2, ShieldCheck, SlidersHorizontal, TrendingUp, Users,
+  Activity, AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Radio, Receipt, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, TrendingUp, Users,
   type LucideIcon,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -38,6 +38,7 @@ const groups: { title: string; items: NavItem[] }[] = [
       { to: "/platform/plans", label: "Plans", icon: Layers, hint: "Prices, limits and features" },
       { to: "/platform/subscriptions", label: "Subscriptions & invoices", icon: Receipt, hint: "Trials, renewals and payments", simple: true },
       { to: "/platform/revenue", label: "Revenue", icon: TrendingUp, hint: "MRR, churn and collections", simple: true },
+      { to: "/platform/ai-usage", label: "AI usage", icon: Sparkles, hint: "Tokens per academy and the marketing site", simple: true },
       { to: "/platform/reminders", label: "Auto-reminders", icon: BellRing, hint: "Billing e-mails and delivery log" },
       { to: "/platform/rules", label: "Rules", icon: SlidersHorizontal, hint: "Trial end, limit warnings and alerts" },
     ],
