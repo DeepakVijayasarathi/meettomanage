@@ -56,7 +56,7 @@ export default function CrmCustomers() {
   return (
     <div>
       <PageHeader eyebrow="CRM" title="Customers" description="Every academy account: plan, usage and health. At-risk academies come first, with the reason." />
-      {!data.available && <InlineAlert variant="info" className="mb-4">Customers are read from academy accounts, which exist only when the platform runs in multi-tenant mode.</InlineAlert>}
+      {!data.available && <InlineAlert variant="info" className="mb-4">Customers are read from academy accounts. They are shown only in the platform owner's marketing console when the platform runs in multi-tenant mode.</InlineAlert>}
       {error && <InlineAlert variant="warning" className="mb-4">Couldn't load customers ({error}). <button type="button" className="underline" onClick={() => reload()}>Retry</button></InlineAlert>}
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
