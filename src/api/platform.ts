@@ -31,6 +31,7 @@ export interface PlatformMonitoringServer {
   memoryUsedPercent: number; memoryTotalMb: number; swapUsedPercent: number; swapTotalMb: number;
   diskUsedPercent: number; diskTotalGb: number; networkRxMbps: number; networkTxMbps: number;
   diskReadMbps: number; diskWriteMbps: number; agentDataAgeSeconds: number;
+  configuredServices: string[];
   services: { name: string; active: boolean }[];
   containerMetrics: { name: string; cpuPercent: number; memoryMb: number }[];
   liveCalls?: { activeConferences: number; totalParticipants: number } | null;
