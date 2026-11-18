@@ -6,7 +6,7 @@ import PlatformShell from "./PlatformShell";
 import { TenantSelector, useTenantSelection } from "./TenantSelection";
 
 type TenantUser = { id: string; username: string; email: string; role: string; status: string };
-type TenantUsers = { roles: { role: string; count: number }[]; users: TenantUser[] };
+type TenantUsers = { roles: { role: string; count: number }[]; users: TenantUser[]; total?: number; truncated?: boolean };
 
 const roleLabel = (role: string) => role === "SubAdmin" ? "Sub Admin" : role === "AdmissionTeam" ? "Admission Team" : role;
 
@@ -44,7 +44,7 @@ function UserDirectory({ tenantId, token }: { tenantId: string; token: string })
   if (error) return <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p>;
   if (!data) return <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading users…</p>;
 
-  const total = data.users.length;
+  const total = data.total ?? data.users.length;
   const chips = [{ role: "all", label: "All roles", count: total }, ...data.roles.map(r => ({ role: r.role, label: roleLabel(r.role), count: r.count }))];
   return <>
     <div role="radiogroup" aria-label="Filter by role" className="flex flex-wrap gap-2">
@@ -54,7 +54,7 @@ function UserDirectory({ tenantId, token }: { tenantId: string; token: string })
     </div>
     <div className={panel}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
-        <p className="text-sm text-muted-foreground">Showing <span className="font-semibold text-foreground">{visible.length}</span> of {total} users</p>
+        <p className="text-sm text-muted-foreground">Showing <span className="font-semibold text-foreground">{visible.length}</span> of {total} users{data.truncated && <> (the first {data.users.length.toLocaleString()} by name are listed; counts cover everyone)</>}</p>
         <label className="relative block w-full sm:w-72"><span className="sr-only">Search users</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input className={`${inputClass} pl-9`} placeholder="Search username or email" value={search} onChange={e => setSearch(e.target.value)} /></label>

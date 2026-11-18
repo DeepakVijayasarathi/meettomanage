@@ -34,7 +34,7 @@ function PlanManagement() {
 
   function edit(plan: PlanView) {
     // An inactive price still has an amount; show it (unticked) instead of an empty field that would look like "not sold".
-    const price = (interval: "Month" | "Year") => plan.prices.find(p => p.billingInterval === interval && p.isActive) ?? plan.prices.filter(p => p.billingInterval === interval).at(-1);
+    const price = (interval: "Month" | "Year") => plan.prices.find(p => p.billingInterval === interval && p.isActive) ?? plan.prices.find(p => p.billingInterval === interval); // newest first from the API, so this is the latest retired price
     const values = Object.fromEntries(catalog.data.map(d => [d.key, defaultValue(d)]));
     for (const e of plan.entitlements) values[e.key] = e.value;
     setDraft({
