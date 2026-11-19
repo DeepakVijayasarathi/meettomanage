@@ -42,6 +42,7 @@ const BLOG_SEARCH_TITLES: Record<string, string> = {
   "online-coaching-software-checklist": "Online Coaching Software Checklist",
   "automatic-fee-suspension-payment-conversations": "Automatic Fee Suspension for Late Payments",
   "demo-booking-to-enrolled-family": "From Demo Booking to Enrolled Family",
+  "how-to-turn-more-website-visitors-into-demo-bookings": "How to Convert Website Visitors into Demo Bookings",
 };
 
 /** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. Keep in sync with scripts/prerender-meta.mjs. */

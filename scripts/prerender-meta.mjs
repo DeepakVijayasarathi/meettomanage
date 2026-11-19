@@ -42,6 +42,7 @@ const BLOG_SEARCH_TITLES = {
   "online-coaching-software-checklist": "Online Coaching Software Checklist",
   "automatic-fee-suspension-payment-conversations": "Automatic Fee Suspension for Late Payments",
   "demo-booking-to-enrolled-family": "From Demo Booking to Enrolled Family",
+  "how-to-turn-more-website-visitors-into-demo-bookings": "How to Convert Website Visitors into Demo Bookings",
 };
 const NO_SHOWS_CONTEXT = "<aside><h2>For coaching centres and online academies</h2><p>This guide is for academy owners and administrators in India who want fewer missed student classes and demo bookings. It focuses on parent reminders, class scheduling, attendance tracking and follow-up—not sports lessons or event ticketing.</p></aside>";
 /** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. */
