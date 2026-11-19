@@ -4,7 +4,7 @@ import { ArrowRight, AudioLines, ChevronRight, Building2, CalendarCheck2, CheckC
 import { type Lang } from "@/lib/i18n";
 import { askSalesAssistant, requestPlatformDemo, type SalesChatTurn } from "@/api/marketing";
 import { apiEnabled } from "@/lib/api";
-import { trackChatStarted } from "@/lib/analytics";
+import { marketingAttribution, marketingVisitorId, trackChatStarted } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { HERO_BG } from "./styles";
 
@@ -180,6 +180,7 @@ const AUDIENCE_ICONS: Record<string, LucideIcon> = {
 
 /** The conversation survives a hop to /pricing and back within the same browser session. */
 const CHAT_MESSAGES_KEY = "trn.chat.messages";
+const CHAT_CONVERSATION_KEY = "trn.chat.conversationId";
 /** Set once the visitor has booked a demo from the chat, so the booking card isn't offered again. */
 const CHAT_LEAD_SENT_KEY = "trn.chat.leadSent";
 
@@ -415,6 +416,13 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   const t = CHAT_T[lang];
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<SalesChatTurn[]>(() => readSession<SalesChatTurn[]>(CHAT_MESSAGES_KEY, []));
+  const [conversationId] = useState(() => {
+    const saved = readSession<string>(CHAT_CONVERSATION_KEY, "");
+    if (/^[A-Za-z0-9-]{8,64}$/.test(saved)) return saved;
+    const created = crypto.randomUUID?.() ?? `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+    writeSession(CHAT_CONVERSATION_KEY, created);
+    return created;
+  });
   const [draft, setDraft] = useState("");
   // Demo booking. While the AI is answering, it books the demo itself: "Book my free demo" asks
   // it to, and it collects name/phone/email in the conversation (book_demo on the backend). The
@@ -591,7 +599,14 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
 
     setPending(true);
     try {
-      const { reply, bookedName } = await askSalesAssistant(next);
+      const attribution = marketingAttribution();
+      const { reply, bookedName } = await askSalesAssistant(next, {
+        visitorId: marketingVisitorId(),
+        source: attribution.utmSource ?? attribution.referrerHost,
+        medium: attribution.utmMedium,
+        campaign: attribution.utmCampaign,
+        landingPath: window.location.pathname,
+      }, conversationId);
       setMessages((m) => [...m, { role: "assistant", text: reply }]);
       if (bookedName) {
         recordBooking(bookedName);
