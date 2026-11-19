@@ -118,13 +118,13 @@ export default function MarketingAutomation() {
         <section className="rounded-xl border bg-card p-5">
           <h2 className="mb-3 font-semibold">Upcoming demos (7 days)</h2>
           {data.upcomingDemos.length === 0 ? <p className="text-sm text-muted-foreground">No demos booked. Book one from a lead's workspace in Demo Requests.</p> : (
-            <ul className="divide-y text-sm">{data.upcomingDemos.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2"><div><Link to={`/marketing/demo-requests?lead=${d.id}`} className="font-semibold hover:underline">{d.academyName}</Link><p className="text-xs text-muted-foreground">{d.fullName}{d.owner ? ` · ${d.owner}` : ""}</p></div><span className="shrink-0 text-xs font-medium">{when(d.atUtc)}</span></li>)}</ul>
+            <ul className="divide-y text-sm">{data.upcomingDemos.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2"><div><Link to={`/marketing/leads/${d.id}`} className="font-semibold hover:underline">{d.academyName}</Link><p className="text-xs text-muted-foreground">{d.fullName}{d.owner ? ` · ${d.owner}` : ""}</p></div><span className="shrink-0 text-xs font-medium">{when(d.atUtc)}</span></li>)}</ul>
           )}
         </section>
         <section className="rounded-xl border bg-card p-5">
           <h2 className="mb-3 flex items-center gap-2 font-semibold"><Flame className="h-4 w-4 text-destructive" />Ready to buy (14 days)</h2>
           {data.highIntent.length === 0 ? <p className="text-sm text-muted-foreground">No high-intent leads right now.</p> : (
-            <ul className="divide-y text-sm">{data.highIntent.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2"><div><Link to={`/marketing/demo-requests?lead=${d.id}`} className="font-semibold hover:underline">{d.academyName}</Link><p className="text-xs text-muted-foreground">{d.fullName} · {LEAD_STAGE_LABEL[d.stage]}{d.owner ? ` · ${d.owner}` : ""}</p></div><span className="shrink-0 text-xs text-muted-foreground">{when(d.atUtc)}</span></li>)}</ul>
+            <ul className="divide-y text-sm">{data.highIntent.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2"><div><Link to={`/marketing/leads/${d.id}`} className="font-semibold hover:underline">{d.academyName}</Link><p className="text-xs text-muted-foreground">{d.fullName} · {LEAD_STAGE_LABEL[d.stage]}{d.owner ? ` · ${d.owner}` : ""}</p></div><span className="shrink-0 text-xs text-muted-foreground">{when(d.atUtc)}</span></li>)}</ul>
           )}
         </section>
       </div>
@@ -179,7 +179,7 @@ export default function MarketingAutomation() {
       <section className="rounded-xl border bg-card p-5">
         <h2 className="mb-3 font-semibold">Recent automatic actions</h2>
         {data.recentAutomation.length === 0 ? <EmptyState icon={Workflow} title="Nothing has run yet" description="Actions such as acknowledgements, reminders and trial matches appear here as they happen." /> : (
-          <ul className="divide-y text-sm">{data.recentAutomation.map((a, i) => <li key={`${a.leadId}-${i}`} className="flex items-start justify-between gap-3 py-2"><div><Link to={`/marketing/demo-requests?lead=${a.leadId}`} className="font-semibold hover:underline">{a.fullName}</Link><p className="text-muted-foreground">{a.detail}</p></div><span className="shrink-0 text-xs text-muted-foreground">{when(a.atUtc)}</span></li>)}</ul>
+          <ul className="divide-y text-sm">{data.recentAutomation.map((a, i) => <li key={`${a.leadId}-${i}`} className="flex items-start justify-between gap-3 py-2"><div><Link to={`/marketing/leads/${a.leadId}`} className="font-semibold hover:underline">{a.fullName}</Link><p className="text-muted-foreground">{a.detail}</p></div><span className="shrink-0 text-xs text-muted-foreground">{when(a.atUtc)}</span></li>)}</ul>
         )}
       </section>
     </div>

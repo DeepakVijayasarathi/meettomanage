@@ -16,7 +16,7 @@ function LeadList({ leads, empty, timeLabel }: { leads: CrmLeadBrief[]; empty: s
     <ul className="divide-y text-sm">
       {leads.map((l) => (
         <li key={l.id} className="flex items-center justify-between gap-3 py-2">
-          <div className="min-w-0"><Link to={`/marketing/demo-requests?lead=${l.id}`} className="font-semibold hover:underline">{l.academyName}</Link><p className="truncate text-xs text-muted-foreground">{l.fullName} · {LEAD_STAGE_LABEL[l.stage]}{l.owner ? ` · ${l.owner}` : ""}</p></div>
+          <div className="min-w-0"><Link to={`/marketing/leads/${l.id}`} className="font-semibold hover:underline">{l.academyName}</Link><p className="truncate text-xs text-muted-foreground">{l.fullName} · {LEAD_STAGE_LABEL[l.stage]}{l.owner ? ` · ${l.owner}` : ""}</p></div>
           <span className="shrink-0 text-xs text-muted-foreground">{timeLabel(l)}</span>
         </li>
       ))}

@@ -176,7 +176,7 @@ export default function MarketingVisitorDetail() {
               <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><CalendarCheck2 className="h-4 w-4 text-success" />Demo requests</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {data.demoRequests.map((r) => (
-                  <Link key={r.id} to={`/marketing/demo-requests?lead=${r.id}`} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm hover:bg-muted/50">
+                  <Link key={r.id} to={`/marketing/leads/${r.id}`} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm hover:bg-muted/50">
                     <span><b>{r.fullName}</b> · {r.academyName}<span className="block text-xs text-muted-foreground">{when(r.createdAtUtc)}</span></span>
                     <Badge variant="outline">{r.status}</Badge>
                   </Link>

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Archive, ChevronDown, Clock3, Copy, Download, Handshake, LayoutGrid, List, Loader2, MessageCircle, Search, Sparkles, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Archive, ChevronDown, Clock3, Download, Handshake, LayoutGrid, List, Loader2, MessageCircle, Search, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -10,16 +10,11 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { apiEnabled } from "@/lib/api";
 import { useApiData } from "@/api/hooks";
 import {
   listPlatformDemoRequestsPaged,
-  getMarketingLead,
-  getMarketingLeadRecommendation,
-  logMarketingLeadActivity,
   bulkUpdateMarketingLeads,
   restoreMarketingLead,
   deletePlatformDemoRequest,
@@ -27,11 +22,13 @@ import {
   updatePlatformDemoRequestStatus,
   type ApiPlatformDemoRequest,
   type ApiPlatformDemoRequestStatus,
-  type ApiMarketingLeadDetail,
 } from "@/api/marketing";
 import { formatDate } from "@/lib/utils";
-import { LeadStageBadge, LeadStagePanel } from "./LeadStagePanel";
-import { LeadDealPanel, LeadLogPanel, LeadTasksPanel } from "./LeadCrmPanels";
+import { LeadStageBadge } from "./LeadStagePanel";
+import { inr } from "@/api/crm";
+import { StagePipeline } from "@/features/marketingConsole/crm/StagePipeline";
+import { WhatsAppDialog } from "@/features/marketingConsole/crm/WhatsAppDialog";
+import { leadPath } from "@/features/marketingConsole/crm/hooks";
 import { AddLeadDialog, BulkLeadsDialog, ImportLeadsDialog } from "./LeadIntakeDialogs";
 import { useCrmMe, useCrmTeam } from "@/features/marketingConsole/crm/hooks";
 import { LEAD_STAGE_LABEL, type ApiLeadStage } from "@/api/marketing";
@@ -67,18 +64,6 @@ const STATUS_VARIANT: Record<ApiPlatformDemoRequestStatus, "warning" | "default"
   Converted: "success",
   Closed: "outline",
 };
-const toLocalInput = (iso?: string | null) => iso ? new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
-
-function defaultWhatsAppMessage(lead: ApiPlatformDemoRequest) {
-  return `Hi ${lead.fullName}, thank you for your interest in Meet to Manage for ${lead.academyName}. I’m following up about your platform demo request. When would be a convenient time to speak?`;
-}
-
-function whatsappLink(lead: ApiPlatformDemoRequest, message: string) {
-  let number = lead.phone.replace(/\D/g, "");
-  if (number.length === 10) number = `91${number}`;
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
-}
-
 export default function DemoRequests() {
   const { toast } = useToast();
   const live = apiEnabled();
@@ -107,21 +92,16 @@ export default function DemoRequests() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleteRequest, setDeleteRequest] = useState<ApiPlatformDemoRequest | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [detail, setDetail] = useState<ApiMarketingLeadDetail | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [recommendation, setRecommendation] = useState<Awaited<ReturnType<typeof getMarketingLeadRecommendation>> | null>(null);
-  const [notes, setNotes] = useState("");
-  const [owner, setOwner] = useState("");
-  const [followUp, setFollowUp] = useState("");
   const [whatsAppLead, setWhatsAppLead] = useState<ApiPlatformDemoRequest | null>(null);
-  const [whatsAppMessage, setWhatsAppMessage] = useState("");
-  const [whatsAppTemplate, setWhatsAppTemplate] = useState("follow-up");
-  const [whatsAppFollowUpDays, setWhatsAppFollowUpDays] = useState(2);
-  const [teamUpdate, setTeamUpdate] = useState("");
+  const navigate = useNavigate();
   const now = Date.now();
-  const overdueCount = requests.filter(r => r.nextFollowUpAtUtc && new Date(r.nextFollowUpAtUtc).getTime() < now && !["Converted", "Closed"].includes(r.status)).length;
+  const overdueCount = requests.filter(r => r.nextFollowUpAtUtc && new Date(r.nextFollowUpAtUtc).getTime() < now && r.stage !== "Customer" && r.stage !== "Lost").length;
   const hotCount = requests.filter(r => r.leadTemperature === "Hot").length;
   const duplicateCount = requests.filter(r => r.isDuplicate).length;
+  const openLeads = requests.filter((r) => r.stage !== "Customer" && r.stage !== "Lost");
+  const openCount = openLeads.length;
+  const openValue = openLeads.reduce((sum, r) => sum + (r.expectedMonthlyValue ?? 0), 0);
+  const demosSoon = requests.filter((r) => r.stage === "DemoBooked" && r.demoAtUtc && new Date(r.demoAtUtc).getTime() >= now && new Date(r.demoAtUtc).getTime() < now + 7 * 86_400_000).length;
 
   async function changeStatus(request: ApiPlatformDemoRequest, status: ApiPlatformDemoRequestStatus) {
     if (!live) {
@@ -178,71 +158,17 @@ export default function DemoRequests() {
     setBusyId(null);
   }
 
-  // ?lead=<id> (from a visitor's journey page) opens that lead's workspace straight away.
+  // ?lead=<id> (old links from journeys, tasks and customers) now opens the lead's own page.
   const [searchParams] = useSearchParams();
   const leadParam = searchParams.get("lead");
-  useEffect(() => {
-    if (leadParam && live) void openLead({ id: leadParam } as ApiPlatformDemoRequest);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the link's lead id changes
-  }, [leadParam]);
-
-  async function openLead(row: ApiPlatformDemoRequest) {
-    if (!live) return;
-    setDetail(null); setRecommendation(null); setNotes(""); setTeamUpdate(""); setDetailOpen(true);
-    const ok = await runAction(async () => { const value = await getMarketingLead(row.id); setDetail(value); setNotes(value.lead.internalNotes ?? ""); setOwner(value.lead.assignedToUserId ?? ""); setFollowUp(toLocalInput(value.lead.nextFollowUpAtUtc)); }, "Couldn't open lead");
-    if (!ok) setDetailOpen(false);
-  }
-  async function saveNotes() {
-    if (!detail) return;
-    const id = detail.lead.id;
-    await runAction(async () => { await updatePlatformDemoRequest(id, { internalNotes: notes }); setDetail(await getMarketingLead(id)); reload(); }, "Couldn't save notes", "Lead notes saved");
-  }
-  async function analyzeLead() {
-    if (!detail) return;
-    const id = detail.lead.id;
-    await runAction(async () => setRecommendation(await getMarketingLeadRecommendation(id)), "Couldn't analyze lead");
-  }
-  async function saveCrmFields() {
-    if (!detail) return;
-    const id = detail.lead.id;
-    await runAction(async () => { const member = team.find((m) => m.userId === owner); await updatePlatformDemoRequest(id, { ...(member ? { assignedToUserId: member.userId, assignedTo: member.name } : {}), nextFollowUpAtUtc: followUp ? new Date(followUp).toISOString() : undefined }); const value = await getMarketingLead(id); setDetail(value); await reload(); }, "Couldn't update lead", "CRM details updated");
-  }
+  const openLead = (row: ApiPlatformDemoRequest) => navigate(leadPath(row.id));
   async function bulk(status?: ApiPlatformDemoRequestStatus, archive = false) {
     if (selected.size === 0) return;
     const ok = await runAction(async () => { await bulkUpdateMarketingLeads({ ids: [...selected], status, archive }); reload(); }, "Couldn't update leads", archive ? "Leads archived" : "Leads updated");
     if (ok) setSelected(new Set());
   }
   async function restoreLead(id: string) { await runAction(async () => { await restoreMarketingLead(id); reload(); }, "Couldn't restore lead", "Lead restored"); }
-  function prepareWhatsApp(lead: ApiPlatformDemoRequest, template = "follow-up") {
-    const messages: Record<string, string> = {
-      "follow-up": defaultWhatsAppMessage(lead),
-      demo: `Hi ${lead.fullName}, this is a reminder about your Meet to Manage demo for ${lead.academyName}. Please let me know a suitable date and time, and I’ll arrange it for you.`,
-      pricing: `Hi ${lead.fullName}, thank you for considering Meet to Manage for ${lead.academyName}. I can help you understand the plans and recommend the right setup based on your students, teachers and branches. May I ask how many students you currently manage?`,
-      checkin: `Hi ${lead.fullName}, I wanted to check whether you still need help evaluating Meet to Manage for ${lead.academyName}. I’m happy to answer questions or arrange a quick demo.`,
-    };
-    setWhatsAppLead(lead); setWhatsAppTemplate(template); setWhatsAppMessage(messages[template]); setWhatsAppFollowUpDays(2);
-  }
-  function changeWhatsAppTemplate(template: string) { if (whatsAppLead) prepareWhatsApp(whatsAppLead, template); }
-  async function openAdvancedWhatsApp() {
-    if (!whatsAppLead || !whatsAppMessage.trim()) return;
-    window.open(whatsappLink(whatsAppLead, whatsAppMessage.trim()), "_blank", "noopener,noreferrer");
-    if (live) {
-      const next = new Date(); next.setDate(next.getDate() + whatsAppFollowUpDays); next.setHours(10, 0, 0, 0);
-      await runAction(async () => { await updatePlatformDemoRequest(whatsAppLead.id, { status: whatsAppLead.status === "New" ? "Contacted" : whatsAppLead.status, nextFollowUpAtUtc: next.toISOString() }); await logMarketingLeadActivity(whatsAppLead.id, { type: "WhatsApp sent", detail: whatsAppMessage.trim() }); await reload(); if (detail?.lead.id === whatsAppLead.id) setDetail(await getMarketingLead(whatsAppLead.id)); }, "WhatsApp opened, but CRM tracking couldn't be updated", "Message shared with the CRM team");
-    }
-    setWhatsAppLead(null);
-  }
-  async function moveLead(id: string, status: ApiPlatformDemoRequestStatus) {
-    setBusyId(id);
-    await runAction(async () => { await updatePlatformDemoRequestStatus(id, status); await reload(); }, "Couldn't move lead", `Lead moved to ${status}`);
-    setBusyId(null);
-  }
-  async function shareTeamUpdate() {
-    if (!detail || !teamUpdate.trim()) return;
-    const id = detail.lead.id;
-    const ok = await runAction(async () => { await logMarketingLeadActivity(id, { type: "WhatsApp reply", detail: teamUpdate.trim() }); setDetail(await getMarketingLead(id)); }, "Couldn't share this update", "WhatsApp update shared with team");
-    if (ok) setTeamUpdate("");
-  }
+  const prepareWhatsApp = (lead: ApiPlatformDemoRequest) => setWhatsAppLead(lead);
 
   function exportCsv() {
     const rows = [["Name", "Email", "Phone", "Academy", "Status", "Score", "Source", "Campaign", "Follow-up", "Submitted"], ...requests.map(r => [r.fullName, r.workEmail, r.phone, r.academyName, r.status, String(r.leadScore ?? 0), r.source ?? "Direct", r.campaign ?? "", r.nextFollowUpAtUtc ?? "", r.createdAtUtc])];
@@ -343,6 +269,8 @@ export default function DemoRequests() {
     [busyId, archivedOnly, me.isManager]
   );
 
+  if (leadParam) return <Navigate to={leadPath(leadParam)} replace />;
+
   return (
     <div>
       <PageHeader
@@ -368,9 +296,11 @@ export default function DemoRequests() {
         <div className="flex flex-wrap gap-2"><select aria-label="Owner" className="h-9 rounded-md border bg-background px-2 text-sm" value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}><option value="">{me.role === "Sales" ? "Mine + unassigned" : "All owners"}</option><option value="mine">Mine</option><option value="unassigned">Unassigned</option>{me.role !== "Sales" && team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select><select aria-label="Stage" className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => { setStageFilter(e.target.value as ApiLeadStage | ""); setPage(1); }}><option value="">All stages</option>{(Object.keys(LEAD_STAGE_LABEL) as ApiLeadStage[]).map((s) => <option key={s} value={s}>{LEAD_STAGE_LABEL[s]}</option>)}</select><Input aria-label="Region" className="h-9 w-32" placeholder="Region" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value); setPage(1); }} /><Input aria-label="What they teach" className="h-9 w-36" placeholder="Phonics, Abacus…" value={segmentFilter} onChange={(e) => { setSegmentFilter(e.target.value); setPage(1); }} /><Button size="sm" variant={overdueOnly ? "default" : "outline"} onClick={() => { setOverdueOnly(v => !v); setPage(1); }}><Clock3 className="h-4 w-4" />Overdue</Button><div className="inline-flex rounded-md border p-0.5"><Button size="sm" variant={view === "pipeline" ? "default" : "ghost"} onClick={() => { setView("pipeline"); setPage(1); }}><LayoutGrid className="h-4 w-4" />Pipeline</Button><Button size="sm" variant={view === "table" ? "default" : "ghost"} onClick={() => { setView("table"); setPage(1); }}><List className="h-4 w-4" />List</Button></div></div>
       </div>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Open pipeline</p><p className="text-2xl font-bold">{inr(openValue)}<span className="text-sm font-normal text-muted-foreground">/mo</span></p><p className="text-xs text-muted-foreground">{openCount} open lead{openCount === 1 ? "" : "s"} shown</p></div>
         <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Hot leads</p><p className="text-2xl font-bold">{hotCount}</p></div>
-        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Overdue follow-ups</p><p className={overdueCount ? "text-2xl font-bold text-destructive" : "text-2xl font-bold"}>{overdueCount}</p></div>
+        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Demos in the next 7 days</p><p className="text-2xl font-bold">{demosSoon}</p></div>
+        <button type="button" onClick={() => { setOverdueOnly((v) => !v); setPage(1); }} className={`rounded-xl border bg-card p-4 text-start transition ${overdueOnly ? "ring-2 ring-primary" : "hover:bg-muted/40"}`}><p className="text-xs text-muted-foreground">Overdue follow-ups</p><p className={overdueCount ? "text-2xl font-bold text-destructive" : "text-2xl font-bold"}>{overdueCount}</p></button>
         <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Possible duplicates</p><p className="text-2xl font-bold">{duplicateCount}</p></div>
       </div>
 
@@ -379,17 +309,7 @@ export default function DemoRequests() {
       ) : requests.length === 0 && !error ? (
         <EmptyState icon={Handshake} title="No platform demo requests yet" description="Submissions from the public /get-started page will show up here." />
       ) : view === "pipeline" && !archivedOnly ? (
-        <div className="grid gap-4 xl:grid-cols-4">
-          {STATUS_ORDER.map((status) => { const leads = requests.filter((r) => r.status === status); return <section key={status} className="min-h-72 rounded-xl border bg-muted/25 p-3" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData("text/lead-id"); if (id) void moveLead(id, status); }}>
-            <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${status === "New" ? "bg-amber-500" : status === "Contacted" ? "bg-blue-500" : status === "Converted" ? "bg-emerald-500" : "bg-slate-400"}`} /><h2 className="font-semibold">{status}</h2></div><Badge variant="outline">{leads.length}</Badge></div>
-            <div className="space-y-3">{leads.map((lead) => <article key={lead.id} draggable onDragStart={(e) => e.dataTransfer.setData("text/lead-id", lead.id)} onClick={() => void openLead(lead)} className="cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <div className="flex items-start justify-between gap-2"><div><p className="font-semibold leading-tight">{lead.academyName}</p><p className="mt-0.5 text-xs text-muted-foreground">{lead.fullName}</p></div><Badge variant={lead.leadTemperature === "Hot" ? "destructive" : lead.leadTemperature === "Warm" ? "warning" : "muted"}>{lead.leadScore ?? 0}</Badge></div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5"><LeadStageBadge stage={lead.stage} />{lead.stage === "DemoBooked" && lead.demoAtUtc && <span className="text-xs text-muted-foreground">{formatDate(lead.demoAtUtc, "datetime")}</span>}{lead.highIntentAtUtc && lead.stage !== "Customer" && <span className="text-xs font-semibold text-destructive">High intent</span>}</div>
-              {lead.message && <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{lead.message}</p>}
-              <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground"><span>{lead.source ?? "Direct"}</span><span className={lead.nextFollowUpAtUtc && new Date(lead.nextFollowUpAtUtc).getTime() < Date.now() && !["Converted", "Closed"].includes(lead.status) ? "font-semibold text-destructive" : ""}>{lead.nextFollowUpAtUtc ? formatDate(lead.nextFollowUpAtUtc, "datetime") : "No follow-up"}</span></div><Button size="sm" variant="outline" className="mt-2 w-full text-emerald-700" onClick={(e) => { e.stopPropagation(); prepareWhatsApp(lead); }}><MessageCircle className="h-4 w-4" />WhatsApp</Button>
-            </article>)}{leads.length === 0 && <div className="rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground">Drop leads here</div>}</div>
-          </section>; })}
-        </div>
+        <StagePipeline leads={requests} canWrite={me.canWrite} onOpen={openLead} onWhatsApp={prepareWhatsApp} onChanged={reload} />
       ) : (
         <DataTable
           data={requests}
@@ -400,7 +320,7 @@ export default function DemoRequests() {
           emptyDescription="Submissions from the public /get-started page will show up here."
           error={live ? error : null}
           onRetry={reload}
-          onRowClick={(row) => void openLead(row)}
+          onRowClick={openLead}
           selectable
           selectedKeys={selected}
           onSelectionChange={setSelected}
@@ -409,7 +329,7 @@ export default function DemoRequests() {
         />
       )}
 
-      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onCreated={(id) => { reload(); void openLead({ id } as ApiPlatformDemoRequest); }} />
+      <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onCreated={(id) => navigate(leadPath(id))} />
       <ImportLeadsDialog open={importOpen} onOpenChange={setImportOpen} onImported={reload} />
       <BulkLeadsDialog leadIds={[...selected]} open={bulkOpen} onOpenChange={(v) => { setBulkOpen(v); if (!v) setSelected(new Set()); }} onDone={reload} />
       <ConfirmDialog
@@ -421,24 +341,7 @@ export default function DemoRequests() {
         destructive
         onConfirm={removeRequest}
       />
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>{detail?.lead.fullName ?? "Lead workspace"}</DialogTitle><DialogDescription>{detail ? `${detail.lead.academyName} · ${detail.lead.workEmail} · ${detail.lead.phone}` : "Loading lead…"}</DialogDescription></DialogHeader>
-        {!detail ? <Loader2 className="h-5 w-5 animate-spin" /> : <div className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Score</p><p className="font-bold">{detail.lead.leadTemperature} · {detail.lead.leadScore}</p>{detail.lead.scoreReasons && detail.lead.scoreReasons.length > 0 && <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">{detail.lead.scoreReasons.map((r) => <li key={r}>{r}</li>)}</ul>}</div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Source</p><p className="font-bold">{detail.lead.source ?? "Direct"}</p></div><div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Status</p><p className="font-bold">{detail.lead.status}</p></div></div>
-          <Button className="w-full bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => prepareWhatsApp(detail.lead)}><MessageCircle className="h-4 w-4" />Prepare WhatsApp follow-up</Button>
-          <LeadStagePanel lead={detail.lead} live={live} onError={(title, description) => toast({ variant: "error", title, description })} onChanged={(_, message) => { toast({ variant: "success", title: message }); void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })(); }} />
-          <LeadLogPanel lead={detail.lead} onSaved={() => void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })()} />
-          <LeadTasksPanel key={`tasks-${detail.lead.id}`} lead={detail.lead} version={detail.activity.length} />
-          <LeadDealPanel key={`deal-${detail.lead.id}-${detail.lead.expectedMonthlyValue}-${detail.lead.region}`} lead={detail.lead} onSaved={() => void (async () => { setDetail(await getMarketingLead(detail.lead.id)); await reload(); })()} />
-          <div className="rounded-xl border p-4"><h3 className="mb-3 font-semibold">Lead management</h3><div className="grid gap-3 sm:grid-cols-2"><label className="space-y-1 text-sm"><span className="font-medium">Owner</span><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={owner} onChange={(e) => setOwner(e.target.value)} disabled={!me.canWrite}><option value="">{detail.lead.assignedTo && !detail.lead.assignedToUserId ? detail.lead.assignedTo : "Unassigned"}</option>{team.filter((m) => me.role !== "Sales" || m.userId === me.userId).map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select></label><label className="space-y-1 text-sm"><span className="font-medium">Next follow-up</span><Input type="datetime-local" value={followUp} onChange={(e) => setFollowUp(e.target.value)} /></label></div><Button className="mt-3" size="sm" onClick={() => void saveCrmFields()}>Save CRM details</Button></div>
-          <div><p className="mb-2 text-sm font-semibold">Internal notes</p><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4} /><Button className="mt-2" size="sm" onClick={() => void saveNotes()}>Save notes</Button></div>
-          <div className="rounded-xl border bg-primary/5 p-4"><div className="flex justify-between gap-3"><h3 className="font-semibold">AI next action</h3><Button size="sm" variant="outline" onClick={() => void analyzeLead()}><Sparkles className="h-4 w-4" />Analyze</Button></div>{recommendation && <div className="mt-3 space-y-2 text-sm"><p>{recommendation.summary}</p><p><b>Next:</b> {recommendation.nextAction}</p><p><b>{recommendation.suggestedChannel}:</b> {recommendation.suggestedMessage}</p></div>}</div>
-          <div className="rounded-xl border p-4"><h3 className="font-semibold">Share WhatsApp response with team</h3><p className="mb-2 text-xs text-muted-foreground">Paste or summarize what the lead replied. Everyone using the Marketing Console will see it in the timeline.</p><Textarea rows={3} value={teamUpdate} onChange={(e) => setTeamUpdate(e.target.value)} placeholder="Example: Customer asked for a demo on Friday at 4 PM…" /><Button className="mt-2" size="sm" onClick={() => void shareTeamUpdate()} disabled={!teamUpdate.trim()}>Share update</Button></div>
-          <div><h3 className="mb-2 font-semibold">Timeline</h3><div className="space-y-2">{detail.activity.map(a => <div key={a.id} className="rounded-lg border p-3 text-sm"><div className="flex justify-between gap-3"><b>{a.type}</b><span className="text-xs text-muted-foreground">{new Date(a.createdAtUtc).toLocaleString()}</span></div><p className="mt-1 text-muted-foreground">{a.detail}</p></div>)}</div></div>
-        </div>}
-      </DialogContent></Dialog>
-      <Dialog open={whatsAppLead !== null} onOpenChange={(open) => { if (!open) setWhatsAppLead(null); }}><DialogContent className="max-w-xl"><DialogHeader><DialogTitle className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-emerald-600" />WhatsApp follow-up</DialogTitle><DialogDescription>{whatsAppLead ? `${whatsAppLead.fullName} · ${whatsAppLead.phone} · ${whatsAppLead.academyName}` : "Prepare a message"}</DialogDescription></DialogHeader>
-        <div className="space-y-4"><label className="block space-y-1 text-sm"><span className="font-medium">Message template</span><select className="h-10 w-full rounded-md border bg-background px-3" value={whatsAppTemplate} onChange={(e) => changeWhatsAppTemplate(e.target.value)}><option value="follow-up">Initial follow-up</option><option value="demo">Demo reminder</option><option value="pricing">Pricing qualification</option><option value="checkin">No-response check-in</option></select></label><label className="block space-y-1 text-sm"><span className="font-medium">Message preview — edit before opening</span><Textarea rows={7} value={whatsAppMessage} onChange={(e) => setWhatsAppMessage(e.target.value)} /></label><label className="block space-y-1 text-sm"><span className="font-medium">Schedule next follow-up</span><select className="h-10 w-full rounded-md border bg-background px-3" value={whatsAppFollowUpDays} onChange={(e) => setWhatsAppFollowUpDays(Number(e.target.value))}><option value={1}>Tomorrow at 10:00</option><option value={2}>In 2 days at 10:00</option><option value={3}>In 3 days at 10:00</option><option value={7}>In 1 week at 10:00</option></select></label><div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Opening WhatsApp marks a New lead as Contacted and schedules this follow-up. You still review and press Send inside WhatsApp.</div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><Button variant="outline" onClick={() => { void navigator.clipboard.writeText(whatsAppMessage); toast({ variant: "success", title: "Message copied" }); }}><Copy className="h-4 w-4" />Copy message</Button><Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => void openAdvancedWhatsApp()} disabled={!whatsAppMessage.trim()}><MessageCircle className="h-4 w-4" />Open WhatsApp & track</Button></div></div>
-      </DialogContent></Dialog>
+      <WhatsAppDialog lead={whatsAppLead} onOpenChange={(open) => { if (!open) setWhatsAppLead(null); }} onTracked={reload} />
     </div>
   );
 }

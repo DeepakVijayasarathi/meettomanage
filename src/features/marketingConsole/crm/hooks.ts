@@ -46,3 +46,6 @@ export function useRun() {
     catch (err) { toast({ variant: "error", title: "Couldn't save", description: userMessage(err) }); return false; }
   };
 }
+
+/** The lead's own page in the marketing console. */
+export const leadPath = (id: string) => `/marketing/leads/${id}`;
