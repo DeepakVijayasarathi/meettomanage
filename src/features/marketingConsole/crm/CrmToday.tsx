@@ -7,6 +7,8 @@ import { getCrmToday, type CrmLeadBrief, type CrmToday as Today } from "@/api/cr
 import { LEAD_STAGE_LABEL } from "@/api/marketing";
 import { TaskForm, TaskList } from "./shared";
 import { useCrmMe, when } from "./hooks";
+import { ProgressBar, StuckHeading, StuckList, useCrmStuck, useCrmTargets } from "./Insights";
+import { inr } from "@/api/crm";
 
 const EMPTY: Today = { overdue: [], today: [], upcoming: [], demosToday: [], waitingForReply: [], followUpsDue: [] };
 
@@ -28,6 +30,10 @@ function LeadList({ leads, empty, timeLabel }: { leads: CrmLeadBrief[]; empty: s
 export default function CrmToday() {
   const me = useCrmMe();
   const { data, loading, error, reload } = useApiData(getCrmToday, EMPTY, EMPTY, { cacheKey: "crm-today", ttlMs: 10_000 });
+  const { targets } = useCrmTargets();
+  const { stuck } = useCrmStuck();
+  const mine = targets.rows.find((r) => r.userId === me.userId);
+  const pace = targets.dayOfMonth / targets.daysInMonth;
   const ago = (iso: string | null) => { if (!iso) return ""; const h = (Date.now() - new Date(iso).getTime()) / 3_600_000; return h < 1 ? "just now" : h < 48 ? `${Math.round(h)} h ago` : `${Math.round(h / 24)} days ago`; };
 
   return (
@@ -36,11 +42,18 @@ export default function CrmToday() {
       {error && <InlineAlert variant="warning" className="mb-4">Couldn't load your day ({error}). <button type="button" className="underline" onClick={() => reload()}>Retry</button></InlineAlert>}
       {loading && <div className="mb-4 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
-        {[{ label: "Overdue tasks", value: data.overdue.length, danger: true }, { label: "Due today", value: data.today.length }, { label: "Demos today", value: data.demosToday.length }, { label: "Waiting for a reply", value: data.waitingForReply.length, danger: true }].map((k) => (
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {[{ label: "Overdue tasks", value: data.overdue.length, danger: true }, { label: "Due today", value: data.today.length }, { label: "Demos today", value: data.demosToday.length }, { label: "Waiting for a reply", value: data.waitingForReply.length, danger: true }, { label: "Stuck leads", value: stuck.length, danger: true }].map((k) => (
           <div key={k.label} className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">{k.label}</p><p className={k.danger && k.value ? "text-2xl font-bold text-destructive" : "text-2xl font-bold"}>{k.value}</p></div>
         ))}
       </div>
+
+      {mine && (mine.wonTarget || mine.valueTarget) ? (
+        <section className="mb-6 rounded-xl border bg-card p-5">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-semibold">Your target this month</h2><span className="text-xs text-muted-foreground">Day {targets.dayOfMonth} of {targets.daysInMonth}</span></div>
+          <div className="grid gap-4 sm:grid-cols-2"><ProgressBar label="Deals won" value={mine.won} target={mine.wonTarget} pace={pace} /><ProgressBar label="New monthly revenue" value={mine.wonValue} target={mine.valueTarget} pace={pace} format={inr} /></div>
+        </section>
+      ) : null}
 
       {me.canWrite && <section className="mb-6 rounded-xl border bg-card p-5"><h2 className="mb-3 font-semibold">Add a task</h2><TaskForm onSaved={reload} /></section>}
 
@@ -53,6 +66,7 @@ export default function CrmToday() {
         <div className="space-y-6">
           <section className="rounded-xl border bg-card p-5"><h2 className="mb-2 flex items-center gap-2 font-semibold"><CalendarCheck2 className="h-4 w-4" />Demos today</h2><LeadList leads={data.demosToday} empty="No demos today." timeLabel={(l) => when(l.atUtc)} /></section>
           <section className="rounded-xl border bg-card p-5"><h2 className="mb-2 flex items-center gap-2 font-semibold"><Inbox className="h-4 w-4" />Waiting for a first reply</h2><LeadList leads={data.waitingForReply} empty="Every new lead has been contacted." timeLabel={(l) => ago(l.atUtc)} /></section>
+          <section className="rounded-xl border bg-card p-5"><StuckHeading count={stuck.length} /><StuckList stuck={stuck} limit={8} /></section>
           <section className="rounded-xl border bg-card p-5"><h2 className="mb-2 font-semibold">Follow-ups due</h2><LeadList leads={data.followUpsDue} empty="No lead follow-ups due." timeLabel={(l) => when(l.atUtc)} /></section>
         </div>
       </div>

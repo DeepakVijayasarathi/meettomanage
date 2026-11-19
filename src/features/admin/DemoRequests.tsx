@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { Archive, ChevronDown, Clock3, Download, Handshake, LayoutGrid, List, Loader2, MessageCircle, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Archive, ChevronDown, Clock3, Download, Handshake, LayoutGrid, List, Loader2, MessageCircle, Search, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,7 @@ import { inr } from "@/api/crm";
 import { StagePipeline } from "@/features/marketingConsole/crm/StagePipeline";
 import { WhatsAppDialog } from "@/features/marketingConsole/crm/WhatsAppDialog";
 import { leadPath } from "@/features/marketingConsole/crm/hooks";
+import { useCrmStuck } from "@/features/marketingConsole/crm/Insights";
 import { AddLeadDialog, BulkLeadsDialog, ImportLeadsDialog } from "./LeadIntakeDialogs";
 import { useCrmMe, useCrmTeam } from "@/features/marketingConsole/crm/hooks";
 import { LEAD_STAGE_LABEL, type ApiLeadStage } from "@/api/marketing";
@@ -87,7 +88,10 @@ export default function DemoRequests() {
   const fallbackPage = { items: DEMO_REQUESTS, totalCount: DEMO_REQUESTS.length, page: 1, pageSize: 25 };
   const emptyPage = { items: [] as ApiPlatformDemoRequest[], totalCount: 0, page: 1, pageSize: 25 };
   const { data: pageData, loading, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, pageSize: view === "pipeline" ? 100 : 25, search: search.trim() || undefined, overdueOnly, archivedOnly, ...ownerQuery, stage: stageFilter || undefined, region: regionFilter.trim() || undefined, segment: segmentFilter.trim() || undefined }), fallbackPage, emptyPage, { cacheKey: `marketing-leads-${view}-${page}-${archivedOnly}-${overdueOnly}-${search.trim()}-${filterKey}`, ttlMs: 15_000 });
-  const requests = pageData.items;
+  const { stuck, reload: reloadStuck } = useCrmStuck();
+  const stuckMap = useMemo(() => new Map(stuck.map((l) => [l.id, l.reason])), [stuck]);
+  const [stuckOnly, setStuckOnly] = useState(false);
+  const requests = stuckOnly ? pageData.items.filter((r) => stuckMap.has(r.id)) : pageData.items;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleteRequest, setDeleteRequest] = useState<ApiPlatformDemoRequest | null>(null);
@@ -293,7 +297,7 @@ export default function DemoRequests() {
 
       <div className="mb-4 flex flex-col gap-3 rounded-xl border bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-md"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9" placeholder="Search lead, academy, email or phone…" /></div>
-        <div className="flex flex-wrap gap-2"><select aria-label="Owner" className="h-9 rounded-md border bg-background px-2 text-sm" value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}><option value="">{me.role === "Sales" ? "Mine + unassigned" : "All owners"}</option><option value="mine">Mine</option><option value="unassigned">Unassigned</option>{me.role !== "Sales" && team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select><select aria-label="Stage" className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => { setStageFilter(e.target.value as ApiLeadStage | ""); setPage(1); }}><option value="">All stages</option>{(Object.keys(LEAD_STAGE_LABEL) as ApiLeadStage[]).map((s) => <option key={s} value={s}>{LEAD_STAGE_LABEL[s]}</option>)}</select><Input aria-label="Region" className="h-9 w-32" placeholder="Region" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value); setPage(1); }} /><Input aria-label="What they teach" className="h-9 w-36" placeholder="Phonics, Abacus…" value={segmentFilter} onChange={(e) => { setSegmentFilter(e.target.value); setPage(1); }} /><Button size="sm" variant={overdueOnly ? "default" : "outline"} onClick={() => { setOverdueOnly(v => !v); setPage(1); }}><Clock3 className="h-4 w-4" />Overdue</Button><div className="inline-flex rounded-md border p-0.5"><Button size="sm" variant={view === "pipeline" ? "default" : "ghost"} onClick={() => { setView("pipeline"); setPage(1); }}><LayoutGrid className="h-4 w-4" />Pipeline</Button><Button size="sm" variant={view === "table" ? "default" : "ghost"} onClick={() => { setView("table"); setPage(1); }}><List className="h-4 w-4" />List</Button></div></div>
+        <div className="flex flex-wrap gap-2"><select aria-label="Owner" className="h-9 rounded-md border bg-background px-2 text-sm" value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}><option value="">{me.role === "Sales" ? "Mine + unassigned" : "All owners"}</option><option value="mine">Mine</option><option value="unassigned">Unassigned</option>{me.role !== "Sales" && team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select><select aria-label="Stage" className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => { setStageFilter(e.target.value as ApiLeadStage | ""); setPage(1); }}><option value="">All stages</option>{(Object.keys(LEAD_STAGE_LABEL) as ApiLeadStage[]).map((s) => <option key={s} value={s}>{LEAD_STAGE_LABEL[s]}</option>)}</select><Input aria-label="Region" className="h-9 w-32" placeholder="Region" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value); setPage(1); }} /><Input aria-label="What they teach" className="h-9 w-36" placeholder="Phonics, Abacus…" value={segmentFilter} onChange={(e) => { setSegmentFilter(e.target.value); setPage(1); }} /><Button size="sm" variant={overdueOnly ? "default" : "outline"} onClick={() => { setOverdueOnly(v => !v); setPage(1); }}><Clock3 className="h-4 w-4" />Overdue</Button><Button size="sm" variant={stuckOnly ? "default" : "outline"} onClick={() => setStuckOnly((v) => !v)} title="Leads that waited too long in their stage"><AlertTriangle className="h-4 w-4" />Stuck{stuck.length ? ` (${stuck.length})` : ""}</Button><div className="inline-flex rounded-md border p-0.5"><Button size="sm" variant={view === "pipeline" ? "default" : "ghost"} onClick={() => { setView("pipeline"); setPage(1); }}><LayoutGrid className="h-4 w-4" />Pipeline</Button><Button size="sm" variant={view === "table" ? "default" : "ghost"} onClick={() => { setView("table"); setPage(1); }}><List className="h-4 w-4" />List</Button></div></div>
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -309,7 +313,7 @@ export default function DemoRequests() {
       ) : requests.length === 0 && !error ? (
         <EmptyState icon={Handshake} title="No platform demo requests yet" description="Submissions from the public /get-started page will show up here." />
       ) : view === "pipeline" && !archivedOnly ? (
-        <StagePipeline leads={requests} canWrite={me.canWrite} onOpen={openLead} onWhatsApp={prepareWhatsApp} onChanged={reload} />
+        <StagePipeline leads={requests} canWrite={me.canWrite} onOpen={openLead} onWhatsApp={prepareWhatsApp} onChanged={() => { reload(); reloadStuck(); }} stuck={stuckMap} />
       ) : (
         <DataTable
           data={requests}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Bot, CalendarCheck2, Check, CheckCircle2, Copy, Globe, Loader2, Mail, MapPin, MessageCircle, Phone, PhoneCall,
+  ArrowLeft, Bot, Footprints, CalendarCheck2, Check, CheckCircle2, Copy, Globe, Loader2, Mail, MapPin, MessageCircle, Phone, PhoneCall,
   Sparkles, StickyNote, Trash2, Users, Workflow, XCircle,
 } from "lucide-react";
 import { InlineAlert } from "@/components/InlineAlert";
@@ -16,7 +16,7 @@ import { apiEnabled, userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { inr } from "@/api/crm";
 import {
-  deletePlatformDemoRequest, getMarketingLead, getMarketingLeadRecommendation, LEAD_STAGE_LABEL, logMarketingLeadActivity, setLeadStage,
+  deletePlatformDemoRequest, getMarketingLead, getMarketingVisitorDetail, type ApiMarketingVisitorDetail, getMarketingLeadRecommendation, LEAD_STAGE_LABEL, logMarketingLeadActivity, setLeadStage,
   updatePlatformDemoRequest, type ApiLeadStage, type ApiMarketingLeadActivity, type ApiMarketingLeadDetail,
 } from "@/api/marketing";
 import { LeadStageBadge, LeadStagePanel } from "@/features/admin/LeadStagePanel";
@@ -24,6 +24,7 @@ import { LeadDealPanel, LeadLogPanel, LeadTasksPanel } from "@/features/admin/Le
 import { STAGE_PATH, StageMoveDialog } from "./StagePipeline";
 import { WhatsAppDialog } from "./WhatsAppDialog";
 import { SELECT, useCrmMe, useCrmTeam, when } from "./hooks";
+import { useCrmStuck } from "./Insights";
 
 
 
@@ -81,6 +82,7 @@ export default function LeadDetailPage() {
   const [move, setMove] = useState<ApiLeadStage | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const { stuck, reload: reloadStuck } = useCrmStuck();
 
   const load = useCallback(async () => {
     if (!live) { setError("Lead details need the live server."); return; }
@@ -94,7 +96,7 @@ export default function LeadDetailPage() {
 
   async function run(work: () => Promise<unknown>, success: string) {
     if (!live) { toast({ variant: "error", title: "Demo mode", description: "Nothing was changed." }); return false; }
-    try { await work(); toast({ variant: "success", title: success }); await load(); return true; }
+    try { await work(); toast({ variant: "success", title: success }); await load(); reloadStuck(); return true; }
     catch (err) { toast({ variant: "error", title: "Couldn't save", description: userMessage(err) }); return false; }
   }
 
@@ -112,6 +114,7 @@ export default function LeadDetailPage() {
   const inStageDays = Math.floor((Date.now() - new Date(lead.stageChangedAtUtc ?? lead.createdAtUtc).getTime()) / 86_400_000);
   const contactsMade = activity.filter((a) => kindOf(a) === "contact").length;
   const phoneDigits = lead.phone.replace(/[^\d+]/g, "");
+  const stuckReason = stuck.find((x) => x.id === lead.id);
   const initials = lead.academyName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 
   function copy(text: string, what: string) { void navigator.clipboard.writeText(text); setCopied(what); setTimeout(() => setCopied(null), 1500); }
@@ -185,6 +188,8 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </section>
+
+      {stuckReason && <InlineAlert variant="warning"><span><b>Stuck for {stuckReason.days} day{stuckReason.days === 1 ? "" : "s"}:</b> {stuckReason.reason}. Log a call, send a WhatsApp or move it to the right stage.</span></InlineAlert>}
 
       {/* Key numbers at a glance. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -263,6 +268,8 @@ export default function LeadDetailPage() {
             </ul>
           </section>
 
+          <WebsiteJourney visitorId={lead.visitorId} />
+
           <section className="rounded-xl border bg-card p-4">
             <h3 className="mb-3 font-semibold">Owner & follow-up</h3>
             <div className="space-y-3">
@@ -322,6 +329,46 @@ export default function LeadDetailPage() {
           catch (err) { toast({ variant: "error", title: "Couldn't delete the lead", description: userMessage(err) }); }
         }} />
     </div>
+  );
+}
+
+/** What the lead looked at on the website before (and after) enquiring, from their visitor journey. */
+function WebsiteJourney({ visitorId }: { visitorId?: string | null }) {
+  const [data, setData] = useState<ApiMarketingVisitorDetail | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setData(null); setFailed(false);
+    if (!visitorId || !apiEnabled()) return;
+    getMarketingVisitorDetail(visitorId).then(setData, () => setFailed(true));
+  }, [visitorId]);
+
+  const pages = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const v of data?.visits ?? []) for (const p of v.pages) counts.set(p.path, (counts.get(p.path) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [data]);
+  const pricing = pages.filter(([path]) => /pric|plan/i.test(path)).reduce((n, [, c]) => n + c, 0);
+
+  return (
+    <section className="rounded-xl border bg-card p-4">
+      <h3 className="mb-3 flex items-center gap-2 font-semibold"><Footprints className="h-4 w-4" />Website journey</h3>
+      {!visitorId ? <p className="text-sm text-muted-foreground">Added by hand or imported, so there's no website visit to show.</p>
+        : failed ? <p className="text-sm text-muted-foreground">Couldn't load the journey. <Link className="text-primary hover:underline" to={`/marketing/journeys/${encodeURIComponent(visitorId)}`}>Open it</Link></p>
+        : !data ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        : (
+          <div className="space-y-3 text-sm">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-lg bg-muted/50 p-2"><p className="text-lg font-bold">{data.visits.length}</p><p className="text-xs text-muted-foreground">visits</p></div>
+              <div className="rounded-lg bg-muted/50 p-2"><p className="text-lg font-bold">{data.pageViews}</p><p className="text-xs text-muted-foreground">page views</p></div>
+              <div className={cn("rounded-lg p-2", pricing ? "bg-amber-100 dark:bg-amber-950" : "bg-muted/50")}><p className="text-lg font-bold">{pricing}</p><p className="text-xs text-muted-foreground">pricing views</p></div>
+            </div>
+            {pages.length > 0 && <div><p className="mb-1 text-xs font-medium text-muted-foreground">Pages they read most</p>
+              <ul className="space-y-1">{pages.slice(0, 6).map(([path, n]) => <li key={path} className="flex justify-between gap-2"><span className="truncate font-mono text-xs">{path}</span><span className="shrink-0 text-xs text-muted-foreground">{n}×</span></li>)}</ul></div>}
+            <p className="text-xs text-muted-foreground">First visit {ago(data.firstSeenUtc)}, last {ago(data.lastSeenUtc)}{data.country ? ` · ${data.country}` : ""}{data.chats.length ? ` · ${data.chats.length} chat${data.chats.length === 1 ? "" : "s"}` : ""}</p>
+            <Link className="inline-block text-sm text-primary hover:underline" to={`/marketing/journeys/${encodeURIComponent(visitorId)}`}>Open the full journey →</Link>
+          </div>
+        )}
+    </section>
   );
 }
 

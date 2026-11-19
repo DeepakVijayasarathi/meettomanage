@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useApiData } from "@/api/hooks";
 import { addCrmMember, CRM_ROLE_HELP, getCrmReport, inr, updateCrmMember, type CrmMember, type CrmOwnerRow, type CrmReport, type CrmRole } from "@/api/crm";
 import { SELECT, useCrmMe, useCrmTeam, useRun } from "./hooks";
+import { TargetsPanel } from "./Insights";
 
 const ROLES: CrmRole[] = ["Manager", "Sales", "Viewer"];
 const ROLE_LABEL: Record<CrmRole, string> = { Manager: "Manager", Sales: "Sales rep", Viewer: "Viewer" };
@@ -84,7 +85,7 @@ export default function CrmTeam() {
         actions={<Button onClick={() => setAdding(true)}><UserPlus className="h-4 w-4" />Add person</Button>} />
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Active people</p><p className="text-2xl font-bold">{activeMembers.length}</p><p className="text-xs text-muted-foreground">{ROLES.map((r) => `${activeMembers.filter((m) => m.role === r).length} ${ROLE_PLURAL[r]}`).join(" · ")}</p></div>
+        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Active people</p><p className="text-2xl font-bold">{activeMembers.length}</p><p className="text-xs text-muted-foreground">{ROLES.map((r) => { const n = activeMembers.filter((m) => m.role === r).length; return `${n} ${n === 1 ? ROLE_LABEL[r].toLowerCase() : ROLE_PLURAL[r]}`; }).join(" · ")}</p></div>
         <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Open leads owned</p><p className="text-2xl font-bold">{totalOpen}</p>{unassigned && unassigned.openLeads > 0 && <p className="text-xs text-warning">{unassigned.openLeads} not assigned to anyone</p>}</div>
         <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Won, last {days} days</p><p className="text-2xl font-bold">{totalWon}</p></div>
         <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">New monthly revenue won</p><p className="text-2xl font-bold">{inr(report.wonMonthlyValue)}</p></div>
@@ -141,6 +142,8 @@ export default function CrmTeam() {
       )}
       <p className="mt-2 text-xs text-muted-foreground">New leads, demos and won count the selected period. Open leads, open value and tasks are as of now. Win rate is won ÷ (won + lost) in the period.</p>
       <p className="mt-1 text-xs text-muted-foreground">People sign in to the marketing console with their e-mail and 4-digit PIN. Share the PIN with them yourself; it isn't e-mailed.</p>
+
+      <div className="mt-8"><TargetsPanel editable /></div>
 
       <section className="mt-8 rounded-xl border bg-card p-5">
         <h2 className="font-semibold">What each role can do</h2>

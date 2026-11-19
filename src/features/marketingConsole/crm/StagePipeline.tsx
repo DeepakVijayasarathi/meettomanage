@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarCheck2, Flame, Loader2, MessageCircle, Phone } from "lucide-react";
+import { AlertTriangle, CalendarCheck2, Flame, Loader2, MessageCircle, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,8 +101,10 @@ const NEEDS_DIALOG: ApiLeadStage[] = ["DemoBooked", "DemoDone", "Lost"];
 /**
  * The lead pipeline by lifecycle stage: one column per stage with its count and deal value, drag a card to move it.
  */
-export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged }: {
+export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged, stuck }: {
   leads: ApiPlatformDemoRequest[]; canWrite: boolean; onOpen: (lead: ApiPlatformDemoRequest) => void; onWhatsApp: (lead: ApiPlatformDemoRequest) => void; onChanged: () => void;
+  /** Lead id → why it's stuck, for the warning on its card. */
+  stuck?: Map<string, string>;
 }) {
   const { toast } = useToast();
   const [showLost, setShowLost] = useState(false);
@@ -160,6 +162,7 @@ export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged }
                         {stage === "DemoBooked" && lead.demoAtUtc && <span className="inline-flex items-center gap-1 text-indigo-700 dark:text-indigo-300"><CalendarCheck2 className="h-3 w-3" />{shortDate(lead.demoAtUtc)}</span>}
                         {stage === "Lost" && lead.lostReason && <span className="text-muted-foreground">{lead.lostReason}</span>}
                       </div>
+                      {stuck?.get(lead.id) && <p className="mt-2 flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300"><AlertTriangle className="h-3 w-3 shrink-0" />{stuck.get(lead.id)}</p>}
                       <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
                         <span className="truncate">{lead.assignedTo ?? "Unassigned"}{inStage !== null && inStage > 0 ? ` · ${inStage}d here` : ""}</span>
                         <span className={isOverdue(lead) ? "shrink-0 font-semibold text-destructive" : "shrink-0"}>{lead.nextFollowUpAtUtc ? (isOverdue(lead) ? "Overdue" : shortDate(lead.nextFollowUpAtUtc)) : ""}</span>

@@ -163,3 +163,13 @@ export function parseLeadCsv(text: string): { rows: CrmLeadRow[]; mapped: string
   });
   return { rows, mapped, ignored };
 }
+
+// ---- monthly targets and stuck leads
+export interface CrmTargetRow { userId: string; name: string; role: CrmRole; wonTarget: number | null; valueTarget: number | null; won: number; wonValue: number }
+export interface CrmTargets { month: string; dayOfMonth: number; daysInMonth: number; rows: CrmTargetRow[] }
+export const getCrmTargets = () => apiFetch<CrmTargets>(`/api/marketing/crm/targets?utcOffsetMinutes=${-new Date().getTimezoneOffset()}`);
+export const saveCrmTarget = (userId: string, input: { won: number | null; value: number | null }) =>
+  apiFetch<void>(`/api/marketing/crm/targets/${userId}`, { method: "PUT", body: JSON.stringify(input) });
+
+export interface CrmStuckLead { id: string; fullName: string; academyName: string; owner: string | null; stage: ApiLeadStage; reason: string; days: number; expectedMonthlyValue: number | null }
+export const getCrmStuck = () => apiFetch<CrmStuckLead[]>("/api/marketing/crm/stuck");

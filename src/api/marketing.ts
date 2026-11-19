@@ -15,6 +15,8 @@ export interface ApiPlatformDemoRequest {
   medium?: string | null;
   campaign?: string | null;
   landingPath?: string | null;
+  /** The website visitor who submitted this lead, for their journey. */
+  visitorId?: string | null;
   assignedTo?: string | null;
   nextFollowUpAtUtc?: string | null;
   lastContactedAtUtc?: string | null;
