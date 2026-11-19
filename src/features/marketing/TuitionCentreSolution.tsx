@@ -29,11 +29,11 @@ export default function TuitionCentreSolution() {
   return (
     <SolutionFeaturePage
       eyebrow="Coaching and tuition centres in India"
-      title="Tuition and coaching centre software for admissions, fees and attendance."
-      sub="Replace registers, fee spreadsheets and scattered parent messages with one system for enquiries, classes, payments, attendance and progress."
+      title="Tuition and tutoring centre management software for admissions, fees and attendance."
+      sub="Replace registers, fee spreadsheets and scattered parent messages with one management system for enquiries, classes, payments, attendance and progress."
       seo={{
-        title: "Tuition Centre Management Software India | Meet to Manage",
-        description: "Manage tuition centre admissions, batches, attendance, fees, live classes and parent updates in one platform. Free plan available for Indian academies.",
+        title: "Tuition & Tutoring Centre Management Software India",
+        description: "A tuition and tutoring centre management system for admissions, batches, attendance, fees, live classes and parent updates. Free plan available.",
         path: "/solutions/tuition-centre-management-software",
       }}
       name="Tuition centre management software for India"
@@ -47,7 +47,8 @@ export default function TuitionCentreSolution() {
           <Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>attendance software</Link> and{" "}
           <Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>fee management</Link>. Compare the{" "}
           <Link to="/pricing" className={LINK}>plans and centre-based pricing</Link>, or start with the{" "}
-          <Link to="/resources/coaching-centre-fee-tracker" className={LINK}>free fee-tracker template</Link> while you prepare your data.
+          <Link to="/resources/coaching-centre-fee-tracker" className={LINK}>free fee-tracker template</Link> while you prepare your data. When you are ready to automate it, follow the{" "}
+          <Link to="/blog/how-to-automate-monthly-fee-invoices-for-coaching-students" className={LINK}>monthly fee-invoice guide for coaching students</Link>.
         </>
       }
       faq={FAQ}

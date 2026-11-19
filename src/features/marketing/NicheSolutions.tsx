@@ -149,6 +149,8 @@ function makePage(n: Niche) {
             <Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>online attendance</Link> or{" "}
             <Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>fee management</Link>, or check the{" "}
             <Link to="/pricing" className={LINK}>pricing</Link>.
+            {n.slug === "online-whiteboard-for-teaching" && <>{" "}Try these <Link to="/blog/interactive-whiteboard-activities-online-classes" className={LINK}>10 interactive whiteboard activities for online classes</Link>.</>}
+            {n.slug === "art-class-software" && <>{" "}For lesson ideas, explore the <Link to="/blog/interactive-whiteboard-activities-online-classes" className={LINK}>interactive whiteboard activity guide</Link>.</>}
           </>
         }
         faq={n.faq}

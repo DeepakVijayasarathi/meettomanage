@@ -26,6 +26,10 @@ const BLOG_CTA_EXPERIMENT = "blog-cta";
 const BLOG_CTA_VARIANTS = ["a", "b"] as const;
 const NO_SHOWS_SLUG = "reduce-no-shows-online-classes";
 const NO_SHOWS_DESCRIPTION = "A practical guide for Indian coaching centres and online academies to reduce student and demo-class no-shows with reminders, attendance tracking and clear follow-up.";
+const BLOG_SEARCH_DESCRIPTIONS: Record<string, string> = {
+  "interactive-whiteboard-activities-online-classes": "Try 10 practical interactive whiteboard activities for online classes, with ideas for participation, checking understanding and keeping students engaged.",
+  "how-to-automate-monthly-fee-invoices-for-coaching-students": "Learn how to automate monthly fee invoices for coaching students, including billing cycles, reminders, payment tracking and handling exceptions.",
+};
 const BLOG_SEARCH_TITLES: Record<string, string> = {
   "single-subject-academy-growth-playbook": "Growth Playbook for Phonics, Maths and Coding Academies",
   "whatsapp-automation-for-coaching-centres": "WhatsApp Automation for Coaching Centres",
@@ -56,6 +60,7 @@ function blogSeoTitle(title: string, slug: string): string {
  * it contains enough information. */
 function blogSeoDescription(post: ApiBlogPostDetail, slug: string): string {
   if (slug === NO_SHOWS_SLUG) return NO_SHOWS_DESCRIPTION;
+  if (BLOG_SEARCH_DESCRIPTIONS[slug]) return BLOG_SEARCH_DESCRIPTIONS[slug];
   const excerpt = post.excerpt.trim();
   if (excerpt.length >= 70) return excerpt;
   const plain = post.content
