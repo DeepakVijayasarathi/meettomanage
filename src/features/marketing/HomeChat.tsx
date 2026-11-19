@@ -386,21 +386,25 @@ function AiOrb({ state, size }: { state: OrbState; size: number }) {
   );
 }
 
-/** Renders an assistant reply as plain text with its URLs made clickable — React elements
- *  only, never injected HTML, since the text comes from a model. */
-function ChatText({ text }: { text: string }) {
-  const parts = text.split(/(https?:\/\/[^\s)]+)/g);
+/** Renders the small, safe formatting vocabulary used by assistant replies. React elements
+ * only—never injected HTML—because the text comes from a model. */
+export function ChatText({ text }: { text: string }) {
+  const normalized = text.replace(/^\s*[-*]\s+/gm, "• ");
+  const parts = normalized.split(/(\*\*[^*\n]+\*\*|https?:\/\/[^\s)]+)/g);
   return (
     <>
-      {parts.map((part, i) =>
-        /^https?:\/\//.test(part) ? (
+      {parts.map((part, i) => {
+        if (/^\*\*[^*\n]+\*\*$/.test(part)) {
+          return <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>;
+        }
+        return /^https?:\/\//.test(part) ? (
           <a key={i} href={part.replace(/[.,]+$/, "")} target="_blank" rel="noopener noreferrer" className="break-words font-semibold text-[#C2410C] underline underline-offset-2">
             {part.replace(/^https?:\/\/(www\.)?/, "").replace(/[.,]+$/, "")}
           </a>
         ) : (
           <span key={i}>{part}</span>
-        )
-      )}
+        );
+      })}
     </>
   );
 }
