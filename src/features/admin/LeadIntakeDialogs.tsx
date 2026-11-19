@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClipboardPaste, Download, FileUp, Loader2 } from "lucide-react";
+import { CheckCircle2, ClipboardPaste, Download, FileSpreadsheet, FileUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,8 +111,15 @@ export function AddLeadDialog({ open, onOpenChange, onCreated }: { open: boolean
 }
 
 function downloadTemplate() {
-  const url = URL.createObjectURL(new Blob([LEAD_TEMPLATE_CSV], { type: "text/csv" }));
-  const a = document.createElement("a"); a.href = url; a.download = "lead-import-template.csv"; a.click(); URL.revokeObjectURL(url);
+  // The BOM makes Excel recognise the sample as UTF-8 (including ₹ and non-English names).
+  const url = URL.createObjectURL(new Blob([`\ufeff${LEAD_TEMPLATE_CSV}`], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "meet-to-manage-lead-import-sample.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -122,7 +129,7 @@ function downloadTemplate() {
 export function ImportLeadsDialog({ open, onOpenChange, onImported }: { open: boolean; onOpenChange: (v: boolean) => void; onImported: () => void }) {
   const run = useRun();
   const me = useCrmMe();
-  const [mode, setMode] = useState<"paste" | "file">("paste");
+  const [mode, setMode] = useState<"paste" | "file">("file");
   const [fileName, setFileName] = useState("");
   const [pasted, setPasted] = useState("");
   const [parsed, setParsed] = useState<ReturnType<typeof parseLeadCsv> | null>(null);
@@ -168,9 +175,27 @@ export function ImportLeadsDialog({ open, onOpenChange, onImported }: { open: bo
       <DialogHeader><DialogTitle>Import leads</DialogTitle><DialogDescription>Copy rows from your spreadsheet and paste them, or upload a CSV. The first row must be the column names. Nobody is e-mailed.</DialogDescription></DialogHeader>
       {!result ? (
         <div className="space-y-4">
+          <div className="rounded-xl border border-primary/20 bg-primary/[0.035] p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><FileSpreadsheet className="h-5 w-5" /></span>
+                <div>
+                  <p className="font-semibold">Start with the sample lead sheet</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">Download it, replace the example row with your leads, then upload the saved CSV here.</p>
+                </div>
+              </div>
+              <Button variant="outline" className="shrink-0 bg-background" onClick={downloadTemplate}><Download className="h-4 w-4" />Download sample CSV</Button>
+            </div>
+            <div className="mt-3 grid gap-2 border-t pt-3 text-xs text-muted-foreground sm:grid-cols-3">
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-success" /><b className="text-foreground">1.</b> Keep the heading row</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-success" /><b className="text-foreground">2.</b> Add one lead per row</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-success" /><b className="text-foreground">3.</b> Save or download as CSV</span>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="inline-flex rounded-lg bg-muted p-1">{tab("paste", <ClipboardPaste className="h-4 w-4" />, "Paste from a spreadsheet")}{tab("file", <FileUp className="h-4 w-4" />, "Upload a CSV")}</div>
-            <Button variant="ghost" size="sm" onClick={downloadTemplate}><Download className="h-4 w-4" />Template</Button>
+            <p className="text-xs text-muted-foreground">Recognised: Name, Academy, Phone, Email, City, Region, Category, Students, Website, Source, Notes</p>
           </div>
 
           {mode === "paste" ? (
@@ -179,10 +204,11 @@ export function ImportLeadsDialog({ open, onOpenChange, onImported }: { open: bo
               <span className="block text-xs text-muted-foreground">In Excel or Google Sheets, select the rows including the headings, press Ctrl+C, then click here and press Ctrl+V.</span>
             </label>
           ) : (
-            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center text-sm hover:bg-muted/40">
-              <FileUp className="h-6 w-6 text-muted-foreground" />
-              <span className="font-medium">{fileName || "Choose a .csv file"}</span>
+            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-7 text-center text-sm transition hover:border-primary/50 hover:bg-primary/[0.025]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-muted"><FileUp className="h-5 w-5 text-muted-foreground" /></span>
+              <span className="font-semibold">{fileName || "Choose your completed CSV"}</span>
               <span className="text-xs text-muted-foreground">In Excel: File → Save As → CSV. In Google Sheets: File → Download → CSV.</span>
+              <span className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium">Browse files</span>
               <input type="file" accept=".csv,.txt,text/csv" className="sr-only" onChange={(e) => { const file = e.target.files?.[0]; if (file) void readFile(file); }} />
             </label>
           )}

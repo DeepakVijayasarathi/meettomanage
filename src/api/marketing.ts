@@ -209,6 +209,7 @@ export async function listMarketingChats(input: { page: number; pageSize?: numbe
   return apiFetch<ApiPaged<ApiMarketingChatConversation>>(`/api/marketing/chats?${q}`);
 }
 export const getMarketingChat = (id: string) => apiFetch<ApiMarketingChatDetail>(`/api/marketing/chats/${id}`);
+export const deleteMarketingChat = (id: string) => apiFetch<void>(`/api/marketing/chats/${id}`, { method: "DELETE" });
 
 export async function translateMarketingText(texts: string[], targetLanguage: string): Promise<string[]> {
   const response = await apiFetch<{ translations: string[] }>("/api/marketing/translate", {
