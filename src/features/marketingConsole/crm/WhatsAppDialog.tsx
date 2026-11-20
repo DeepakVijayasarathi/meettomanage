@@ -22,12 +22,22 @@ function withMarketingFooter(message: string) {
 }
 
 const TEMPLATES: { key: string; label: string; text: (l: ApiPlatformDemoRequest) => string }[] = [
+  { key: "outreach", label: "First outreach", text: (l) => `Hi ${l.fullName}, I’m reaching out from Meet to Manage. We help academies like ${l.academyName} manage enquiries, classes, attendance, fees and parent updates in one place. Would you be open to a brief 10-minute call to see whether it could help your team? If this isn’t relevant, let me know and I won’t follow up.` },
+  { key: "outreach-follow-up", label: "Outreach follow-up", text: (l) => `Hi ${l.fullName}, I’m following up on my earlier message about Meet to Manage for ${l.academyName}. Would a brief platform walkthrough be useful, or would you prefer that I close the loop?` },
   { key: "follow-up", label: "Initial follow-up", text: (l) => `Hi ${l.fullName}, thank you for your interest in Meet to Manage for ${l.academyName}. I’m following up about your platform demo request. When would be a convenient time to speak?` },
   { key: "demo", label: "Demo reminder", text: (l) => `Hi ${l.fullName}, this is a reminder about your Meet to Manage demo for ${l.academyName}. Please let me know a suitable date and time, and I’ll arrange it for you.` },
   { key: "pricing", label: "Pricing qualification", text: (l) => `Hi ${l.fullName}, thank you for considering Meet to Manage for ${l.academyName}. I can help you understand the plans and recommend the right setup based on your students, teachers and branches. May I ask how many students you currently manage?` },
   { key: "trial", label: "Trial nudge", text: (l) => `Hi ${l.fullName}, how is the Meet to Manage trial going for ${l.academyName}? If it helps, I can set up your first batch and fee plan with you on a quick call.` },
   { key: "checkin", label: "No-response check-in", text: (l) => `Hi ${l.fullName}, I wanted to check whether you still need help evaluating Meet to Manage for ${l.academyName}. I’m happy to answer questions or arrange a quick demo.` },
 ];
+
+function isOutboundLead(lead: ApiPlatformDemoRequest) {
+  // Website enquiries carry a visitor ID even when attribution says Google, Instagram, etc.
+  if (lead.visitorId || lead.landingPath) return false;
+  const source = (lead.source ?? "").trim().toLowerCase();
+  if (!source) return false;
+  return !["direct", "website", "website chat assistant", "chat", "get-started", "demo request"].includes(source);
+}
 
 export function whatsappLink(phone: string, message: string) {
   let number = phone.replace(/\D/g, "");
@@ -46,7 +56,14 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
 
   useEffect(() => {
     if (!lead) return;
-    const t = lead.stage === "Trial" || lead.stage === "ActiveTrial" ? "trial" : "follow-up";
+    const outbound = isOutboundLead(lead);
+    const t = lead.stage === "Trial" || lead.stage === "ActiveTrial"
+      ? "trial"
+      : outbound && (lead.stage ?? "New") === "New" && !lead.lastContactedAtUtc
+        ? "outreach"
+        : outbound
+          ? "outreach-follow-up"
+          : "follow-up";
     setTemplate(t); setMessage(withMarketingFooter(TEMPLATES.find((x) => x.key === t)!.text(lead))); setDays(2); setAiPowered(null);
   }, [lead]);
 

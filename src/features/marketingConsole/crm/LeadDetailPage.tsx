@@ -290,7 +290,7 @@ export default function LeadDetailPage() {
               <div className="mt-3 space-y-2 text-sm">
                 <p>{recommendation.summary}</p>
                 <p><b>Next:</b> {recommendation.nextAction}</p>
-                <div className="rounded-lg border bg-background p-2.5"><p className="mb-1 text-xs font-medium text-muted-foreground">Suggested {recommendation.suggestedChannel} message</p><p>{recommendation.suggestedMessage}</p>
+                <div className="rounded-lg border bg-background p-2.5"><p className="mb-1 text-xs font-medium text-muted-foreground">Suggested {recommendation.suggestedChannel} message</p><p className="whitespace-pre-wrap">{recommendation.suggestedMessage}</p>
                   <Button size="sm" variant="ghost" className="mt-1 h-7 px-2" onClick={() => copy(recommendation.suggestedMessage, "ai")}>{copied === "ai" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}Copy</Button></div>
               </div>
             ) : <p className="mt-2 text-xs text-muted-foreground">Reads the timeline and suggests the best next step and message.</p>}
