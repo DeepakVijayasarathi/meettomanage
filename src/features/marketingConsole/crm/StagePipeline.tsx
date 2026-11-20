@@ -127,12 +127,12 @@ export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged, 
   }
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full overflow-hidden">
       <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{canWrite ? "Drag a card to another stage. Booking a demo, marking it done or losing a lead asks for details first." : "You have read-only access."}</span>
         <Button size="sm" variant="ghost" onClick={() => setShowLost((v) => !v)}>{showLost ? "Hide lost" : `Show lost (${lostCount})`}</Button>
       </div>
-      <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-3">
+      <div className="flex w-full max-w-full snap-x gap-3 overflow-x-auto px-1 pb-3">
         {columns.map((stage) => {
           const items = leads.filter((l) => (l.stage ?? "New") === stage);
           const value = items.reduce((s, l) => s + (l.expectedMonthlyValue ?? 0), 0);

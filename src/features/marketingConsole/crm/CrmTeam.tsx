@@ -102,7 +102,7 @@ export default function CrmTeam() {
       </div>
 
       {shown.length === 0 ? <p className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">{team.length === 0 ? "No team members yet." : "No one matches these filters."}</p> : (
-        <div className="overflow-x-auto rounded-xl border bg-card">
+        <div className="max-w-full overflow-x-auto rounded-xl border bg-card">
           <table className="w-full min-w-[1100px] text-sm">
             <thead className="bg-muted/40 text-left text-xs text-muted-foreground"><tr>
               {["Person", "Role", "Open leads", "Open value", "New leads", "First reply", "Demos", "Won", "Win rate", "Won value", "Tasks open / overdue", "Status", ""].map((h, i) => <th key={h || `c${i}`} className={`px-3 py-2 font-medium ${i >= 2 && i <= 10 ? "text-end" : ""}`}>{h}</th>)}
@@ -145,10 +145,10 @@ export default function CrmTeam() {
 
       <div className="mt-8"><TargetsPanel editable /></div>
 
-      <section className="mt-8 rounded-xl border bg-card p-5">
+      <section className="mt-8 min-w-0 max-w-full overflow-hidden rounded-xl border bg-card p-5">
         <h2 className="font-semibold">What each role can do</h2>
         <p className="mb-4 mt-1 text-sm text-muted-foreground">Change someone's role in the table above. It applies the next time their page loads.</p>
-        <div className="overflow-x-auto">
+        <div className="max-w-full overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead><tr className="text-left text-xs text-muted-foreground"><th className="pb-2 font-medium">Can…</th>{ROLES.map((r) => <th key={r} className="w-40 pb-2 text-center font-medium"><p className="text-sm font-semibold text-foreground">{ROLE_LABEL[r]}</p><p className="font-normal">{activeMembers.filter((m) => m.role === r).length} active</p></th>)}</tr></thead>
             <tbody className="divide-y">{PERMISSIONS.map((p) => <tr key={p.label}><td className="py-2">{p.label}</td>{ROLES.map((r) => <td key={r} className="py-2 text-center"><Access value={p[r]} /></td>)}</tr>)}</tbody>
