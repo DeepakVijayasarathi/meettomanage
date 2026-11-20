@@ -27,8 +27,9 @@ const EMPTY: ApiMarketingDashboard = {
   days: 30,
   startDate: "",
   endDate: "",
-  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
-  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  conversionDetail: { visitors: 0, highIntentPageVisitors: 0, pricingVisitors: 0, demoPageVisitors: 0, formStartedVisitors: 0, submitAttemptedVisitors: 0, validationFailedVisitors: 0, abandonedVisitors: 0, apiFailedVisitors: 0, savedFormLeadVisitors: 0, chatBookedVisitors: 0, whatsAppVisitors: 0, totalSavedLeadVisitors: 0 },
   daily: [],
   topPages: [],
   topBlogPosts: [],
@@ -177,8 +178,12 @@ export default function MarketingDashboard() {
   const supportingKpis = kpis.filter(k => ["Page views", "Saved chats", "Pages / visitor", "Saved chat rate"].includes(k.label));
   const demoTrend = change(t.demoRequests, p.demoRequests);
   const formStarts = t.formStartedVisitors ?? 0;
+  const formAttempts = t.formSubmitAttemptedVisitors ?? 0;
+  const formFailures = t.formSubmitFailedVisitors ?? 0;
   const formSubmits = t.formSubmittedVisitors ?? 0;
-  const trackingHealth = formSubmits > t.demoRequests
+  const trackingHealth = formFailures > 0
+    ? { tone: "warning", label: "Submission failures detected", message: `${fmt(formFailures)} visitor${formFailures === 1 ? "" : "s"} passed validation but the request failed. Check the API and server logs before changing the page.`, icon: AlertTriangle }
+    : formSubmits > t.demoRequests
     ? { tone: "warning", label: "Needs verification", message: `${fmt(formSubmits)} visitor${formSubmits === 1 ? "" : "s"} submitted the form, but only ${fmt(t.demoRequests)} saved demo request${t.demoRequests === 1 ? "" : "s"} exist. Run one end-to-end test and inspect the API response.`, icon: AlertTriangle }
     : t.demoRequests > 0
       ? { tone: "success", label: "Conversion tracking active", message: "Saved demo requests confirm that the conversion path is recording successfully.", icon: CheckCircle2 }
@@ -186,6 +191,19 @@ export default function MarketingDashboard() {
         ? { tone: "warning", label: "Form activity detected", message: `${fmt(formStarts)} visitor${formStarts === 1 ? "" : "s"} started the form, but no saved demo request was recorded. Review validation failures and abandonments before changing the page.`, icon: AlertTriangle }
         : { tone: "neutral", label: "No form attempts", message: "Page tracking is active, but nobody started the demo form in this period. Zero requests alone does not indicate a tracking failure.", icon: Info };
   const TrackingIcon = trackingHealth.icon;
+  const conversion = data.conversionDetail ?? EMPTY.conversionDetail;
+  const conversionStages = [
+    { label: "Website visitors", value: conversion.visitors, detail: "unique people reached" },
+    { label: "High-intent page", value: conversion.highIntentPageVisitors, detail: "pricing, get started or demo" },
+    { label: "Form started", value: conversion.formStartedVisitors, detail: "interacted with the demo form" },
+    { label: "Submit attempted", value: conversion.submitAttemptedVisitors, detail: "passed browser validation" },
+    { label: "Form lead saved", value: conversion.savedFormLeadVisitors, detail: "confirmed in the CRM" },
+  ].map((stage, index, stages) => {
+    const previous = index === 0 ? stage.value : stages[index - 1].value;
+    return { ...stage, rate: index === 0 ? 100 : previous === 0 ? 0 : Math.round(stage.value * 1000 / previous) / 10, drop: index === 0 ? 0 : Math.max(0, previous - stage.value) };
+  });
+  const biggestLeak = conversionStages.slice(1).filter(stage => conversionStages[conversionStages.indexOf(stage) - 1]?.value > 0)
+    .sort((a, b) => a.rate - b.rate)[0];
 
   return (
     <div>
@@ -278,9 +296,42 @@ export default function MarketingDashboard() {
             <span className={cn("mt-0.5 rounded-full bg-muted p-2", trackingHealth.tone === "warning" && "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300", trackingHealth.tone === "success" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300")}><TrackingIcon className="h-4 w-4" aria-hidden="true" /></span>
             <div><p className="font-semibold">Tracking health · {trackingHealth.label}</p><p className="mt-1 text-sm text-muted-foreground">{trackingHealth.message}</p></div>
           </div>
-          <dl className="grid shrink-0 grid-cols-3 gap-2 text-center text-sm">
-            {[["Form starts", formStarts], ["Submits", formSubmits], ["Saved demos", t.demoRequests]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-lg border bg-background/80 px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
+          <dl className="grid shrink-0 grid-cols-2 gap-2 text-center text-sm sm:grid-cols-5">
+            {[["Form starts", formStarts], ["Attempts", formAttempts], ["API failures", formFailures], ["Saved demos", t.demoRequests], ["WhatsApp opens", t.whatsAppVisitors ?? 0]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-lg border bg-background/80 px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 overflow-hidden shadow-sm">
+        <CardHeader className="border-b bg-muted/20">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Visitor → demo analysis</p><CardTitle className="mt-1 text-xl">Where prospective customers stop</CardTitle><p className="mt-1 text-sm text-muted-foreground">Unique visitors in {exactRange}; rates compare each stage with the stage immediately before it.</p></div>
+            <div className="rounded-xl border bg-background px-4 py-2 text-end"><p className="text-xs text-muted-foreground">Overall visitor → saved lead</p><p className="text-2xl font-bold tabular-nums">{conversion.visitors === 0 ? "0%" : `${(conversion.totalSavedLeadVisitors * 100 / conversion.visitors).toFixed(1)}%`}</p></div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5">
+          <div className="grid gap-3 lg:grid-cols-5">
+            {conversionStages.map((stage, index) => (
+              <div key={stage.label} className="relative rounded-xl border bg-card p-4">
+                <div className="flex items-start justify-between gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>{index > 0 && <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", stage.rate >= 50 ? "bg-emerald-100 text-emerald-700" : stage.rate >= 20 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700")}>{stage.rate}%</span>}</div>
+                <p className="mt-3 text-2xl font-bold tabular-nums">{fmt(stage.value)}</p><p className="mt-1 font-semibold">{stage.label}</p><p className="mt-1 text-xs text-muted-foreground">{stage.detail}</p>
+                {index > 0 && <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">{fmt(stage.drop)} dropped before this stage</p>}
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${conversion.visitors === 0 ? 0 : Math.min(100, stage.value * 100 / conversion.visitors)}%` }} /></div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <p className="font-semibold">Detailed signals</p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+                {[["Pricing viewers", conversion.pricingVisitors], ["Demo-page viewers", conversion.demoPageVisitors], ["Validation failures", conversion.validationFailedVisitors], ["Abandoned forms", conversion.abandonedVisitors], ["API failures", conversion.apiFailedVisitors], ["WhatsApp opens", conversion.whatsAppVisitors], ["Chat bookings", conversion.chatBookedVisitors], ["All saved leads", conversion.totalSavedLeadVisitors]].map(([label, value]) => <div key={String(label)}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 text-lg font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
+              </dl>
+            </div>
+            <div className={cn("rounded-xl border p-4", biggestLeak && biggestLeak.rate < 30 ? "border-amber-300 bg-amber-50/60 dark:bg-amber-950/10" : "bg-emerald-50/50 dark:bg-emerald-950/10")}>
+              <p className="font-semibold">Recommended focus</p>
+              {biggestLeak ? <><p className="mt-2 text-sm">The largest proportional leak is before <strong>{biggestLeak.label}</strong>: only {biggestLeak.rate}% continued and {fmt(biggestLeak.drop)} stopped.</p><p className="mt-2 text-xs text-muted-foreground">Review the message, required effort and technical health at that exact transition before adding more traffic.</p></> : <p className="mt-2 text-sm text-muted-foreground">More visitor activity is needed before a reliable funnel leak can be identified.</p>}
+            </div>
+          </div>
         </CardContent>
       </Card>
 

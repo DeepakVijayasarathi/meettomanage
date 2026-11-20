@@ -23,7 +23,7 @@ import { VisitorFilterBar } from "./VisitorFilterBar";
 const pct = (n: number, of: number) => (of === 0 ? "0%" : `${Math.round((n * 100) / of)}%`);
 const EMPTY_BEHAVIOUR: ApiMarketingSiteBehaviour = {
   days: 7, startDate: "", endDate: "", visitors: 0, visits: 0, singlePageVisits: 0, returningVisitors: 0, chatVisitors: 0, bookedVisitors: 0,
-  formStartedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, formSubmittedVisitors: 0, whatsAppVisitors: 0,
+  formStartedVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, formSubmittedVisitors: 0, whatsAppVisitors: 0,
   exitIntentShownVisitors: 0, exitIntentSubmittedVisitors: 0, experiments: [],
   signInClickedVisitors: 0, demoLoginVisitors: 0, demoLogins: [], signInFrom: [],
   funnel: [], pages: [], devices: [], sources: [],

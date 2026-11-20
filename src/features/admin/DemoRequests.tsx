@@ -339,7 +339,7 @@ export default function DemoRequests() {
 
       {actionError && <InlineAlert variant="warning" className="mb-4">{actionError}</InlineAlert>}
 
-      <div className="sticky top-0 z-20 mb-3 rounded-lg border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
+      <div className="sticky top-16 z-30 mb-4 rounded-xl border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
         <div className="flex flex-col gap-2 p-2.5 xl:flex-row xl:items-center">
         <div className="relative w-full xl:w-80 xl:shrink-0"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="h-9 border-transparent bg-muted/70 pl-9 focus-visible:border-input focus-visible:bg-background" placeholder="Search leads…" /></div>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -355,7 +355,7 @@ export default function DemoRequests() {
         </div>
         </div>
         <div className="flex gap-1 overflow-x-auto border-t bg-muted/20 px-2.5 py-2">
-          <div className="flex min-w-max items-center gap-2 rounded-md px-2 py-1 text-sm"><span className="text-muted-foreground">Pipeline</span><b>{inr(openValue)}<span className="font-normal text-muted-foreground">/mo</span></b><span className="text-xs text-muted-foreground">{openCount} open</span></div>
+          <div className="flex min-w-max items-center gap-2 rounded-md px-2 py-1 text-sm"><span className="text-muted-foreground">Shown pipeline</span><b>{inr(openValue)}<span className="font-normal text-muted-foreground">/mo</span></b><span className="text-xs text-muted-foreground">{openCount} open · {requests.length} loaded</span></div>
           <div className="h-7 w-px shrink-0 bg-border" />
           <div className="flex min-w-max items-center gap-1.5 rounded-md px-2 py-1 text-sm"><span className="text-muted-foreground">Hot</span><b>{hotCount}</b></div>
           <div className="flex min-w-max items-center gap-1.5 rounded-md px-2 py-1 text-sm"><span className="text-muted-foreground">Upcoming demos</span><b>{demosSoon}</b></div>

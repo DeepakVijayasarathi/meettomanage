@@ -198,6 +198,12 @@ const FIELD = "h-12 w-full !rounded-xl border border-[#EBD9C8] bg-white ps-11 pe
 
 const EMPTY_FORM = { fullName: "", workEmail: "", phone: "", academyName: "", contactMethod: "Video call", preferredAt: "", message: "" };
 
+function validPhone(value: string): boolean {
+  if (!value.trim()) return true;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15 && /^[+\d\s().-]+$/.test(value.trim());
+}
+
 function localDateTimeMinimum() {
   const date = new Date(Date.now() + 2 * 60 * 60 * 1000);
   const offset = date.getTimezoneOffset() * 60_000;
@@ -295,6 +301,13 @@ export default function GetStarted() {
       setError(lang === "en" ? "Enter an email address or WhatsApp number so we can contact you." : "أدخل بريدًا إلكترونيًا أو رقم واتساب لنتواصل معك.");
       return;
     }
+    if (!validPhone(form.phone)) {
+      trackMarketingEvent("form_validation_failed", undefined, tag);
+      setError(lang === "en" ? "Enter a valid WhatsApp number with 7 to 15 digits." : "أدخل رقم واتساب صالحًا من 7 إلى 15 رقمًا.");
+      return;
+    }
+
+    trackMarketingEvent("form_submit_attempted", undefined, tag);
 
     if (!live) {
       submittedRef.current = true;
@@ -332,6 +345,7 @@ export default function GetStarted() {
       void trackDemoBooked(window.location.pathname);
       setSubmitted(true);
     } catch (err) {
+      trackMarketingEvent("form_submit_failed", undefined, tag);
       setError(err instanceof Error ? err.message : t.submitError);
     } finally {
       setSubmitting(false);
@@ -427,7 +441,7 @@ export default function GetStarted() {
                       <div className="grid gap-1.5">
                         <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{lang === "en" ? "WhatsApp number" : t.phone} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
                         <Field icon={Phone}>
-                          <Input id="gs-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
+                          <Input id="gs-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} pattern="[+0-9 ()\-.]{7,20}" className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
                         </Field>
                       </div>
                     </div>
@@ -480,6 +494,9 @@ export default function GetStarted() {
                     </button>
                     <p className="text-center text-xs leading-relaxed text-[#78716C]">
                       {lang === "en" ? "Takes less than a minute · No payment details · No commitment" : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
+                    </p>
+                    <p className="text-center text-[11px] leading-relaxed text-[#8A817A]">
+                      {lang === "en" ? <>By requesting a demo, you agree that our team may contact you about your request. See our <Link to="/policy" className="font-semibold text-[#9A3412] underline underline-offset-2">privacy policy</Link>.</> : <>بطلب العرض، فإنك توافق على أن يتواصل فريقنا معك بشأن طلبك. راجع <Link to="/policy" className="font-semibold text-[#9A3412] underline underline-offset-2">سياسة الخصوصية</Link>.</>}
                     </p>
                     <a
                       href="https://wa.me/919344773231?text=I%27d%20like%20a%20free%20Meet%20to%20Manage%20walkthrough."

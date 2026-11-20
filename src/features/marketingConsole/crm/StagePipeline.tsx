@@ -128,24 +128,24 @@ export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged, 
   }
 
   return (
-    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border bg-muted/20">
-      <div className="flex min-h-11 items-center justify-between gap-3 border-b bg-background px-3 py-1.5 text-xs text-muted-foreground">
-        <span className="truncate">{canWrite ? "Drag leads between stages" : "Read-only board"}</span>
+    <div className="min-w-0 max-w-full rounded-xl border bg-muted/20 shadow-sm">
+      <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b bg-background px-4 py-2 text-xs text-muted-foreground">
+        <span>{canWrite ? "Drag leads between stages, or open a card for full details" : "Read-only board · open a card for full details"}</span>
         <Button size="sm" variant="ghost" className="h-8 shrink-0" onClick={() => setShowLost((v) => !v)}>{showLost ? "Hide lost" : `Lost (${lostCount})`}</Button>
       </div>
-      <div className="flex w-full max-w-full snap-x scroll-smooth items-start gap-2 overflow-x-auto p-2">
+      <div className="flex snap-x scroll-px-3 items-start gap-3 overflow-x-auto p-3 md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-3 2xl:grid-cols-4">
         {columns.map((stage) => {
           const items = leads.filter((l) => (l.stage ?? "New") === stage);
           const value = items.reduce((s, l) => s + (l.expectedMonthlyValue ?? 0), 0);
           return (
             <section key={stage} aria-label={LEAD_STAGE_LABEL[stage]}
-              className={cn("flex h-[calc(100vh-22rem)] min-h-[28rem] w-[17rem] shrink-0 snap-start flex-col rounded-md bg-muted/55 p-2 transition-colors", dragOver === stage && "bg-primary/10 ring-2 ring-primary/40")}
+              className={cn("flex min-h-[18rem] w-[17rem] shrink-0 snap-start flex-col rounded-lg border border-transparent bg-muted/55 p-2.5 transition-colors md:w-auto", dragOver === stage && "border-primary/40 bg-primary/10 ring-2 ring-primary/30")}
               onDragOver={(e) => { if (canWrite) { e.preventDefault(); setDragOver(stage); } }} onDragLeave={() => setDragOver((s) => (s === stage ? null : s))}
               onDrop={(e) => { const id = e.dataTransfer.getData("text/lead-id"); if (id) void drop(id, stage); }}>
               <header className="mb-2 px-1 py-0.5">
                 <div className="flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><span className={cn("h-2 w-2 shrink-0 rounded-full", STAGE_DOT[stage])} /><h2 className="truncate text-xs font-semibold uppercase tracking-wide">{LEAD_STAGE_LABEL[stage]}</h2><span className="text-xs text-muted-foreground">{items.length}</span></div>{value > 0 && <span className="text-xs font-medium text-muted-foreground">{inr(value)}/mo</span>}</div>
               </header>
-              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain pr-0.5">
+              <div className="flex flex-1 flex-col gap-2">
                 {items.map((lead) => {
                   const inStage = daysSince(lead.stageChangedAtUtc ?? lead.createdAtUtc);
                   return (

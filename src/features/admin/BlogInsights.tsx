@@ -125,7 +125,7 @@ export function BlogInsights({ onDraft }: { onDraft: (draft: BlogDraftPrefill) =
                 </div>
               ))}
               <p className="pt-1 text-xs text-muted-foreground">
-                Pricing and demo-page counts are visits only. Form starts, browser submits, and successfully saved leads are tracked separately. Small numbers are early signals, not proof.
+                Pricing and demo-page counts are visits only. Actions use the last blog read within 30 minutes; a saved lead's explicit source link takes priority. Form starts, browser submits, and saved leads are separate. Small numbers are early signals, not proof.
               </p>
             </div>
           )}
