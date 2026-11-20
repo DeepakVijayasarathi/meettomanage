@@ -91,7 +91,7 @@ function RankedList({ title, items, emptyText, loading, format }: { title: strin
 function PerformanceList({ title, items }: { title: string; items: ApiMarketingDashboard["sourceQuality"] }) {
   return <Card><CardHeader className="pb-3"><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent>
     {items.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No attributed leads in this period.</p> :
-      <div className="overflow-auto"><table className="w-full text-sm"><thead className="text-left text-xs text-muted-foreground"><tr><th className="pb-2">Channel</th><th className="pb-2 text-right">Visitors</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">Lead rate</th><th className="pb-2 text-right">Won</th><th className="pb-2 text-right">Sales rate</th></tr></thead><tbody className="divide-y divide-border">{items.map(x => <tr key={x.name}><td className="max-w-40 truncate py-2" title={x.name}>{x.name}</td><td className="text-right">{x.visitors}</td><td className="text-right">{x.leads}</td><td className="text-right font-medium">{x.leadConversionRate}%</td><td className="text-right">{x.converted}</td><td className="text-right font-medium">{x.conversionRate}%</td></tr>)}</tbody></table></div>}
+      <div className="overflow-auto" tabIndex={0} aria-label={`${title} data`}><table className="w-full text-sm"><thead className="text-left text-xs text-muted-foreground"><tr><th className="pb-2">Channel</th><th className="pb-2 text-right">Visitors</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">Lead rate</th><th className="pb-2 text-right">Won</th><th className="pb-2 text-right">Sales rate</th></tr></thead><tbody className="divide-y divide-border">{items.map(x => <tr key={x.name}><td className="max-w-40 truncate py-2" title={x.name}>{x.name}</td><td className="text-right">{x.visitors}</td><td className="text-right">{x.leads}</td><td className="text-right font-medium">{x.leadConversionRate}%</td><td className="text-right">{x.converted}</td><td className="text-right font-medium">{x.conversionRate}%</td></tr>)}</tbody></table></div>}
   </CardContent></Card>;
 }
 
@@ -211,7 +211,7 @@ export default function MarketingDashboard() {
                   aria-pressed={active}
                   className={cn(
                     "rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
-                    active ? "bg-[#F05A0A] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    active ? "bg-[#C2410C] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   {rangeLabel(r)}
@@ -225,7 +225,7 @@ export default function MarketingDashboard() {
                 aria-expanded={customOpen}
                 className={cn(
                   "rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
-                  custom || customOpen ? "bg-[#F05A0A] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  custom || customOpen ? "bg-[#C2410C] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
                 )}
               >
                 Custom
@@ -319,7 +319,7 @@ export default function MarketingDashboard() {
         }
       >
         {showTable ? (
-          <div className="h-full overflow-auto">
+          <div className="h-full overflow-auto" tabIndex={0} aria-label="Daily visitors and conversion data">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -394,7 +394,7 @@ export default function MarketingDashboard() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Card><CardHeader><CardTitle className="text-base">Campaign ROI</CardTitle><p className="text-sm text-muted-foreground">Add spend and won revenue using the exact utm_campaign value.</p></CardHeader><CardContent className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-5"><input aria-label="Campaign" placeholder="Campaign" value={campaignForm.campaign} onChange={e => setCampaignForm({ ...campaignForm, campaign: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Spend" type="number" min="0" placeholder="Spend ₹" value={campaignForm.spend} onChange={e => setCampaignForm({ ...campaignForm, spend: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Won revenue" type="number" min="0" placeholder="Won ₹" value={campaignForm.wonRevenue} onChange={e => setCampaignForm({ ...campaignForm, wonRevenue: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Start date" type="date" value={campaignForm.startDate} onChange={e => setCampaignForm({ ...campaignForm, startDate: e.target.value })} className="h-10 rounded-md border bg-background px-2 text-sm" /><Button disabled={operationsBusy} onClick={() => void addCampaign()}>Add</Button></div>
-          <div className="overflow-auto"><table className="w-full text-sm"><thead className="text-xs text-muted-foreground"><tr><th className="pb-2 text-left">Campaign</th><th className="pb-2 text-right">Spend</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">CPA</th><th className="pb-2 text-right">ROAS</th></tr></thead><tbody className="divide-y">{campaignState.data.map(c => <tr key={c.id}><td className="py-2">{c.campaign}</td><td className="text-right">₹{c.spend.toLocaleString()}</td><td className="text-right">{c.leads}</td><td className="text-right">{c.costPerAcquisition == null ? "—" : `₹${c.costPerAcquisition.toLocaleString()}`}</td><td className="text-right font-semibold">{c.returnOnAdSpend == null ? "—" : `${c.returnOnAdSpend}×`}</td></tr>)}</tbody></table></div>
+          <div className="overflow-auto" tabIndex={0} aria-label="Campaign return on investment data"><table className="w-full text-sm"><thead className="text-xs text-muted-foreground"><tr><th className="pb-2 text-left">Campaign</th><th className="pb-2 text-right">Spend</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">CPA</th><th className="pb-2 text-right">ROAS</th></tr></thead><tbody className="divide-y">{campaignState.data.map(c => <tr key={c.id}><td className="py-2">{c.campaign}</td><td className="text-right">₹{c.spend.toLocaleString()}</td><td className="text-right">{c.leads}</td><td className="text-right">{c.costPerAcquisition == null ? "—" : `₹${c.costPerAcquisition.toLocaleString()}`}</td><td className="text-right font-semibold">{c.returnOnAdSpend == null ? "—" : `${c.returnOnAdSpend}×`}</td></tr>)}</tbody></table></div>
         </CardContent></Card>
         <Card><CardHeader><CardTitle className="text-base">Reports, reminders and retention</CardTitle><p className="text-sm text-muted-foreground">Email performance summaries at 08:00 IST and remind the team about overdue follow-ups.</p></CardHeader><CardContent className="space-y-4">
           <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={reportForm.enabled} onChange={e => setReportForm({ ...reportForm, enabled: e.target.checked })} /> Enable scheduled report</label>
