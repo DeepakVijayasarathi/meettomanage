@@ -37,7 +37,7 @@ type Mode = null | "book" | "done" | "lost";
  * sends reminders a day and an hour before); marking it done sends the recap with the trial link. Trial, active trial
  * and customer are normally set automatically once the lead opens an academy account.
  */
-export function LeadStagePanel({ lead, live, onChanged, onError }: { lead: ApiPlatformDemoRequest; live: boolean; onChanged: (lead: ApiPlatformDemoRequest, message: string) => void; onError: (title: string, message: string) => void }) {
+export function LeadStagePanel({ lead, live, canReopenLost = true, onChanged, onError }: { lead: ApiPlatformDemoRequest; live: boolean; canReopenLost?: boolean; onChanged: (lead: ApiPlatformDemoRequest, message: string) => void; onError: (title: string, message: string) => void }) {
   const stage = lead.stage ?? "New";
   const { canWrite } = useCrmMe();
   const [mode, setMode] = useState<Mode>(null);
@@ -84,7 +84,7 @@ export function LeadStagePanel({ lead, live, onChanged, onError }: { lead: ApiPl
         {(stage === "DemoBooked" || stage === "Contacted") && <Button size="sm" variant={mode === "done" ? "default" : "outline"} disabled={busy} onClick={() => setMode(mode === "done" ? null : "done")}><CheckCircle2 className="h-4 w-4" />Demo done</Button>}
         {stage !== "Customer" && <Button size="sm" variant="outline" disabled={busy} onClick={() => void move({ stage: "Customer" }, "Marked as customer")}>Mark customer</Button>}
         {stage !== "Lost" && stage !== "Customer" && <Button size="sm" variant={mode === "lost" ? "destructive" : "outline"} disabled={busy} onClick={() => setMode(mode === "lost" ? null : "lost")}><XCircle className="h-4 w-4" />Lost</Button>}
-        {stage === "Lost" && <Button size="sm" variant="outline" disabled={busy} onClick={() => void move({ stage: "Contacted" }, "Lead reopened")}>Reopen</Button>}
+        {stage === "Lost" && canReopenLost && <Button size="sm" variant="outline" disabled={busy} onClick={() => void move({ stage: "Contacted" }, "Lead reopened")}>Reopen</Button>}
       </div>}
 
       {mode === "book" && (

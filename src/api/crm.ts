@@ -71,6 +71,7 @@ export const updateCrmDeal = (id: string, input: { expectedPlan?: string | null;
   apiFetch<ApiPlatformDemoRequest>(`/api/marketing/crm/leads/${id}/deal`, { method: "PUT", body: J(input) });
 export const logCrmInteraction = (id: string, input: { type: "Call" | "Meeting" | "Email" | "WhatsApp"; outcome: string; detail?: string; nextStepTitle?: string; nextStepDueAtUtc?: string }) =>
   apiFetch<ApiPlatformDemoRequest>(`/api/marketing/crm/leads/${id}/log`, { method: "POST", body: J(input) });
+export const optOutCrmLead = (id: string) => apiFetch<ApiPlatformDemoRequest>(`/api/marketing/crm/leads/${id}/opt-out`, { method: "POST" });
 
 export interface FollowUpPlan { key: string; name: string; description: string; steps: { day: number; type: CrmTaskType; title: string }[]; stopAt: ApiLeadStage[] }
 export interface CrmBulkResult { done: number; skipped: string[] }

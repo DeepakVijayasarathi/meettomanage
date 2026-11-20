@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, MessageCircle, Sparkles } from "lucide-react";
+import { Ban, Copy, Loader2, MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
 import { apiEnabled } from "@/lib/api";
+import { optOutCrmLead } from "@/api/crm";
 import { getMarketingLeadRecommendation, logMarketingLeadActivity, updatePlatformDemoRequest, type ApiPlatformDemoRequest } from "@/api/marketing";
 
 const MARKETING_MESSAGE_FOOTER = `Website: https://meettomanage.cloud
@@ -53,6 +56,9 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
   const [days, setDays] = useState(2);
   const [generating, setGenerating] = useState(false);
   const [aiPowered, setAiPowered] = useState<boolean | null>(null);
+  const [opened, setOpened] = useState(false);
+  const [repeatConfirmed, setRepeatConfirmed] = useState(false);
+  const [confirmOptOut, setConfirmOptOut] = useState(false);
 
   useEffect(() => {
     if (!lead) return;
@@ -64,7 +70,7 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
         : outbound
           ? "outreach-follow-up"
           : "follow-up";
-    setTemplate(t); setMessage(withMarketingFooter(TEMPLATES.find((x) => x.key === t)!.text(lead))); setDays(2); setAiPowered(null);
+    setTemplate(t); setMessage(withMarketingFooter(TEMPLATES.find((x) => x.key === t)!.text(lead))); setDays(2); setAiPowered(null); setOpened(false); setRepeatConfirmed(false); setConfirmOptOut(false);
   }, [lead]);
 
   function pick(key: string) { if (!lead) return; setTemplate(key); setMessage(withMarketingFooter(TEMPLATES.find((x) => x.key === key)!.text(lead))); setAiPowered(null); }
@@ -85,23 +91,54 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
     }
   }
 
-  async function openAndTrack() {
+  async function openDraft() {
     if (!lead || !message.trim()) return;
     const finalMessage = withMarketingFooter(message);
     window.open(whatsappLink(lead.phone, finalMessage), "_blank", "noopener,noreferrer");
+    setOpened(true);
     if (apiEnabled()) {
-      const next = new Date(); next.setDate(next.getDate() + days); next.setHours(10, 0, 0, 0);
       try {
-        await updatePlatformDemoRequest(lead.id, { status: lead.status === "New" ? "Contacted" : lead.status, nextFollowUpAtUtc: next.toISOString() });
-        await logMarketingLeadActivity(lead.id, { type: "WhatsApp sent", detail: finalMessage });
-        toast({ variant: "success", title: "Message recorded on the lead" });
-        onTracked?.();
+        await logMarketingLeadActivity(lead.id, { type: "WhatsApp opened", detail: `Draft opened in WhatsApp; sending is not yet confirmed.\n\n${finalMessage}` });
       } catch (err) {
-        toast({ variant: "error", title: "WhatsApp opened, but the lead couldn't be updated", description: err instanceof Error ? err.message : undefined });
+        toast({ variant: "error", title: "WhatsApp opened, but the draft couldn't be logged", description: err instanceof Error ? err.message : undefined });
       }
     }
-    onOpenChange(false);
   }
+
+  async function confirmSent() {
+    if (!lead || !message.trim()) return;
+    const finalMessage = withMarketingFooter(message);
+    const next = new Date(); next.setDate(next.getDate() + days); next.setHours(10, 0, 0, 0);
+    try {
+      if (apiEnabled()) {
+        await updatePlatformDemoRequest(lead.id, { status: "Contacted", nextFollowUpAtUtc: next.toISOString() });
+        await logMarketingLeadActivity(lead.id, { type: "WhatsApp sent (confirmed)", detail: finalMessage });
+      }
+      toast({ variant: "success", title: "WhatsApp send recorded", description: "The lead and next follow-up were updated." });
+      onTracked?.();
+      onOpenChange(false);
+    } catch (err) {
+      toast({ variant: "error", title: "The send could not be recorded", description: err instanceof Error ? err.message : "Try again. Your WhatsApp message is unaffected." });
+    }
+  }
+
+  async function optOut() {
+    if (!lead) return;
+    try {
+      await optOutCrmLead(lead.id);
+      toast({ variant: "success", title: "Do Not Contact enabled", description: "Open tasks were cancelled and the next follow-up was cleared." });
+      onTracked?.();
+      onOpenChange(false);
+    } catch (err) {
+      toast({ variant: "error", title: "Could not enable Do Not Contact", description: err instanceof Error ? err.message : "Try again." });
+      throw err;
+    }
+  }
+
+  const doNotContact = lead?.stage === "Lost" && lead.lostReason?.toLowerCase() === "do not contact";
+  const lastContactedMs = lead?.lastContactedAtUtc ? new Date(lead.lastContactedAtUtc).getTime() : 0;
+  const contactedRecently = lastContactedMs > Date.now() - 24 * 60 * 60 * 1000;
+  const hoursSinceContact = contactedRecently ? Math.max(1, Math.round((Date.now() - lastContactedMs) / 3_600_000)) : null;
 
   return (
     <Dialog open={lead !== null} onOpenChange={onOpenChange}>
@@ -110,7 +147,9 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
           <DialogTitle className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-emerald-600" />WhatsApp follow-up</DialogTitle>
           <DialogDescription>{lead ? `${lead.fullName} · ${lead.phone} · ${lead.academyName}` : ""}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        {doNotContact ? (
+          <InlineAlert variant="error" bordered>This lead is marked Do Not Contact. Outreach, AI drafts and follow-up scheduling are blocked until a manager deliberately reopens the lead after receiving permission.</InlineAlert>
+        ) : <div className="space-y-4">
           <div className="flex flex-wrap gap-1.5">
             <Button size="sm" variant={template === "" ? "default" : "outline"} disabled={generating || !apiEnabled()} onClick={() => void generateMessage()}>
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Write with AI
@@ -123,13 +162,16 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
               <option value={1}>Tomorrow at 10:00</option><option value={2}>In 2 days at 10:00</option><option value={3}>In 3 days at 10:00</option><option value={7}>In 1 week at 10:00</option>
             </select>
           </label>
-          <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Opening WhatsApp marks a new lead as contacted, schedules the follow-up and adds the message to the timeline. You still press Send inside WhatsApp.</p>
+          {contactedRecently && <InlineAlert variant="warning"><label className="flex cursor-pointer items-start gap-2"><input className="mt-0.5" type="checkbox" checked={repeatConfirmed} onChange={(e) => setRepeatConfirmed(e.target.checked)} /><span>This lead was contacted about {hoursSinceContact} hour{hoursSinceContact === 1 ? "" : "s"} ago. Confirm that another message is appropriate.</span></label></InlineAlert>}
+          {opened ? <InlineAlert variant="success" bordered>WhatsApp was opened, but the free link cannot detect whether you pressed Send. Return here and confirm only after the message was sent.</InlineAlert> : <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Opening WhatsApp records only that the draft was opened. The lead is marked contacted and the next follow-up is scheduled only after you confirm that you pressed Send.</p>}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setConfirmOptOut(true)}><Ban className="h-4 w-4" />Do not contact</Button>
             <Button variant="outline" onClick={() => { void navigator.clipboard.writeText(withMarketingFooter(message)); toast({ variant: "success", title: "Message copied" }); }}><Copy className="h-4 w-4" />Copy</Button>
-            <Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={!message.trim()} onClick={() => void openAndTrack()}><MessageCircle className="h-4 w-4" />Open WhatsApp and record</Button>
+            {opened ? <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => void confirmSent()}><MessageCircle className="h-4 w-4" />I sent it — record</Button> : <Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={!message.trim() || (contactedRecently && !repeatConfirmed)} onClick={() => void openDraft()}><MessageCircle className="h-4 w-4" />Open WhatsApp</Button>}
           </div>
-        </div>
+        </div>}
       </DialogContent>
+      <ConfirmDialog open={confirmOptOut} onOpenChange={setConfirmOptOut} title="Mark this lead Do Not Contact?" description="This marks the lead lost, cancels every open follow-up task, clears the next follow-up and blocks AI or WhatsApp outreach until a manager deliberately reopens it." confirmLabel="Mark Do Not Contact" destructive onConfirm={optOut} />
     </Dialog>
   );
 }

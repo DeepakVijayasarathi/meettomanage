@@ -111,7 +111,8 @@ export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged, 
   const [dragOver, setDragOver] = useState<ApiLeadStage | null>(null);
   const [pending, setPending] = useState<{ lead: ApiPlatformDemoRequest; to: ApiLeadStage } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const columns = showLost ? [...STAGE_PATH, "Lost" as ApiLeadStage] : STAGE_PATH;
+  const onlyLost = leads.length > 0 && leads.every((lead) => (lead.stage ?? "New") === "Lost");
+  const columns = showLost || onlyLost ? [...STAGE_PATH, "Lost" as ApiLeadStage] : STAGE_PATH;
   const lostCount = leads.filter((l) => l.stage === "Lost").length;
 
   async function drop(id: string, to: ApiLeadStage) {
@@ -127,33 +128,33 @@ export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged, 
   }
 
   return (
-    <div className="min-w-0 max-w-full overflow-hidden">
-      <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span>{canWrite ? "Drag a card to another stage. Booking a demo, marking it done or losing a lead asks for details first." : "You have read-only access."}</span>
-        <Button size="sm" variant="ghost" onClick={() => setShowLost((v) => !v)}>{showLost ? "Hide lost" : `Show lost (${lostCount})`}</Button>
+    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border bg-muted/20">
+      <div className="flex min-h-11 items-center justify-between gap-3 border-b bg-background px-3 py-1.5 text-xs text-muted-foreground">
+        <span className="truncate">{canWrite ? "Drag leads between stages" : "Read-only board"}</span>
+        <Button size="sm" variant="ghost" className="h-8 shrink-0" onClick={() => setShowLost((v) => !v)}>{showLost ? "Hide lost" : `Lost (${lostCount})`}</Button>
       </div>
-      <div className="flex w-full max-w-full snap-x gap-3 overflow-x-auto px-1 pb-3">
+      <div className="flex w-full max-w-full snap-x scroll-smooth items-start gap-2 overflow-x-auto p-2">
         {columns.map((stage) => {
           const items = leads.filter((l) => (l.stage ?? "New") === stage);
           const value = items.reduce((s, l) => s + (l.expectedMonthlyValue ?? 0), 0);
           return (
             <section key={stage} aria-label={LEAD_STAGE_LABEL[stage]}
-              className={cn("flex w-72 shrink-0 snap-start flex-col rounded-xl border bg-muted/25 p-2.5 transition", dragOver === stage && "border-primary bg-primary/5")}
+              className={cn("flex h-[calc(100vh-22rem)] min-h-[28rem] w-[17rem] shrink-0 snap-start flex-col rounded-md bg-muted/55 p-2 transition-colors", dragOver === stage && "bg-primary/10 ring-2 ring-primary/40")}
               onDragOver={(e) => { if (canWrite) { e.preventDefault(); setDragOver(stage); } }} onDragLeave={() => setDragOver((s) => (s === stage ? null : s))}
               onDrop={(e) => { const id = e.dataTransfer.getData("text/lead-id"); if (id) void drop(id, stage); }}>
-              <header className="mb-2 px-1">
-                <div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2"><span className={cn("h-2.5 w-2.5 rounded-full", STAGE_DOT[stage])} /><h2 className="text-sm font-semibold">{LEAD_STAGE_LABEL[stage]}</h2></div><Badge variant="outline">{items.length}</Badge></div>
-                <p className="mt-0.5 text-xs text-muted-foreground">{value > 0 ? `${inr(value)}/mo` : "No deal value yet"}</p>
+              <header className="mb-2 px-1 py-0.5">
+                <div className="flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><span className={cn("h-2 w-2 shrink-0 rounded-full", STAGE_DOT[stage])} /><h2 className="truncate text-xs font-semibold uppercase tracking-wide">{LEAD_STAGE_LABEL[stage]}</h2><span className="text-xs text-muted-foreground">{items.length}</span></div>{value > 0 && <span className="text-xs font-medium text-muted-foreground">{inr(value)}/mo</span>}</div>
               </header>
-              <div className="flex max-h-[68vh] flex-col gap-2 overflow-y-auto">
+              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain pr-0.5">
                 {items.map((lead) => {
                   const inStage = daysSince(lead.stageChangedAtUtc ?? lead.createdAtUtc);
                   return (
-                    <article key={lead.id} draggable={canWrite} onDragStart={(e) => e.dataTransfer.setData("text/lead-id", lead.id)} onClick={() => onOpen(lead)}
-                      className={cn("cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition hover:shadow-md", busyId === lead.id && "opacity-50")}>
+                    <article key={lead.id} draggable={canWrite} tabIndex={0} onDragStart={(e) => e.dataTransfer.setData("text/lead-id", lead.id)} onClick={() => onOpen(lead)}
+                      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(lead); } }}
+                      className={cn("group cursor-pointer rounded-md border bg-card p-2.5 shadow-sm transition duration-150 hover:-translate-y-px hover:border-primary/30 hover:shadow-md", busyId === lead.id && "pointer-events-none opacity-50")}>
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0"><p className="truncate font-semibold leading-tight">{lead.academyName}</p><p className="truncate text-xs text-muted-foreground">{lead.fullName}{lead.city ? ` · ${lead.city}` : ""}</p></div>
-                        <Badge variant={lead.leadTemperature === "Hot" ? "destructive" : lead.leadTemperature === "Warm" ? "warning" : "muted"} title="Lead score">{lead.leadScore ?? 0}</Badge>
+                        <div className="min-w-0"><p className="truncate text-sm font-semibold leading-tight group-hover:text-primary">{lead.academyName}</p><p className="mt-1 truncate text-xs text-muted-foreground">{lead.fullName}{lead.city ? ` · ${lead.city}` : ""}</p></div>
+                        <Badge className="h-5 px-1.5 text-[10px]" variant={lead.leadTemperature === "Hot" ? "destructive" : lead.leadTemperature === "Warm" ? "warning" : "muted"} title="Lead score">{lead.leadScore ?? 0}</Badge>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                         {lead.expectedMonthlyValue != null && <span className="font-semibold">{inr(lead.expectedMonthlyValue)}/mo</span>}
@@ -163,20 +164,20 @@ export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged, 
                         {stage === "Lost" && lead.lostReason && <span className="text-muted-foreground">{lead.lostReason}</span>}
                       </div>
                       {stuck?.get(lead.id) && <p className="mt-2 flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300"><AlertTriangle className="h-3 w-3 shrink-0" />{stuck.get(lead.id)}</p>}
-                      <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
+                      <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2 text-[11px] text-muted-foreground">
                         <span className="truncate">{lead.assignedTo ?? "Unassigned"}{inStage !== null && inStage > 0 ? ` · ${inStage}d here` : ""}</span>
                         <span className={isOverdue(lead) ? "shrink-0 font-semibold text-destructive" : "shrink-0"}>{lead.nextFollowUpAtUtc ? (isOverdue(lead) ? "Overdue" : shortDate(lead.nextFollowUpAtUtc)) : ""}</span>
                       </div>
                       {lead.phone && stage !== "Lost" && (
                         <div className="mt-2 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <Button size="sm" variant="outline" className="h-7 flex-1 text-emerald-700" onClick={() => onWhatsApp(lead)}><MessageCircle className="h-3.5 w-3.5" />WhatsApp</Button>
-                          <Button size="sm" variant="outline" className="h-7" asChild><a href={`tel:${lead.phone.replace(/[^\d+]/g, "")}`} title={`Call ${lead.phone}`}><Phone className="h-3.5 w-3.5" /><span className="sr-only">Call</span></a></Button>
+                          <Button size="sm" variant="outline" className="h-7 flex-1 bg-background text-emerald-700" onClick={() => onWhatsApp(lead)}><MessageCircle className="h-3.5 w-3.5" />WhatsApp</Button>
+                          <Button size="sm" variant="outline" className="h-7 bg-background" asChild><a href={`tel:${lead.phone.replace(/[^\d+]/g, "")}`} title={`Call ${lead.phone}`}><Phone className="h-3.5 w-3.5" /><span className="sr-only">Call</span></a></Button>
                         </div>
                       )}
                     </article>
                   );
                 })}
-                {items.length === 0 && <div className="rounded-lg border border-dashed p-5 text-center text-xs text-muted-foreground">{canWrite ? "Drop leads here" : "None"}</div>}
+                {items.length === 0 && <div className="rounded-md border border-dashed border-muted-foreground/30 bg-background/40 p-5 text-center text-xs text-muted-foreground">{canWrite ? "Drop leads here" : "No leads"}</div>}
               </div>
             </section>
           );

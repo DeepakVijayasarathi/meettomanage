@@ -108,6 +108,7 @@ export default function LeadDetailPage() {
 
   const lead = detail.lead;
   const stage = lead.stage ?? "New";
+  const doNotContact = stage === "Lost" && lead.lostReason?.toLowerCase() === "do not contact";
   const stageIndex = STAGE_PATH.indexOf(stage);
   const closed = stage === "Customer" || stage === "Lost";
   const overdue = !!lead.nextFollowUpAtUtc && !closed && new Date(lead.nextFollowUpAtUtc).getTime() < Date.now();
@@ -155,9 +156,9 @@ export default function LeadDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {lead.phone && <Button asChild variant="outline"><a href={`tel:${phoneDigits}`}><Phone className="h-4 w-4" />Call</a></Button>}
-            {lead.phone && <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => setWhatsApp(true)}><MessageCircle className="h-4 w-4" />WhatsApp</Button>}
-            {lead.workEmail && <Button asChild variant="outline"><a href={`mailto:${lead.workEmail}?subject=${encodeURIComponent(`Meet to Manage for ${lead.academyName}`)}`}><Mail className="h-4 w-4" />E-mail</a></Button>}
+            {lead.phone && (doNotContact ? <Button variant="outline" disabled><Phone className="h-4 w-4" />Call</Button> : <Button asChild variant="outline"><a href={`tel:${phoneDigits}`}><Phone className="h-4 w-4" />Call</a></Button>)}
+            {lead.phone && <Button disabled={doNotContact} className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => setWhatsApp(true)}><MessageCircle className="h-4 w-4" />WhatsApp</Button>}
+            {lead.workEmail && (doNotContact ? <Button variant="outline" disabled><Mail className="h-4 w-4" />E-mail</Button> : <Button asChild variant="outline"><a href={`mailto:${lead.workEmail}?subject=${encodeURIComponent(`Meet to Manage for ${lead.academyName}`)}`}><Mail className="h-4 w-4" />E-mail</a></Button>)}
             {me.isManager && <Button variant="ghost" title="Delete lead" onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only">Delete</span></Button>}
           </div>
         </div>
@@ -170,7 +171,7 @@ export default function LeadDetailPage() {
               const current = s === stage;
               return (
                 <li key={s}>
-                  <button type="button" disabled={!me.canWrite || current} onClick={() => void stepTo(s)} title={me.canWrite && !current ? `Move to ${LEAD_STAGE_LABEL[s]}` : LEAD_STAGE_LABEL[s]}
+                  <button type="button" disabled={!me.canWrite || current || (doNotContact && !me.isManager)} onClick={() => void stepTo(s)} title={me.canWrite && !current ? `Move to ${LEAD_STAGE_LABEL[s]}` : LEAD_STAGE_LABEL[s]}
                     className={cn("flex h-9 w-full items-center justify-center gap-1 rounded-md px-1 text-[11px] font-medium transition sm:text-xs",
                       current ? "bg-primary text-primary-foreground" : done ? "bg-primary/15 text-primary hover:bg-primary/25" : "bg-muted text-muted-foreground hover:bg-muted/70",
                       "disabled:cursor-default")}>
@@ -183,11 +184,13 @@ export default function LeadDetailPage() {
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>{stage === "Lost" ? `Lost${lead.lostReason ? `: ${lead.lostReason}` : ""}` : `In ${LEAD_STAGE_LABEL[stage]} for ${inStageDays} day${inStageDays === 1 ? "" : "s"}`}</span>
             {me.canWrite && (stage === "Lost"
-              ? <Button size="sm" variant="outline" onClick={() => void run(() => setLeadStage(lead.id, { stage: "Contacted" }), "Lead reopened")}>Reopen lead</Button>
+              ? (!doNotContact || me.isManager) && <Button size="sm" variant="outline" onClick={() => void run(() => setLeadStage(lead.id, { stage: "Contacted" }), "Lead reopened")}>Reopen lead</Button>
               : stage !== "Customer" && <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setMove("Lost")}><XCircle className="h-4 w-4" />Mark lost</Button>)}
           </div>
         </div>
       </section>
+
+      {doNotContact && <InlineAlert variant="error" bordered><span><b>Do Not Contact:</b> calling, e-mail, WhatsApp, AI drafts and follow-up scheduling are blocked. A manager must reopen the lead only after the contact gives explicit permission.</span></InlineAlert>}
 
       {stuckReason && <InlineAlert variant="warning"><span><b>Stuck for {stuckReason.days} day{stuckReason.days === 1 ? "" : "s"}:</b> {stuckReason.reason}. Log a call, send a WhatsApp or move it to the right stage.</span></InlineAlert>}
 
@@ -250,7 +253,7 @@ export default function LeadDetailPage() {
 
           <TabsContent value="tasks"><LeadTasksPanel key={`tasks-${lead.id}`} lead={lead} version={detail.activity.length} /></TabsContent>
           <TabsContent value="deal"><LeadDealPanel key={`deal-${lead.id}-${lead.expectedMonthlyValue}-${lead.region}-${lead.city}`} lead={lead} onSaved={() => void load()} /></TabsContent>
-          <TabsContent value="lifecycle"><LeadStagePanel lead={lead} live={live} onError={(title, description) => toast({ variant: "error", title, description })} onChanged={(_, message) => { toast({ variant: "success", title: message }); void load(); }} /></TabsContent>
+          <TabsContent value="lifecycle"><LeadStagePanel lead={lead} live={live} canReopenLost={!doNotContact || me.isManager} onError={(title, description) => toast({ variant: "error", title, description })} onChanged={(_, message) => { toast({ variant: "success", title: message }); void load(); }} /></TabsContent>
         </Tabs>
 
         {/* Side panel: contact, ownership, source, AI and private notes. */}
@@ -279,19 +282,20 @@ export default function LeadDetailPage() {
                   {team.filter((m) => me.role !== "Sales" || m.userId === me.userId).map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
                 </select>
               </label>
-              <label className="block space-y-1 text-sm"><span className="font-medium">Next follow-up</span><Input type="datetime-local" value={followUp} onChange={(e) => setFollowUp(e.target.value)} disabled={!me.canWrite} /></label>
+              <label className="block space-y-1 text-sm"><span className="font-medium">Next follow-up</span><Input type="datetime-local" value={followUp} onChange={(e) => setFollowUp(e.target.value)} disabled={!me.canWrite || doNotContact} /></label>
               {me.canWrite && <Button size="sm" onClick={() => void run(() => { const m = team.find((x) => x.userId === owner); return updatePlatformDemoRequest(lead.id, { ...(m ? { assignedToUserId: m.userId, assignedTo: m.name } : {}), nextFollowUpAtUtc: followUp ? new Date(followUp).toISOString() : undefined }); }, "Saved")}>Save</Button>}
             </div>
           </section>
 
           <section className="rounded-xl border bg-primary/5 p-4">
-            <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">AI next action</h3><Button size="sm" variant="outline" disabled={thinking} onClick={() => void analyze()}>{thinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{recommendation ? "Again" : "Analyse"}</Button></div>
+            <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">AI next action</h3><Button size="sm" variant="outline" disabled={thinking || doNotContact} onClick={() => void analyze()}>{thinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}{recommendation ? "Again" : "Analyse"}</Button></div>
             {recommendation ? (
               <div className="mt-3 space-y-2 text-sm">
                 <p>{recommendation.summary}</p>
                 <p><b>Next:</b> {recommendation.nextAction}</p>
-                <div className="rounded-lg border bg-background p-2.5"><p className="mb-1 text-xs font-medium text-muted-foreground">Suggested {recommendation.suggestedChannel} message</p><p className="whitespace-pre-wrap">{recommendation.suggestedMessage}</p>
+                {recommendation.suggestedMessage && <div className="rounded-lg border bg-background p-2.5"><p className="mb-1 text-xs font-medium text-muted-foreground">Suggested {recommendation.suggestedChannel} message</p><p className="whitespace-pre-wrap">{recommendation.suggestedMessage}</p>
                   <Button size="sm" variant="ghost" className="mt-1 h-7 px-2" onClick={() => copy(recommendation.suggestedMessage, "ai")}>{copied === "ai" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}Copy</Button></div>
+                }
               </div>
             ) : <p className="mt-2 text-xs text-muted-foreground">Reads the timeline and suggests the best next step and message.</p>}
           </section>

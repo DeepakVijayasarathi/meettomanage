@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Archive, ChevronDown, Clock3, Download, Handshake, LayoutGrid, List, Loader2, MessageCircle, Search, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -70,8 +70,9 @@ export default function DemoRequests() {
   const live = apiEnabled();
   const [page, setPage] = useState(1);
   const [archivedOnly, setArchivedOnly] = useState(false);
-  const [view, setView] = useState<"pipeline" | "table">("pipeline");
+  const [view, setView] = useState<"pipeline" | "table">(() => localStorage.getItem("marketing-leads-view") === "table" ? "table" : "pipeline");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search.trim());
   const [overdueOnly, setOverdueOnly] = useState(false);
   const me = useCrmMe();
   const { active: team } = useCrmTeam();
@@ -90,7 +91,8 @@ export default function DemoRequests() {
   // Sample rows only in offline demo mode; live mode starts (and stays, on error) empty.
   const fallbackPage = { items: DEMO_REQUESTS, totalCount: DEMO_REQUESTS.length, page: 1, pageSize: 25 };
   const emptyPage = { items: [] as ApiPlatformDemoRequest[], totalCount: 0, page: 1, pageSize: 25 };
-  const { data: pageData, loading, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, pageSize: view === "pipeline" ? 100 : 25, search: search.trim() || undefined, status: statusFilter || undefined, overdueOnly, archivedOnly, ...ownerQuery, stage: stageFilter || undefined, region: regionFilter.trim() || undefined, segment: segmentFilter.trim() || undefined }), fallbackPage, emptyPage, { cacheKey: `marketing-leads-${view}-${page}-${archivedOnly}-${overdueOnly}-${search.trim()}-${filterKey}`, ttlMs: 15_000 });
+  const effectiveView = archivedOnly ? "table" : view;
+  const { data: pageData, loading, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, pageSize: effectiveView === "pipeline" ? 100 : 25, search: deferredSearch || undefined, status: statusFilter || undefined, overdueOnly, archivedOnly, ...ownerQuery, stage: stageFilter || undefined, region: regionFilter.trim() || undefined, segment: segmentFilter.trim() || undefined }), fallbackPage, emptyPage, { cacheKey: `marketing-leads-${effectiveView}-${page}-${archivedOnly}-${overdueOnly}-${deferredSearch}-${filterKey}`, ttlMs: 15_000 });
   const { stuck, reload: reloadStuck } = useCrmStuck();
   const stuckMap = useMemo(() => new Map(stuck.map((l) => [l.id, l.reason])), [stuck]);
   const [stuckOnly, setStuckOnly] = useState(false);
@@ -109,6 +111,14 @@ export default function DemoRequests() {
   const openCount = openLeads.length;
   const openValue = openLeads.reduce((sum, r) => sum + (r.expectedMonthlyValue ?? 0), 0);
   const demosSoon = requests.filter((r) => r.stage === "DemoBooked" && r.demoAtUtc && new Date(r.demoAtUtc).getTime() >= now && new Date(r.demoAtUtc).getTime() < now + 7 * 86_400_000).length;
+
+  useEffect(() => { setSelected(new Set()); }, [filterKey, overdueOnly, stuckOnly, archivedOnly, effectiveView]);
+
+  function chooseView(next: "pipeline" | "table") {
+    setView(next);
+    localStorage.setItem("marketing-leads-view", next);
+    setPage(1);
+  }
 
   async function changeStatus(request: ApiPlatformDemoRequest, status: ApiPlatformDemoRequestStatus) {
     if (!live) {
@@ -292,7 +302,7 @@ export default function DemoRequests() {
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuItem onClick={() => void remindTomorrow(row)}>Follow up tomorrow, 10:00</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => prepareWhatsApp(row)}><MessageCircle className="mr-2 h-4 w-4" />Message on WhatsApp</DropdownMenuItem>
+                {!(row.stage === "Lost" && row.lostReason?.toLowerCase() === "do not contact") && <DropdownMenuItem onClick={() => prepareWhatsApp(row)}><MessageCircle className="mr-2 h-4 w-4" />Message on WhatsApp</DropdownMenuItem>}
                 {archivedOnly && <DropdownMenuItem onClick={() => void restoreLead(row.id)}>Restore lead</DropdownMenuItem>}
                 {me.isManager && <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteRequest(row)}>
                   <Trash2 className="mr-2 h-4 w-4" />Delete lead
@@ -329,9 +339,10 @@ export default function DemoRequests() {
 
       {actionError && <InlineAlert variant="warning" className="mb-4">{actionError}</InlineAlert>}
 
-      <div className="mb-4 flex flex-col gap-3 rounded-xl border bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full lg:max-w-md"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9" placeholder="Search lead, academy, email or phone…" /></div>
-        <div className="flex flex-wrap gap-2">
+      <div className="sticky top-0 z-20 mb-3 rounded-lg border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/85">
+        <div className="flex flex-col gap-2 p-2.5 xl:flex-row xl:items-center">
+        <div className="relative w-full xl:w-80 xl:shrink-0"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="h-9 border-transparent bg-muted/70 pl-9 focus-visible:border-input focus-visible:bg-background" placeholder="Search leads…" /></div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           <select aria-label="Owner" className="h-9 rounded-md border bg-background px-2 text-sm" value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}><option value="">{me.role === "Sales" ? "Mine + unassigned" : "All owners"}</option><option value="mine">Mine</option><option value="unassigned">Unassigned</option>{me.role !== "Sales" && team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select>
           <select aria-label="Status" className="h-9 rounded-md border bg-background px-2 text-sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as ApiPlatformDemoRequestStatus | ""); setPage(1); }}><option value="">All statuses</option>{STATUS_ORDER.map((status) => <option key={status} value={status}>{status}</option>)}</select>
           <select aria-label="Stage" className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => { setStageFilter(e.target.value as ApiLeadStage | ""); setPage(1); }}><option value="">All stages</option>{(Object.keys(LEAD_STAGE_LABEL) as ApiLeadStage[]).map((s) => <option key={s} value={s}>{LEAD_STAGE_LABEL[s]}</option>)}</select>
@@ -340,23 +351,26 @@ export default function DemoRequests() {
           <Button size="sm" variant={overdueOnly ? "default" : "outline"} onClick={() => { setOverdueOnly(v => !v); setPage(1); }}><Clock3 className="h-4 w-4" />Overdue</Button>
           <Button size="sm" variant={stuckOnly ? "default" : "outline"} onClick={() => setStuckOnly((v) => !v)} title="Leads that waited too long in their stage"><AlertTriangle className="h-4 w-4" />Stuck{stuck.length ? ` (${stuck.length})` : ""}</Button>
           {hasFilters && <Button size="sm" variant="ghost" onClick={clearFilters}><X className="h-4 w-4" />Clear</Button>}
-          <div className="inline-flex rounded-md border p-0.5"><Button size="sm" variant={view === "pipeline" ? "default" : "ghost"} onClick={() => { setView("pipeline"); setPage(1); }}><LayoutGrid className="h-4 w-4" />Pipeline</Button><Button size="sm" variant={view === "table" ? "default" : "ghost"} onClick={() => { setView("table"); setPage(1); }}><List className="h-4 w-4" />List</Button></div>
+          <div className="ml-auto inline-flex rounded-md border bg-muted/30 p-0.5"><Button size="sm" variant={effectiveView === "pipeline" ? "default" : "ghost"} className="h-8" disabled={archivedOnly} title={archivedOnly ? "Archived leads are available in list view" : undefined} onClick={() => chooseView("pipeline")}><LayoutGrid className="h-4 w-4" />Board</Button><Button size="sm" variant={effectiveView === "table" ? "default" : "ghost"} className="h-8" onClick={() => chooseView("table")}><List className="h-4 w-4" />List</Button></div>
+        </div>
+        </div>
+        <div className="flex gap-1 overflow-x-auto border-t bg-muted/20 px-2.5 py-2">
+          <div className="flex min-w-max items-center gap-2 rounded-md px-2 py-1 text-sm"><span className="text-muted-foreground">Pipeline</span><b>{inr(openValue)}<span className="font-normal text-muted-foreground">/mo</span></b><span className="text-xs text-muted-foreground">{openCount} open</span></div>
+          <div className="h-7 w-px shrink-0 bg-border" />
+          <div className="flex min-w-max items-center gap-1.5 rounded-md px-2 py-1 text-sm"><span className="text-muted-foreground">Hot</span><b>{hotCount}</b></div>
+          <div className="flex min-w-max items-center gap-1.5 rounded-md px-2 py-1 text-sm"><span className="text-muted-foreground">Upcoming demos</span><b>{demosSoon}</b></div>
+          <button type="button" onClick={() => { setOverdueOnly((v) => !v); setPage(1); }} className={`flex min-w-max items-center gap-1.5 rounded-md px-2 py-1 text-sm transition ${overdueOnly ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30" : "hover:bg-muted"}`}><span className="text-muted-foreground">Overdue</span><b className={overdueCount ? "text-destructive" : ""}>{overdueCount}</b></button>
+          <div className="flex min-w-max items-center gap-1.5 rounded-md px-2 py-1 text-sm"><span className="text-muted-foreground">Duplicates</span><b>{duplicateCount}</b></div>
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Open pipeline</p><p className="text-2xl font-bold">{inr(openValue)}<span className="text-sm font-normal text-muted-foreground">/mo</span></p><p className="text-xs text-muted-foreground">{openCount} open lead{openCount === 1 ? "" : "s"} shown</p></div>
-        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Hot leads</p><p className="text-2xl font-bold">{hotCount}</p></div>
-        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Demos in the next 7 days</p><p className="text-2xl font-bold">{demosSoon}</p></div>
-        <button type="button" onClick={() => { setOverdueOnly((v) => !v); setPage(1); }} className={`rounded-xl border bg-card p-4 text-start transition ${overdueOnly ? "ring-2 ring-primary" : "hover:bg-muted/40"}`}><p className="text-xs text-muted-foreground">Overdue follow-ups</p><p className={overdueCount ? "text-2xl font-bold text-destructive" : "text-2xl font-bold"}>{overdueCount}</p></button>
-        <div className="rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Possible duplicates</p><p className="text-2xl font-bold">{duplicateCount}</p></div>
-      </div>
+      {effectiveView === "pipeline" && pageData.totalCount > pageData.items.length && <InlineAlert variant="warning" className="mb-3">The board shows the first {pageData.items.length} of {pageData.totalCount} matching leads. Narrow the filters to work with a specific segment, or switch to List for every page.</InlineAlert>}
 
       {loading && requests.length === 0 ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : requests.length === 0 && !error ? (
         <EmptyState icon={Handshake} title="No platform demo requests yet" description="Submissions from the public /get-started page will show up here." />
-      ) : view === "pipeline" && !archivedOnly ? (
+      ) : effectiveView === "pipeline" ? (
         <StagePipeline leads={requests} canWrite={me.canWrite} onOpen={openLead} onWhatsApp={prepareWhatsApp} onChanged={() => { reload(); reloadStuck(); }} stuck={stuckMap} />
       ) : (
         <DataTable
@@ -364,6 +378,7 @@ export default function DemoRequests() {
           columns={columns}
           rowKey={(row) => row.id}
           searchPlaceholder="Search by contact or academy…"
+          hideSearch
           emptyTitle="No platform demo requests yet"
           emptyDescription="Submissions from the public /get-started page will show up here."
           error={live ? error : null}
