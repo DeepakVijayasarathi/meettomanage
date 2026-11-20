@@ -7,6 +7,20 @@ import { useToast } from "@/hooks/use-toast";
 import { apiEnabled } from "@/lib/api";
 import { getMarketingLeadRecommendation, logMarketingLeadActivity, updatePlatformDemoRequest, type ApiPlatformDemoRequest } from "@/api/marketing";
 
+const MARKETING_MESSAGE_FOOTER = `Website: https://meettomanage.cloud
+Demo video: https://www.youtube.com/watch?v=wIadR73CVus
+
+Looking forward to connecting!
+
+Best regards,
+Meet to Manage team`;
+
+/** Adds the standard sales footer once, including to AI messages from older API deployments. */
+function withMarketingFooter(message: string) {
+  const clean = message.trim();
+  return clean.includes("https://www.youtube.com/watch?v=wIadR73CVus") ? clean : `${clean}\n\n${MARKETING_MESSAGE_FOOTER}`;
+}
+
 const TEMPLATES: { key: string; label: string; text: (l: ApiPlatformDemoRequest) => string }[] = [
   { key: "follow-up", label: "Initial follow-up", text: (l) => `Hi ${l.fullName}, thank you for your interest in Meet to Manage for ${l.academyName}. I’m following up about your platform demo request. When would be a convenient time to speak?` },
   { key: "demo", label: "Demo reminder", text: (l) => `Hi ${l.fullName}, this is a reminder about your Meet to Manage demo for ${l.academyName}. Please let me know a suitable date and time, and I’ll arrange it for you.` },
@@ -33,17 +47,17 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
   useEffect(() => {
     if (!lead) return;
     const t = lead.stage === "Trial" || lead.stage === "ActiveTrial" ? "trial" : "follow-up";
-    setTemplate(t); setMessage(TEMPLATES.find((x) => x.key === t)!.text(lead)); setDays(2); setAiPowered(null);
+    setTemplate(t); setMessage(withMarketingFooter(TEMPLATES.find((x) => x.key === t)!.text(lead))); setDays(2); setAiPowered(null);
   }, [lead]);
 
-  function pick(key: string) { if (!lead) return; setTemplate(key); setMessage(TEMPLATES.find((x) => x.key === key)!.text(lead)); setAiPowered(null); }
+  function pick(key: string) { if (!lead) return; setTemplate(key); setMessage(withMarketingFooter(TEMPLATES.find((x) => x.key === key)!.text(lead))); setAiPowered(null); }
 
   async function generateMessage() {
     if (!lead || generating) return;
     setGenerating(true);
     try {
       const suggestion = await getMarketingLeadRecommendation(lead.id);
-      setMessage(suggestion.suggestedMessage);
+      setMessage(withMarketingFooter(suggestion.suggestedMessage));
       setTemplate("");
       setAiPowered(suggestion.aiPowered);
       toast({ variant: "success", title: suggestion.aiPowered ? "AI message ready" : "Suggested message ready", description: "Review or edit it before opening WhatsApp." });
@@ -56,12 +70,13 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
 
   async function openAndTrack() {
     if (!lead || !message.trim()) return;
-    window.open(whatsappLink(lead.phone, message.trim()), "_blank", "noopener,noreferrer");
+    const finalMessage = withMarketingFooter(message);
+    window.open(whatsappLink(lead.phone, finalMessage), "_blank", "noopener,noreferrer");
     if (apiEnabled()) {
       const next = new Date(); next.setDate(next.getDate() + days); next.setHours(10, 0, 0, 0);
       try {
         await updatePlatformDemoRequest(lead.id, { status: lead.status === "New" ? "Contacted" : lead.status, nextFollowUpAtUtc: next.toISOString() });
-        await logMarketingLeadActivity(lead.id, { type: "WhatsApp sent", detail: message.trim() });
+        await logMarketingLeadActivity(lead.id, { type: "WhatsApp sent", detail: finalMessage });
         toast({ variant: "success", title: "Message recorded on the lead" });
         onTracked?.();
       } catch (err) {
@@ -93,7 +108,7 @@ export function WhatsAppDialog({ lead, onOpenChange, onTracked }: { lead: ApiPla
           </label>
           <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Opening WhatsApp marks a new lead as contacted, schedules the follow-up and adds the message to the timeline. You still press Send inside WhatsApp.</p>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => { void navigator.clipboard.writeText(message); toast({ variant: "success", title: "Message copied" }); }}><Copy className="h-4 w-4" />Copy</Button>
+            <Button variant="outline" onClick={() => { void navigator.clipboard.writeText(withMarketingFooter(message)); toast({ variant: "success", title: "Message copied" }); }}><Copy className="h-4 w-4" />Copy</Button>
             <Button className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={!message.trim()} onClick={() => void openAndTrack()}><MessageCircle className="h-4 w-4" />Open WhatsApp and record</Button>
           </div>
         </div>
