@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { AlertTriangle, Archive, ChevronDown, Clock3, Download, Handshake, LayoutGrid, List, Loader2, MessageCircle, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Archive, ChevronDown, Clock3, Download, Handshake, LayoutGrid, List, Loader2, MessageCircle, Search, Trash2, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -76,18 +76,21 @@ export default function DemoRequests() {
   const me = useCrmMe();
   const { active: team } = useCrmTeam();
   const [ownerFilter, setOwnerFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ApiPlatformDemoRequestStatus | "">("");
   const [stageFilter, setStageFilter] = useState<ApiLeadStage | "">("");
   const [regionFilter, setRegionFilter] = useState("");
   const [segmentFilter, setSegmentFilter] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const ownerQuery = ownerFilter === "mine" ? { assignedToUserId: me.userId ?? undefined } : ownerFilter === "unassigned" ? { unassignedOnly: true } : ownerFilter ? { assignedToUserId: ownerFilter } : {};
-  const filterKey = `${ownerFilter}-${stageFilter}-${regionFilter.trim()}-${segmentFilter.trim()}`;
+  const filterKey = `${ownerFilter}-${statusFilter}-${stageFilter}-${regionFilter.trim()}-${segmentFilter.trim()}`;
   // Sample rows only in offline demo mode; live mode starts (and stays, on error) empty.
   const fallbackPage = { items: DEMO_REQUESTS, totalCount: DEMO_REQUESTS.length, page: 1, pageSize: 25 };
   const emptyPage = { items: [] as ApiPlatformDemoRequest[], totalCount: 0, page: 1, pageSize: 25 };
-  const { data: pageData, loading, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, pageSize: view === "pipeline" ? 100 : 25, search: search.trim() || undefined, overdueOnly, archivedOnly, ...ownerQuery, stage: stageFilter || undefined, region: regionFilter.trim() || undefined, segment: segmentFilter.trim() || undefined }), fallbackPage, emptyPage, { cacheKey: `marketing-leads-${view}-${page}-${archivedOnly}-${overdueOnly}-${search.trim()}-${filterKey}`, ttlMs: 15_000 });
+  const { data: pageData, loading, error, reload } = useApiData(() => listPlatformDemoRequestsPaged({ page, pageSize: view === "pipeline" ? 100 : 25, search: search.trim() || undefined, status: statusFilter || undefined, overdueOnly, archivedOnly, ...ownerQuery, stage: stageFilter || undefined, region: regionFilter.trim() || undefined, segment: segmentFilter.trim() || undefined }), fallbackPage, emptyPage, { cacheKey: `marketing-leads-${view}-${page}-${archivedOnly}-${overdueOnly}-${search.trim()}-${filterKey}`, ttlMs: 15_000 });
   const { stuck, reload: reloadStuck } = useCrmStuck();
   const stuckMap = useMemo(() => new Map(stuck.map((l) => [l.id, l.reason])), [stuck]);
   const [stuckOnly, setStuckOnly] = useState(false);
@@ -170,6 +173,37 @@ export default function DemoRequests() {
     if (selected.size === 0) return;
     const ok = await runAction(async () => { await bulkUpdateMarketingLeads({ ids: [...selected], status, archive }); reload(); }, "Couldn't update leads", archive ? "Leads archived" : "Leads updated");
     if (ok) setSelected(new Set());
+  }
+  async function removeSelected() {
+    const ids = [...selected];
+    if (ids.length === 0 || !me.isManager) return;
+    setBulkDeleting(true);
+    setActionError(null);
+    const results = await Promise.allSettled(ids.map((id) => deletePlatformDemoRequest(id)));
+    const failed = ids.filter((_, index) => results[index].status === "rejected");
+    await reload();
+    setSelected(new Set(failed));
+    setBulkDeleting(false);
+    setBulkDeleteOpen(false);
+    const deleted = ids.length - failed.length;
+    if (failed.length > 0) {
+      const message = `${deleted} deleted; ${failed.length} could not be deleted. The failed rows remain selected.`;
+      setActionError(message);
+      toast({ variant: "error", title: "Bulk delete incomplete", description: message });
+    } else {
+      toast({ variant: "success", title: `${deleted} lead${deleted === 1 ? "" : "s"} deleted` });
+    }
+  }
+  const hasFilters = !!(ownerFilter || statusFilter || stageFilter || regionFilter.trim() || segmentFilter.trim() || overdueOnly || stuckOnly);
+  function clearFilters() {
+    setOwnerFilter("");
+    setStatusFilter("");
+    setStageFilter("");
+    setRegionFilter("");
+    setSegmentFilter("");
+    setOverdueOnly(false);
+    setStuckOnly(false);
+    setPage(1);
   }
   async function restoreLead(id: string) { await runAction(async () => { await restoreMarketingLead(id); reload(); }, "Couldn't restore lead", "Lead restored"); }
   const prepareWhatsApp = (lead: ApiPlatformDemoRequest) => setWhatsAppLead(lead);
@@ -297,7 +331,17 @@ export default function DemoRequests() {
 
       <div className="mb-4 flex flex-col gap-3 rounded-xl border bg-card p-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-md"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9" placeholder="Search lead, academy, email or phone…" /></div>
-        <div className="flex flex-wrap gap-2"><select aria-label="Owner" className="h-9 rounded-md border bg-background px-2 text-sm" value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}><option value="">{me.role === "Sales" ? "Mine + unassigned" : "All owners"}</option><option value="mine">Mine</option><option value="unassigned">Unassigned</option>{me.role !== "Sales" && team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select><select aria-label="Stage" className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => { setStageFilter(e.target.value as ApiLeadStage | ""); setPage(1); }}><option value="">All stages</option>{(Object.keys(LEAD_STAGE_LABEL) as ApiLeadStage[]).map((s) => <option key={s} value={s}>{LEAD_STAGE_LABEL[s]}</option>)}</select><Input aria-label="Region" className="h-9 w-32" placeholder="Region" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value); setPage(1); }} /><Input aria-label="What they teach" className="h-9 w-36" placeholder="Phonics, Abacus…" value={segmentFilter} onChange={(e) => { setSegmentFilter(e.target.value); setPage(1); }} /><Button size="sm" variant={overdueOnly ? "default" : "outline"} onClick={() => { setOverdueOnly(v => !v); setPage(1); }}><Clock3 className="h-4 w-4" />Overdue</Button><Button size="sm" variant={stuckOnly ? "default" : "outline"} onClick={() => setStuckOnly((v) => !v)} title="Leads that waited too long in their stage"><AlertTriangle className="h-4 w-4" />Stuck{stuck.length ? ` (${stuck.length})` : ""}</Button><div className="inline-flex rounded-md border p-0.5"><Button size="sm" variant={view === "pipeline" ? "default" : "ghost"} onClick={() => { setView("pipeline"); setPage(1); }}><LayoutGrid className="h-4 w-4" />Pipeline</Button><Button size="sm" variant={view === "table" ? "default" : "ghost"} onClick={() => { setView("table"); setPage(1); }}><List className="h-4 w-4" />List</Button></div></div>
+        <div className="flex flex-wrap gap-2">
+          <select aria-label="Owner" className="h-9 rounded-md border bg-background px-2 text-sm" value={ownerFilter} onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}><option value="">{me.role === "Sales" ? "Mine + unassigned" : "All owners"}</option><option value="mine">Mine</option><option value="unassigned">Unassigned</option>{me.role !== "Sales" && team.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}</select>
+          <select aria-label="Status" className="h-9 rounded-md border bg-background px-2 text-sm" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as ApiPlatformDemoRequestStatus | ""); setPage(1); }}><option value="">All statuses</option>{STATUS_ORDER.map((status) => <option key={status} value={status}>{status}</option>)}</select>
+          <select aria-label="Stage" className="h-9 rounded-md border bg-background px-2 text-sm" value={stageFilter} onChange={(e) => { setStageFilter(e.target.value as ApiLeadStage | ""); setPage(1); }}><option value="">All stages</option>{(Object.keys(LEAD_STAGE_LABEL) as ApiLeadStage[]).map((s) => <option key={s} value={s}>{LEAD_STAGE_LABEL[s]}</option>)}</select>
+          <Input aria-label="Region" className="h-9 w-32" placeholder="Region" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value); setPage(1); }} />
+          <Input aria-label="What they teach" className="h-9 w-36" placeholder="Phonics, Abacus…" value={segmentFilter} onChange={(e) => { setSegmentFilter(e.target.value); setPage(1); }} />
+          <Button size="sm" variant={overdueOnly ? "default" : "outline"} onClick={() => { setOverdueOnly(v => !v); setPage(1); }}><Clock3 className="h-4 w-4" />Overdue</Button>
+          <Button size="sm" variant={stuckOnly ? "default" : "outline"} onClick={() => setStuckOnly((v) => !v)} title="Leads that waited too long in their stage"><AlertTriangle className="h-4 w-4" />Stuck{stuck.length ? ` (${stuck.length})` : ""}</Button>
+          {hasFilters && <Button size="sm" variant="ghost" onClick={clearFilters}><X className="h-4 w-4" />Clear</Button>}
+          <div className="inline-flex rounded-md border p-0.5"><Button size="sm" variant={view === "pipeline" ? "default" : "ghost"} onClick={() => { setView("pipeline"); setPage(1); }}><LayoutGrid className="h-4 w-4" />Pipeline</Button><Button size="sm" variant={view === "table" ? "default" : "ghost"} onClick={() => { setView("table"); setPage(1); }}><List className="h-4 w-4" />List</Button></div>
+        </div>
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -328,7 +372,7 @@ export default function DemoRequests() {
           selectable
           selectedKeys={selected}
           onSelectionChange={setSelected}
-          bulkActions={<div className="flex flex-wrap gap-2">{me.canWrite && <Button size="sm" onClick={() => setBulkOpen(true)}>Assign / follow-up plan</Button>}<Button size="sm" variant="outline" onClick={() => void bulk("Contacted")}>Mark contacted</Button><Button size="sm" variant="outline" onClick={() => void bulk(undefined, true)}>Archive</Button></div>}
+          bulkActions={<div className="flex flex-wrap gap-2">{me.canWrite && <Button size="sm" onClick={() => setBulkOpen(true)}>Assign / follow-up plan</Button>}<Button size="sm" variant="outline" onClick={() => void bulk("Contacted")}>Mark contacted</Button><Button size="sm" variant="outline" onClick={() => void bulk(undefined, true)}>Archive</Button>{me.isManager && <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}><Trash2 className="h-4 w-4" />Delete selected</Button>}</div>}
           serverPagination={{ page: pageData.page, pageSize: pageData.pageSize, totalCount: pageData.totalCount, onPageChange: setPage }}
         />
       )}
@@ -344,6 +388,15 @@ export default function DemoRequests() {
         confirmLabel="Delete request"
         destructive
         onConfirm={removeRequest}
+      />
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        title={`Delete ${selected.size} selected lead${selected.size === 1 ? "" : "s"}?`}
+        description="This removes the selected leads from active marketing lists and retains audit records for administrators. This action cannot be undone from the Marketing Console."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete selected leads"}
+        destructive
+        onConfirm={removeSelected}
       />
       <WhatsAppDialog lead={whatsAppLead} onOpenChange={(open) => { if (!open) setWhatsAppLead(null); }} onTracked={reload} />
     </div>
