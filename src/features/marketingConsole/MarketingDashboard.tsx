@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, BarChart3, CalendarCheck2, CheckCircle2, ChevronLeft, ChevronRight, Eye, Info, Loader2, MessageCircle, MousePointerClick, Sparkles, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
@@ -98,6 +99,7 @@ function PerformanceList({ title, items }: { title: string; items: ApiMarketingD
 const DEVICE_LABEL: Record<string, string> = { desktop: "Desktop", mobile: "Mobile", tablet: "Tablet" };
 
 export default function MarketingDashboard() {
+  const navigate = useNavigate();
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
   // Custom from–to range; null = the preset buttons are in charge.
   const [custom, setCustom] = useState<MarketingDateRange | null>(null);
@@ -158,7 +160,7 @@ export default function MarketingDashboard() {
   const kpis: { label: string; value: string; detail?: string; icon: LucideIcon; tone: "primary" | "success" | "warning" | "neutral"; trend?: { value: number; label: string } }[] = [
     { label: "Visitors", value: fmt(t.visitors), icon: Users, tone: "primary", trend: change(t.visitors, p.visitors) },
     { label: "Page views", value: fmt(t.pageViews), icon: Eye, tone: "neutral", trend: change(t.pageViews, p.pageViews) },
-    { label: "Chats started", value: fmt(t.chatsStarted), icon: MessageCircle, tone: "primary", trend: change(t.chatsStarted, p.chatsStarted) },
+    { label: "Saved chats", value: fmt(t.chatsStarted), detail: "open conversation history", icon: MessageCircle, tone: "primary", trend: change(t.chatsStarted, p.chatsStarted) },
     {
       label: "Demo requests",
       value: fmt(t.demoRequests),
@@ -169,10 +171,10 @@ export default function MarketingDashboard() {
     },
     { label: "Visitor → demo", value: `${t.conversionRate}%`, detail: "per 100 visitors", icon: TrendingUp, tone: "warning" },
     { label: "Pages / visitor", value: t.pagesPerVisitor.toFixed(1), detail: "content depth", icon: BarChart3, tone: "neutral" },
-    { label: "Chat engagement", value: `${t.chatStartRate}%`, detail: "visitors starting chat", icon: MousePointerClick, tone: "primary" },
+    { label: "Saved chat rate", value: `${t.chatStartRate}%`, detail: "visitors with a saved chat", icon: MousePointerClick, tone: "primary" },
     { label: "Demo → converted", value: `${t.demoPipelineConversionRate}%`, detail: "sales pipeline", icon: TrendingUp, tone: "success" },
   ];
-  const supportingKpis = kpis.filter(k => ["Page views", "Chats started", "Pages / visitor", "Chat engagement"].includes(k.label));
+  const supportingKpis = kpis.filter(k => ["Page views", "Saved chats", "Pages / visitor", "Saved chat rate"].includes(k.label));
   const demoTrend = change(t.demoRequests, p.demoRequests);
   const formStarts = t.formStartedVisitors ?? 0;
   const formSubmits = t.formSubmittedVisitors ?? 0;
@@ -258,7 +260,7 @@ export default function MarketingDashboard() {
               ["Demo requests", fmt(t.demoRequests), demoTrend ? `${demoTrend.value >= 0 ? "+" : ""}${demoTrend.value}% vs prior` : "new opportunities"],
               ["Visitor → demo", `${t.conversionRate}%`, "acquisition conversion"],
               ["Demo → won", `${t.demoPipelineConversionRate}%`, "pipeline conversion"],
-            ].map(([label, value, detail]) => <div key={label} className="bg-[#0B132B]/80 p-5 backdrop-blur"><p className="text-xs font-medium text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold tabular-nums">{value}</p><p className="mt-1 text-xs text-slate-400">{detail}</p></div>)}
+            ].map(([label, value, detail]) => <div key={label} role={label === "Demo requests" ? "button" : undefined} tabIndex={label === "Demo requests" ? 0 : undefined} onClick={label === "Demo requests" ? () => navigate("/marketing/demo-requests") : undefined} onKeyDown={label === "Demo requests" ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/marketing/demo-requests"); } } : undefined} className={cn("bg-[#0B132B]/80 p-5 backdrop-blur", label === "Demo requests" && "cursor-pointer transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-300")}><p className="text-xs font-medium text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold tabular-nums">{value}</p><p className="mt-1 text-xs text-slate-400">{detail}</p></div>)}
           </div>
         </div>
       </section>
@@ -266,7 +268,7 @@ export default function MarketingDashboard() {
       <div className="mb-3 flex items-end justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Engagement</p><h2 className="mt-1 text-xl font-bold">How visitors interact</h2></div><p className="hidden text-sm text-muted-foreground sm:block">Supporting signals behind conversion</p></div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {supportingKpis.map((k) => (
-          <KpiCard key={k.label} label={k.label} value={k.value} detail={k.detail} icon={k.icon} tone={k.tone} trend={k.trend} loading={loading} error={error} />
+          <KpiCard key={k.label} label={k.label} value={k.value} detail={k.detail} icon={k.icon} tone={k.tone} trend={k.trend} loading={loading} error={error} onClick={k.label === "Saved chats" ? () => navigate("/marketing/chats") : undefined} />
         ))}
       </div>
 
