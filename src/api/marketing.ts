@@ -472,7 +472,11 @@ export async function getMarketingVisitorJourneys(days: number, range: Marketing
   return apiFetch<ApiMarketingVisitorJourneys>(`/api/marketing/analytics/visitors?${q}`);
 }
 
-export interface ApiMarketingContentStat { path: string; title: string | null; readers: number; views: number; wentOn: number; toBuyingPages: number; bookedDemo: number }
+export interface ApiMarketingContentStat {
+  path: string; title: string | null; readers: number; views: number; wentOn: number;
+  toBuyingPages: number; toPricing: number; toDemoPage: number;
+  formStarted: number; formSubmitted: number; bookedDemo: number;
+}
 export interface ApiMarketingContentPerformance { days: number; startDate: string; endDate: string; blogReaders: number; posts: ApiMarketingContentStat[] }
 export interface ApiMarketingBlogAnalysis { executiveSummary: string; winningPatterns: string[]; contentGaps: string[]; nextActions: string[]; aiPowered: boolean; generatedAtUtc: string }
 export interface ApiMarketingBlogIdea { title: string; targetKeyword: string; why: string; outline: string[] }

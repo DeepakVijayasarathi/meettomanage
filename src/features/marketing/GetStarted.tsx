@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, CalendarClock, CheckCircle2, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, PhoneCall, User, Users, Video, type LucideIcon } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, ChevronDown, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, PhoneCall, User, Users, Video, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -255,6 +255,7 @@ export default function GetStarted() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [showDetails, setShowDetails] = useState(() => wantsCall || wantsMigration || searchParams.has("plan") || searchParams.has("hours"));
   const [minPreferredAt] = useState(localDateTimeMinimum);
   const startedRef = useRef(false);
   const submittedRef = useRef(false);
@@ -413,6 +414,9 @@ export default function GetStarted() {
                         <Input id="gs-fullName" required maxLength={150} className={FIELD} value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} placeholder={t.namePlaceholder} />
                       </Field>
                     </div>
+                    <div>
+                      <p className="mb-1.5 text-sm font-semibold text-[#1C1917]">{lang === "en" ? "Where should we reply?" : "أين نرسل ردنا؟"} <span className="text-[#C2410C]">*</span></p>
+                      <p className="mb-3 text-xs text-[#78716C]">{lang === "en" ? "Add either WhatsApp or email — you do not need both." : "أضف واتساب أو البريد الإلكتروني — لا تحتاج إلى كليهما."}</p>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="grid gap-1.5">
                         <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
@@ -427,6 +431,17 @@ export default function GetStarted() {
                         </Field>
                       </div>
                     </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-expanded={showDetails}
+                      onClick={() => setShowDetails((shown) => !shown)}
+                      className="flex w-full items-center justify-between rounded-xl border border-[#EBD9C8] bg-[#FFF8F1] px-4 py-3 text-start text-sm font-bold text-[#7C2D12] transition-colors hover:bg-[#FFF1E6]"
+                    >
+                      <span>{lang === "en" ? "Personalise my demo (optional)" : "خصّص العرض التوضيحي (اختياري)"}</span>
+                      <ChevronDown className={cn("h-4 w-4 transition-transform", showDetails && "rotate-180")} />
+                    </button>
+                    {showDetails && <div className="flex flex-col gap-4 rounded-2xl border border-[#F0E0D2] bg-[#FFFCF9] p-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-academyName" className="font-semibold text-[#1C1917]">{isCoach ? t.academyNameCoach : t.academyNameAcademy} {!isCoach && <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span>}</Label>
                       <Field icon={Landmark}>
@@ -458,12 +473,13 @@ export default function GetStarted() {
                         <Textarea id="gs-message" rows={3} maxLength={700} className={cn(FIELD, "h-auto py-3.5")} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} placeholder={t.messagePlaceholder} />
                       </div>
                     </div>
+                    </div>}
                     {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
                     <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
-                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{wantsCall ? (lang === "en" ? "Request this call" : "اطلب هذه المكالمة") : wantsMigration ? (lang === "en" ? "Get my migration plan" : "احصل على خطة الانتقال") : pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
+                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{wantsCall ? (lang === "en" ? "Request this call" : "اطلب هذه المكالمة") : wantsMigration ? (lang === "en" ? "Get my migration plan" : "احصل على خطة الانتقال") : lang === "en" ? "Book my free 30-minute demo" : pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
                     </button>
                     <p className="text-center text-xs leading-relaxed text-[#78716C]">
-                      {lang === "en" ? "We only use these details to arrange your walkthrough." : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
+                      {lang === "en" ? "Takes less than a minute · No payment details · No commitment" : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
                     </p>
                     <a
                       href="https://wa.me/919344773231?text=I%27d%20like%20a%20free%20Meet%20to%20Manage%20walkthrough."

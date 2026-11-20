@@ -510,22 +510,23 @@ export default function BlogPost() {
                 <p className="mt-2 text-sm leading-relaxed text-[#57534E]">
                   Read the guide, then see the matching product workflow or bring your current process to a free 30-minute walkthrough.
                 </p>
-                <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3">
+                <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Link
                     to={relatedSolution.to}
                     onClick={() => trackMarketingEvent("content_cta_clicked", `/blog/${slug}`, `blog-intro:${topic?.toLowerCase() ?? "operations"}`)}
-                    className="inline-flex items-center gap-2 text-sm font-bold text-[#C2410C]"
+                    className="inline-flex items-center gap-2 rounded-lg px-1 py-2 text-sm font-bold text-[#C2410C]"
                   >
                     {relatedSolution.label}<ArrowRight aria-hidden="true" className="h-4 w-4" />
                   </Link>
                   <Link
                     to={demoPath}
                     onClick={() => trackMarketingEvent("sales_cta_clicked", `/blog/${slug}`, `blog-intro:${ctaVariant}`)}
-                    className="inline-flex items-center gap-2 text-sm font-bold text-[#111827]"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#EA580C] px-5 py-2.5 text-sm font-extrabold text-white shadow-[0_10px_24px_-12px_rgba(194,65,12,0.9)] transition-colors hover:bg-[#C2410C]"
                   >
-                    {conversionCta.outcome}<ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    {lang === "en" ? "Book my free 30-minute demo" : t.requestDemo}<ArrowRight aria-hidden="true" className="h-4 w-4" />
                   </Link>
                 </div>
+                {lang === "en" && <p className="mt-3 text-xs font-medium text-[#78716C]">Less than 1 minute to request · No payment details · We confirm the time with you</p>}
               </aside>
               <div className="flex flex-col gap-6">
                 {slug === NO_SHOWS_SLUG && (
