@@ -12,7 +12,12 @@ export function ScrollToTop() {
   const navigationType = useNavigationType();
 
   useLayoutEffect(() => {
-    if (navigationType === "POP") return;
+    // React Router reports both browser Back/Forward and a full page reload as POP.
+    // Preserve the useful Back/Forward position, but never reopen a refreshed dashboard
+    // halfway down a long table or kanban board with its title and controls off-screen.
+    const browserNavigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    const isReload = browserNavigation?.type === "reload";
+    if (navigationType === "POP" && !isReload) return;
     if (hash) {
       // The section may belong to a lazily loaded page, so give it a few frames to appear.
       let tries = 0;
