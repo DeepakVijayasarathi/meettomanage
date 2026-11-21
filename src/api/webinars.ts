@@ -10,6 +10,10 @@ export interface WebinarDetails {
   start: string;
   end: string;
   bannerImage?: string | null;
+  hostName?: string | null;
+  hostRole?: string | null;
+  hostPhoto?: string | null;
+  teamName?: string | null;
 }
 
 export interface Webinar {

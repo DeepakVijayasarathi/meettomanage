@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { userMessage } from "@/lib/api";
 import { localWebinarTime, webinarCalendarUrl } from "@/lib/webinarCalendar";
-import { webinarPath } from "@/lib/webinars";
+import { webinarHosts, webinarPath } from "@/lib/webinars";
 
 function localInput(date?: Date) {
   return date ? new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : "";
@@ -23,36 +23,41 @@ export default function WebinarCatalog() {
   const [saveError, setSaveError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [banner, setBanner] = useState("");
-  const [readingBanner, setReadingBanner] = useState(false);
+  const [readingImage, setReadingImage] = useState(false);
   const [bannerError, setBannerError] = useState("");
+  const [hostPhoto, setHostPhoto] = useState("");
+  const [hostPhotoError, setHostPhotoError] = useState("");
   const details = editing?.details;
+  const hosts = webinarHosts(editing);
 
   function openEditor(webinar: Webinar | null) {
     setEditing(webinar);
     setBanner(webinar?.details.bannerImage ?? "");
     setBannerError("");
+    setHostPhoto(webinar?.details.hostPhoto ?? "");
+    setHostPhotoError("");
     setSaveError("");
     setFeedback("");
   }
 
-  function selectBanner(file?: File) {
+  function selectImage(file: File | undefined, limitKb: number, setImage: (value: string) => void, setError: (value: string) => void) {
     if (!file) return;
-    setBannerError("");
-    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 500_000 || !file.size) {
-      setBannerError("Choose a PNG, JPG, or WebP image up to 500 KB.");
+    setError("");
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > limitKb * 1000 || !file.size) {
+      setError(`Choose a PNG, JPG, or WebP image up to ${limitKb} KB.`);
       return;
     }
     const reader = new FileReader();
-    setReadingBanner(true);
-    reader.onload = () => setBanner(String(reader.result));
-    reader.onerror = () => setBannerError("Could not read the banner image. Try selecting it again.");
-    reader.onloadend = () => setReadingBanner(false);
+    setReadingImage(true);
+    reader.onload = () => setImage(String(reader.result));
+    reader.onerror = () => setError("Could not read the image. Try selecting it again.");
+    reader.onloadend = () => setReadingImage(false);
     reader.readAsDataURL(file);
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving || readingBanner) return;
+    if (saving || readingImage) return;
     const form = new FormData(event.currentTarget);
     const value = (name: string) => String(form.get(name) ?? "").trim();
     const title = value("title");
@@ -71,6 +76,7 @@ export default function WebinarCatalog() {
       await saveWebinar({
         title, excerpt, description, benefits: value("benefits"), offers: value("offers"),
         start: start.toISOString(), end: end.toISOString(), isPublished: publish, bannerImage: banner,
+        hostName: value("hostName"), hostRole: value("hostRole"), teamName: value("teamName"), hostPhoto,
       }, editing?.id);
       reload();
       setEditing(undefined);
@@ -103,9 +109,9 @@ export default function WebinarCatalog() {
                   aria-label="Webinar banner image"
                   aria-describedby="webinar-banner-hint"
                   accept="image/png,image/jpeg,image/webp"
-                  disabled={saving || readingBanner}
+                  disabled={saving || readingImage}
                   onChange={(event) => {
-                    selectBanner(event.currentTarget.files?.[0]);
+                    selectImage(event.currentTarget.files?.[0], 500, setBanner, setBannerError);
                     event.currentTarget.value = "";
                   }}
                 />
@@ -115,28 +121,51 @@ export default function WebinarCatalog() {
                   </label>
                 </Button>
                 {banner && (
-                  <Button type="button" size="sm" variant="ghost" disabled={saving || readingBanner} onClick={() => { setBanner(""); setBannerError(""); }}>
+                  <Button type="button" size="sm" variant="ghost" disabled={saving || readingImage} onClick={() => { setBanner(""); setBannerError(""); }}>
                     <Trash2 className="h-4 w-4" /> Remove banner
                   </Button>
                 )}
               </div>
               <p id="webinar-banner-hint" className="text-xs text-muted-foreground">Optional. A 16:9 PNG, JPG, or WebP up to 500 KB works well.</p>
-              {readingBanner && <p role="status" className="text-sm">Loading preview…</p>}
               {bannerError && <p role="alert" className="text-sm text-destructive">{bannerError}</p>}
             </fieldset>
             <label className="block space-y-1 text-sm">Landing page summary<Input name="summary" required maxLength={240} defaultValue={editing?.excerpt} /></label>
             <label className="block space-y-1 text-sm">Description<Textarea name="description" required maxLength={3000} defaultValue={details?.description} /></label>
             <label className="block space-y-1 text-sm">Benefits, one per line<Textarea name="benefits" maxLength={2000} defaultValue={details?.benefits} /></label>
             <label className="block space-y-1 text-sm">Offers<Textarea name="offers" maxLength={2000} defaultValue={details?.offers} /></label>
+            <fieldset className="grid gap-3 rounded-xl border p-4 sm:grid-cols-2">
+              <legend className="px-1 text-sm font-medium">Webinar hosts</legend>
+              <label className="block space-y-1 text-sm">Host name<Input name="hostName" maxLength={100} defaultValue={hosts.hostName} placeholder="e.g. Prithiv" /></label>
+              <label className="block space-y-1 text-sm">Host role<Input name="hostRole" maxLength={100} defaultValue={hosts.hostRole} placeholder="e.g. Chief Marketing Officer" /></label>
+              <label className="block space-y-1 text-sm sm:col-span-2">Team name<Input name="teamName" maxLength={120} defaultValue={hosts.teamName} placeholder="e.g. Meet to Manage team" /></label>
+              <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
+                {hostPhoto && <img src={hostPhoto} alt="Host photo preview" className="h-16 w-16 shrink-0 rounded-full border object-cover" />}
+                <div className="min-w-0 space-y-1">
+                  <label className="block space-y-1 text-sm">
+                    Host photo
+                    <Input type="file" accept="image/png,image/jpeg,image/webp" disabled={saving || readingImage}
+                      aria-describedby="webinar-host-photo-hint"
+                      onChange={(event) => {
+                        selectImage(event.currentTarget.files?.[0], 200, setHostPhoto, setHostPhotoError);
+                        event.currentTarget.value = "";
+                      }} />
+                  </label>
+                  <p id="webinar-host-photo-hint" className="text-xs text-muted-foreground">Square PNG, JPG, or WebP up to 200 KB.</p>
+                  {hostPhotoError && <p role="alert" className="text-sm text-destructive">{hostPhotoError}</p>}
+                </div>
+                {hostPhoto && <Button type="button" variant="ghost" size="sm" disabled={saving || readingImage} onClick={() => { setHostPhoto(""); setHostPhotoError(""); }}>Remove photo</Button>}
+              </div>
+            </fieldset>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block space-y-1 text-sm">Starts in your time zone<Input type="datetime-local" name="start" required defaultValue={localInput(details ? new Date(details.start) : undefined)} /></label>
               <label className="block space-y-1 text-sm">Ends in your time zone<Input type="datetime-local" name="end" required defaultValue={localInput(details ? new Date(details.end) : undefined)} /></label>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" value="publish" disabled={saving || readingBanner}>{editing?.isPublished ? "Update published webinar" : "Publish webinar"}</Button>
-              <Button type="submit" variant="outline" disabled={saving || readingBanner}>{editing?.isPublished ? "Unpublish and save draft" : "Save draft"}</Button>
-              <Button type="button" variant="ghost" disabled={saving || readingBanner} onClick={() => setEditing(undefined)}>Cancel</Button>
+              <Button type="submit" value="publish" disabled={saving || readingImage}>{editing?.isPublished ? "Update published webinar" : "Publish webinar"}</Button>
+              <Button type="submit" variant="outline" disabled={saving || readingImage}>{editing?.isPublished ? "Unpublish and save draft" : "Save draft"}</Button>
+              <Button type="button" variant="ghost" disabled={saving || readingImage} onClick={() => setEditing(undefined)}>Cancel</Button>
             </div>
+            {readingImage && <p role="status" className="text-sm">Loading image preview…</p>}
             {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
           </form>
         )}
@@ -145,7 +174,7 @@ export default function WebinarCatalog() {
         {loading && <p role="status" className="text-sm text-muted-foreground">Loading webinars…</p>}
         {!loading && !error && !data.length && editing === undefined && <p className="text-sm text-muted-foreground">No webinars yet.</p>}
         {data.map((webinar) => (
-          <WebinarRow key={`${webinar.id}:${webinar.details.end}:${webinar.isPublished}`} webinar={webinar} disabled={saving || readingBanner} onEdit={() => openEditor(webinar)} />
+          <WebinarRow key={`${webinar.id}:${webinar.details.end}:${webinar.isPublished}`} webinar={webinar} disabled={saving || readingImage} onEdit={() => openEditor(webinar)} />
         ))}
       </CardContent>
     </Card>
@@ -211,12 +240,27 @@ function WebinarRow({ webinar, disabled, onEdit }: { webinar: Webinar; disabled:
         {webinar.isPublished && (
           <>
             <Button variant="outline" size="sm" disabled={pending || ended} onClick={generateLink}>Generate attendee link</Button>
-            <Button variant="outline" size="sm" onClick={() => copy(registrationUrl, "Registration link")}>Copy registration link</Button>
-            <Button variant="ghost" size="sm" asChild><Link to={path} target="_blank" rel="noopener noreferrer">Open registration</Link></Button>
             <Button variant="ghost" size="sm" asChild><a href={webinarCalendarUrl(schedule, registrationUrl, webinar.title)} target="_blank" rel="noopener noreferrer">Add to Google Calendar</a></Button>
           </>
         )}
       </div>
+      {webinar.isPublished && (
+        <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+          <label htmlFor={`webinar-registration-${webinar.id}`} className="text-sm font-medium">Public registration link</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              id={`webinar-registration-${webinar.id}`}
+              className="min-w-0 flex-[1_1_15rem] bg-background"
+              type="url"
+              value={registrationUrl}
+              readOnly
+              onFocus={(event) => event.currentTarget.select()}
+            />
+            <Button variant="outline" size="sm" onClick={() => copy(registrationUrl, "Registration link")}>Copy registration link</Button>
+            <Button variant="ghost" size="sm" asChild><Link to={path} target="_blank" rel="noopener noreferrer">Open registration</Link></Button>
+          </div>
+        </div>
+      )}
       {invite && (
         <div className="flex flex-wrap items-center gap-2">
           <Input className="max-w-md" aria-label="Attendee link" value={invite.url} readOnly onFocus={(event) => event.currentTarget.select()} />

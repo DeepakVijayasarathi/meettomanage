@@ -14,7 +14,7 @@ export const BTN_PRIMARY =
 
 /** The site-wide header: sticky, gains a shadow once scrolled, and collapses to a menu on phones.
  *  On the home page the section links are in-page anchors; elsewhere they go back to the home page. */
-export function MarketingNav({ home = false }: { home?: boolean }) {
+export function MarketingNav({ home = false, hideMobileSalesBar = false }: { home?: boolean; hideMobileSalesBar?: boolean }) {
   const [lang] = useLang();
   const c = COPY[lang];
   const scrolled = useScrolled();
@@ -59,7 +59,7 @@ export function MarketingNav({ home = false }: { home?: boolean }) {
   const base = home ? "" : "/";
   const bookingPath = `/get-started?from=${encodeURIComponent(location.pathname)}`;
   const callPath = `/get-started?intent=call&from=${encodeURIComponent(location.pathname)}`;
-  const showMobileSalesBar = !home && location.pathname !== "/get-started";
+  const showMobileSalesBar = !hideMobileSalesBar && !home && location.pathname !== "/get-started";
 
   useEffect(() => {
     if (!showMobileSalesBar) {
