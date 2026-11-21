@@ -10,10 +10,12 @@ for (const [file, secure] of [[".env.production", true], [".env.uat", true], [".
   const env = parse(await readFile(file, "utf8"));
   for (const key of ["VITE_API_BASE_URL", "VITE_TENANT_EMAIL_MAP", "VITE_JITSI_DOMAIN"])
     if (!(key in env)) failures.push(`${file}: missing ${key}`);
-  try {
-    const api = new URL(env.VITE_API_BASE_URL);
-    if (secure && api.protocol !== "https:") failures.push(`${file}: API URL must use HTTPS`);
-  } catch { failures.push(`${file}: VITE_API_BASE_URL is not a valid URL`); }
+  if (secure || env.VITE_API_BASE_URL !== "/__api") {
+    try {
+      const api = new URL(env.VITE_API_BASE_URL);
+      if (secure && api.protocol !== "https:") failures.push(`${file}: API URL must use HTTPS`);
+    } catch { failures.push(`${file}: VITE_API_BASE_URL is not a valid URL`); }
+  }
   try {
     const mapping = JSON.parse(env.VITE_TENANT_EMAIL_MAP);
     if (!mapping || Array.isArray(mapping) || typeof mapping !== "object") throw new Error();

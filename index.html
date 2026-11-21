@@ -102,7 +102,7 @@
       (function () {
         try {
           var root = "%VITE_API_BASE_URL%";
-          if (root.indexOf("http") !== 0 || /^\/t\/[a-z][a-z0-9-]{2,49}(\/|$)/.test(location.pathname)) return;
+          if ((root.indexOf("http") !== 0 && root !== "/__api") || /^\/t\/[a-z][a-z0-9-]{2,49}(\/|$)/.test(location.pathname)) return;
           window.__m2mTenantResolve = fetch(root.replace(/\/$/, "") + "/api/tenant/resolve", { headers: { Accept: "application/json" } })
             .then(function (r) { return r.ok ? r.json() : null; })
             .catch(function () { return null; });

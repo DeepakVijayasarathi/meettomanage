@@ -11,6 +11,14 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      "^/__api/": {
+        target: "https://api.meettomanage.cloud",
+        changeOrigin: true,
+        ws: true,
+        rewrite: (requestPath) => requestPath.slice("/__api".length),
+      },
+    },
   },
   esbuild: {
     // lucide-react puts a multi-line licence banner above every icon, which splits the
