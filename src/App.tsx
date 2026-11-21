@@ -43,6 +43,8 @@ const MarketingShell = lazy(() => import("@/features/marketingConsole/MarketingS
 const ViewAsBanner = lazy(() => import("@/components/ViewAsBanner").then((m) => ({ default: m.ViewAsBanner })));
 const PrivacyPolicy = lazy(() => import("@/features/marketing/PrivacyPolicy"));
 const Login = lazy(() => import("@/features/auth/Login"));
+const ClaudeAccount = lazy(() => import("@/features/desktop/ClaudeAccount"));
+const AiWorkspace = lazy(() => import("@/features/desktop/AiWorkspace"));
 const PortalSelect = lazy(() => import("@/features/auth/PortalSelect"));
 const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
 // Marketing console (Marketing role only, own login) — the platform owner's marketing-site admin,
@@ -291,6 +293,12 @@ export default function App() {
             <Route path="/legal/terms" element={<MarketingTranslationLayer><PlatformTerms /></MarketingTranslationLayer>} />
             <Route path="/login" element={<Login />} />
             <Route path="/demo-login" element={<Login mode="demo" />} />
+            {/* Desktop app only: these screens render NotFound unless window.desktop exists (Electron preload).
+                Inside the admin shell so the sidebar stays; AppShell adds the menu entries only in the desktop app. */}
+            <Route path="/desktop" element={<RequireAuth role="admin"><AppShell role="admin"><Outlet /></AppShell></RequireAuth>}>
+              <Route path="ai-workspace" element={<AiWorkspace />} />
+              <Route path="claude" element={<ClaudeAccount />} />
+            </Route>
             <Route path="/portal-select" element={<PortalSelect />} />
             <Route path="/forgot-pin" element={<ForgotPin />} />
             {/* Legacy path, kept as a redirect for old bookmarks/links. */}

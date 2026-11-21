@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
-import { ChevronsLeft, ChevronsRight, Search, X } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, PanelLeft, Search, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useSidebarStyle } from "@/lib/sidebarStyle";
+import { SidebarStyleOptions } from "@/components/SidebarStyleOptions";
 import { Logo } from "@/components/Logo";
 import { OPEN_COMMAND_PALETTE_EVENT } from "@/lib/commandPalette";
 import type { NavSection } from "@/lib/nav";
@@ -18,13 +21,67 @@ interface SidebarProps {
   platformBrand?: boolean;
 }
 
+// Literal class names so Tailwind keeps them. The `dark:` shades stay readable on the dark sidebar.
+const ICON_COLORS = [
+  "text-sky-600 dark:text-sky-400",
+  "text-violet-600 dark:text-violet-400",
+  "text-emerald-600 dark:text-emerald-400",
+  "text-amber-600 dark:text-amber-400",
+  "text-rose-600 dark:text-rose-400",
+  "text-cyan-600 dark:text-cyan-400",
+  "text-fuchsia-600 dark:text-fuchsia-400",
+  "text-orange-600 dark:text-orange-400",
+  "text-teal-600 dark:text-teal-400",
+  "text-indigo-600 dark:text-indigo-400",
+  "text-lime-700 dark:text-lime-400",
+  "text-pink-600 dark:text-pink-400",
+];
+
+/** Same item -> same colour every time (hash of its route), so the menu doesn't shuffle between renders or roles. */
+function iconColor(to: string): string {
+  let h = 0;
+  for (let i = 0; i < to.length; i++) h = (h * 31 + to.charCodeAt(i)) >>> 0;
+  return ICON_COLORS[h % ICON_COLORS.length];
+}
+
+function SidebarStylePicker({ collapsed }: { collapsed: boolean }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          title="Sidebar style"
+          aria-label="Choose sidebar style"
+          className={cn(
+            "mb-1 hidden items-center gap-2 rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground lg:flex",
+            collapsed ? "mx-auto h-9 w-9 justify-center" : "mx-3 justify-start px-2 py-2",
+          )}
+        >
+          <PanelLeft className="h-4 w-4 shrink-0" />
+          {!collapsed && "Sidebar style"}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="right" align="end" className="w-72 space-y-2 p-3">
+        <p className="text-sm font-semibold">Sidebar style</p>
+        <SidebarStyleOptions className="sm:grid-cols-2" />
+        <p className="text-[11px] text-muted-foreground">Saved on this device.</p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** "#RRGGBB" + alpha -> "#RRGGBBAA" for the tinted active pill; anything else falls back to the theme's accent. */
+const tint = (hex: string, alpha = "24") => (/^#[0-9a-f]{6}$/i.test(hex) ? hex + alpha : undefined);
+
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
 /**
  * Quiet, light navigation rail: monochrome icons, compact rows, and the portal's role colour only on the
  * active item, so the page content stays the focus.
  */
-export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, collapsed, onToggleCollapse, platformBrand = false }: SidebarProps) {
+export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, collapsed: collapsedProp, onToggleCollapse, platformBrand = false }: SidebarProps) {
+  const style = useSidebarStyle();
+  const collapsed = collapsedProp;
+  const soft = style !== "classic"; // tinted pill instead of the edge bar
   const closeRef = useRef<HTMLButtonElement>(null);
   // onClose is an inline arrow from AppShell (new identity every render), so it's read
   // through a ref — keeping it in the effect's deps would re-run the effect on every
@@ -59,11 +116,15 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
-          collapsed ? "lg:w-[68px]" : "lg:w-64"
+          collapsed ? "lg:w-[68px]" : "lg:w-64",
+          // Tinted styles only override the sidebar tokens, so text, hover and borders follow automatically.
+          style === "brand" && "[--sidebar:28_100%_95%] [--sidebar-accent:27_100%_89%] [--sidebar-border:27_80%_85%] dark:[--sidebar:22_30%_11%] dark:[--sidebar-accent:22_25%_17%] dark:[--sidebar-border:22_25%_20%]",
+          style === "slate" && "[--sidebar:214_32%_96%] [--sidebar-accent:214_26%_90%] [--sidebar-border:214_22%_86%] dark:[--sidebar:222_20%_12%] dark:[--sidebar-accent:222_16%_18%] dark:[--sidebar-border:222_16%_20%]",
+          style === "floating" && "lg:top-3 lg:m-3 lg:h-[calc(100vh-1.5rem)] lg:rounded-2xl lg:border lg:shadow-lg"
         )}
       >
         <div className={cn("flex h-14 items-center border-b border-sidebar-border px-4", collapsed ? "justify-center" : "justify-between")}>
-          <span className="dark:hidden"><Logo platform={platformBrand} variant="dark" showWordmark={!collapsed} imgClassName={platformBrand ? "h-10" : undefined} /></span>
+          <span className={cn("dark:hidden", soft && "mix-blend-multiply")}><Logo platform={platformBrand} variant="dark" showWordmark={!collapsed} imgClassName={platformBrand ? "h-10" : undefined} /></span>
           <span className="hidden dark:inline-flex"><Logo platform={platformBrand} variant="light" showWordmark={!collapsed} /></span>
           <button
             ref={closeRef}
@@ -123,26 +184,25 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
                     end={item.end}
                     onClick={onClose}
                     title={collapsed ? (item.badge ? `${item.label} (${item.badge})` : item.label) : undefined}
+                    style={({ isActive }) => (isActive && soft ? { backgroundColor: tint(roleHex) } : undefined)}
                     className={({ isActive }) =>
                       cn(
                         "group relative flex items-center rounded-md text-[13px] font-medium transition-colors",
                         collapsed ? "h-9 w-9 shrink-0 justify-center" : "h-8 justify-between gap-2 px-2",
+                        soft && "rounded-lg",
                         isActive
-                          ? "bg-sidebar-accent text-foreground"
+                          ? soft ? "text-foreground" : "bg-sidebar-accent text-foreground"
                           : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-foreground"
                       )
                     }
                   >
                     {({ isActive }) => (
                       <>
-                        {isActive && !collapsed && (
+                        {isActive && !collapsed && !soft && (
                           <span className="absolute -left-3 top-1.5 h-5 w-[3px] rounded-r-full" style={{ backgroundColor: roleHex }} aria-hidden />
                         )}
                         <span className={cn("flex min-w-0 items-center gap-2.5", collapsed && "justify-center")}>
-                          <item.icon
-                            className={cn("h-4 w-4 shrink-0", !isActive && "text-muted-foreground group-hover:text-foreground")}
-                            style={isActive ? { color: roleHex } : undefined}
-                          />
+                          <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110", item.iconClass ?? iconColor(item.to))} />
                           {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
                         </span>
                         {item.badge && !collapsed && (
@@ -159,6 +219,8 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
             </div>
           ))}
         </nav>
+
+        <SidebarStylePicker collapsed={collapsed} />
 
         <button
           onClick={onToggleCollapse}

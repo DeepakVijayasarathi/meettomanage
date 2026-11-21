@@ -9,6 +9,8 @@ import { DoubtChatbot } from "@/components/DoubtChatbot";
 import { ParentFeedbackPrompt } from "@/components/ParentFeedbackPrompt";
 import { PageTransition } from "@/components/PageTransition";
 import { NAV_BY_ROLE, type NavSection } from "@/lib/nav";
+import { Bot, UserCog } from "lucide-react";
+import { getDesktop } from "@/features/desktop/desktopBridge";
 import { ROLE_META } from "@/lib/roles";
 import { useSession } from "@/state/session";
 import { accentForDarkMode, hexToHslTriple } from "@/lib/utils";
@@ -247,7 +249,19 @@ export function AppShell({ role, children }: AppShellProps) {
 
   // With a live API, the built-in list is only a fallback for a menu that failed to load (not
   // a placeholder while it loads), so a page the academy cannot use is never offered.
-  const navSections = (apiSections ?? (!apiEnabled() || menuFailed ? NAV_BY_ROLE[role] : [])).map(section => ({ ...section, items: section.items.filter(item => mitoConfiguration?.enabled !== false || !item.to.endsWith("/mito")) })).filter(section => section.items.length > 0);
+  const navSections: NavSection[] = (apiSections ?? (!apiEnabled() || menuFailed ? NAV_BY_ROLE[role] : [])).map(section => ({ ...section, items: section.items.filter(item => mitoConfiguration?.enabled !== false || !item.to.endsWith("/mito")) })).filter(section => section.items.length > 0);
+
+  // Desktop app only (window.desktop comes from the Electron preload): AI workspace + Claude account.
+  // Admin portal only, since the shell syncs the session role from this prop.
+  if (role === "admin" && getDesktop()) {
+    navSections.push({
+      title: "Desktop app",
+      items: [
+        { label: "AI Workspace", to: "/desktop/ai-workspace", icon: Bot, iconClass: "text-violet-600 dark:text-violet-400" },
+        { label: "Claude Account", to: "/desktop/claude", icon: UserCog, iconClass: "text-orange-600 dark:text-orange-400" },
+      ],
+    });
+  }
 
   if (apiEnabled() && isParentAccount && shellBlocked) {
     return <AccountSuspendedScreen childId={blockedChild?.childId} onRecheck={recheckSuspension} />;

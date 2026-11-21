@@ -1,9 +1,10 @@
 import { INITIALS_TEXT, initialsStyle } from "@/lib/initialsColor";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, Palette, Pencil, Plug, Plus, Puzzle, Save, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
+import { Bell, Building2, CalendarOff, CheckCircle2, CreditCard, Eye, EyeOff, Globe2, ListTree, Loader2, Mail, MessageCircle, PanelLeft, Palette, Pencil, Plug, Plus, Puzzle, Save, Settings2, ShieldAlert, StickyNote, Trash2, type LucideIcon, Video, Wallet, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { SecuritySettings } from "./SecuritySettings";
+import { SidebarStyleOptions } from "@/components/SidebarStyleOptions";
 import { InlineAlert } from "@/components/InlineAlert";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -165,6 +166,7 @@ const HEADER_SAVE_TABS = new Set(["general", "branding", "notifications", "widge
 
 /** Every tab this screen renders — used to reject an unknown ?tab= deep link. */
 const SETTINGS_TABS = new Set([
+  "appearance",
   "general",
   "branding",
   "notifications",
@@ -299,6 +301,9 @@ export default function AdminSettings() {
           <TabsTrigger value="widgets" className="gap-1.5">
             <StickyNote className="h-4 w-4" /> Widgets
           </TabsTrigger>
+          <TabsTrigger value="appearance" className="gap-1.5">
+            <PanelLeft className="h-4 w-4" /> Appearance
+          </TabsTrigger>
           <span className="mx-1 h-6 w-px shrink-0 self-center bg-border" aria-hidden />
           <TabsTrigger value="menus" className="gap-1.5">
             <ListTree className="h-4 w-4" /> Menus
@@ -323,6 +328,21 @@ export default function AdminSettings() {
 
         <TabsContent value="security">
           <SecuritySettings />
+        </TabsContent>
+
+        <TabsContent value="appearance">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sidebar style</CardTitle>
+              <CardDescription>
+                Pick the navigation design you prefer. This is a personal preference for this device and browser only, so it doesn't change
+                what other users see. It applies immediately.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SidebarStyleOptions />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="general">

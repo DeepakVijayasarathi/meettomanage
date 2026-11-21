@@ -1,0 +1,5486 @@
+[
+  {
+    "name": "listHolidays",
+    "method": "GET",
+    "path": "/api/holidays",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "GET /api/holidays"
+  },
+  {
+    "name": "createHoliday",
+    "method": "POST",
+    "path": "/api/holidays",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "POST /api/holidays"
+  },
+  {
+    "name": "reconcileHolidays",
+    "method": "POST",
+    "path": "/api/holidays/reconcile",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "Restores the recurring schedule (removes old shifted copies) and cancels any class still on a holiday."
+  },
+  {
+    "name": "deleteHoliday",
+    "method": "DELETE",
+    "path": "/api/holidays/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "DELETE /api/holidays/{id}"
+  },
+  {
+    "name": "submitLeave",
+    "method": "POST",
+    "path": "/api/leave-requests",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "Teacher applies for leave; backend enforces the 6-hour rule (auto-block). Pass either a whole day/date-range window (startAtUtc/endAtUtc) or specific classes to cancel (sessionIds) — never both, never neither, the backend rejects either mix"
+  },
+  {
+    "name": "listMyLeave",
+    "method": "GET",
+    "path": "/api/leave-requests/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "GET /api/leave-requests/mine"
+  },
+  {
+    "name": "getMyLeaveAllowanceStatus",
+    "method": "GET",
+    "path": "/api/leave-requests/mine/allowance",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "The signed-in teacher's own remaining class-wise-cancellation quota for the current calendar month — shown before she picks classes to cancel."
+  },
+  {
+    "name": "listLeaveAllowances",
+    "method": "GET",
+    "path": "/api/leave-allowances",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "Admin (or a role granted LeaveManagement) view of configured allowances — the default card plus any per-teacher overrides."
+  },
+  {
+    "name": "saveLeaveAllowance",
+    "method": "POST",
+    "path": "/api/leave-allowances",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "Admin-only: sets the centre default (omit teacherProfileId) or one teacher's override."
+  },
+  {
+    "name": "listLeave",
+    "method": "GET",
+    "path": "/api/leave-requests${status ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "GET /api/leave-requests${status "
+  },
+  {
+    "name": "reviewLeave",
+    "method": "POST",
+    "path": "/api/leave-requests/{id}/review",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "POST /api/leave-requests/{id}/review"
+  },
+  {
+    "name": "cancelLeave",
+    "method": "DELETE",
+    "path": "/api/leave-requests/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "Teacher withdraws their own leave request — only while it's still Pending."
+  },
+  {
+    "name": "listAttendance",
+    "method": "GET",
+    "path": "/api/sessions/{sessionId}/attendance",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "GET /api/sessions/{sessionId}/attendance"
+  },
+  {
+    "name": "getLeaveCancellationReport",
+    "method": "GET",
+    "path": "/api/leave-cancellation-reports/{year}/{month}",
+    "pathParams": [
+      "year",
+      "month"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "The month report: the stored month-end snapshot if it exists, else a live preview."
+  },
+  {
+    "name": "regenerateLeaveCancellationReport",
+    "method": "POST",
+    "path": "/api/leave-cancellation-reports/{year}/{month}/generate",
+    "pathParams": [
+      "year",
+      "month"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/academicOps.ts",
+    "description": "Recomputes the month and replaces its stored snapshot."
+  },
+  {
+    "name": "submitAccessRequest",
+    "method": "POST",
+    "path": "/api/access-requests",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/accessRequests.ts",
+    "description": "A Sub Admin asks for modules outside their current grant; deduped server-side against an already-open request."
+  },
+  {
+    "name": "listMyAccessRequests",
+    "method": "GET",
+    "path": "/api/access-requests/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/accessRequests.ts",
+    "description": "The signed-in Sub Admin's own request history, most recent first."
+  },
+  {
+    "name": "listAccessRequests",
+    "method": "GET",
+    "path": "/api/access-requests${status ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/accessRequests.ts",
+    "description": "Admin view: every Relationship Manager's requests, optionally filtered by status."
+  },
+  {
+    "name": "reviewAccessRequest",
+    "method": "POST",
+    "path": "/api/access-requests/{id}/review",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/accessRequests.ts",
+    "description": "Approve/reject records the decision and notifies the requester — it does not itself grant the modules."
+  },
+  {
+    "name": "getMyAccount",
+    "method": "GET",
+    "path": "/api/users/me",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/account.ts",
+    "description": "GET /api/users/me"
+  },
+  {
+    "name": "updateMyAccount",
+    "method": "PUT",
+    "path": "/api/users/me",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/account.ts",
+    "description": "PUT /api/users/me"
+  },
+  {
+    "name": "getMyMeetingRoom",
+    "method": "GET",
+    "path": "/api/users/me/meeting-room",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/account.ts",
+    "description": "The member's permanent personal meeting room (Zoom-style), minted on first request. Includes a signed join token the same way GET /api/sessions/{id}/jitsi-join does for a class session — a token-enforcing Jitsi deployment refuses a room URL"
+  },
+  {
+    "name": "getMyMeetingRoomShortLink",
+    "method": "GET",
+    "path": "/api/users/me/meeting-room/short-link",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/account.ts",
+    "description": "A short, shareable redirect to the same room getMyMeetingRoom builds — the long form (domain/room?jwt=<huge signed token>) reads as broken/suspicious pasted into WhatsApp or email. Mints a fresh one per call (backend: 6h expiry, matching th"
+  },
+  {
+    "name": "getPersonalRoomGuestJoin",
+    "method": "GET",
+    "path": "/api/users/{ownerId}/meeting-room/guest-join",
+    "pathParams": [
+      "ownerId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/account.ts",
+    "description": "Backs the public /join/personal/:ownerId page (PersonalRoomGuestJoin.tsx) that a fresh Personal Meeting Room invite link now opens — no login, the owner's account id in the URL is the only credential, same trust model the old direct-to-Jits"
+  },
+  {
+    "name": "listMyMeetingRoomRecordings",
+    "method": "GET",
+    "path": "/api/users/me/meeting-room/recordings",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/account.ts",
+    "description": "Recordings the signed-in member made in their own personal meeting room, newest first."
+  },
+  {
+    "name": "deleteMyMeetingRoomRecording",
+    "method": "DELETE",
+    "path": "/api/users/me/meeting-room/recordings/{recordingId}",
+    "pathParams": [
+      "recordingId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/account.ts",
+    "description": "DELETE /api/users/me/meeting-room/recordings/{recordingId}"
+  },
+  {
+    "name": "listAssignableBatches",
+    "method": "GET",
+    "path": "/api/assignments/batches",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/assignments.ts",
+    "description": "GET /api/assignments/batches"
+  },
+  {
+    "name": "listAssignments",
+    "method": "GET",
+    "path": "/api/assignments${batchId ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/assignments.ts",
+    "description": "GET /api/assignments${batchId "
+  },
+  {
+    "name": "getAssignment",
+    "method": "GET",
+    "path": "/api/assignments/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/assignments.ts",
+    "description": "GET /api/assignments/{id}"
+  },
+  {
+    "name": "createAssignment",
+    "method": "POST",
+    "path": "/api/assignments",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/assignments.ts",
+    "description": "POST /api/assignments"
+  },
+  {
+    "name": "updateAssignment",
+    "method": "PUT",
+    "path": "/api/assignments/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/assignments.ts",
+    "description": "PUT /api/assignments/{id}"
+  },
+  {
+    "name": "deleteAssignment",
+    "method": "DELETE",
+    "path": "/api/assignments/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/assignments.ts",
+    "description": "DELETE /api/assignments/{id}"
+  },
+  {
+    "name": "gradeSubmission",
+    "method": "POST",
+    "path": "/api/assignments/submissions/{submissionId}/grade",
+    "pathParams": [
+      "submissionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/assignments.ts",
+    "description": "POST /api/assignments/submissions/{submissionId}/grade"
+  },
+  {
+    "name": "releaseResults",
+    "method": "POST",
+    "path": "/api/assignments/{id}/release-results",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/assignments.ts",
+    "description": "POST /api/assignments/{id}/release-results"
+  },
+  {
+    "name": "listMyAssignments",
+    "method": "GET",
+    "path": "/api/assignments/mine${childId ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/assignments.ts",
+    "description": "GET /api/assignments/mine${childId "
+  },
+  {
+    "name": "submitAssignment",
+    "method": "POST",
+    "path": "/api/assignments/mine/{submissionId}/submit",
+    "pathParams": [
+      "submissionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/assignments.ts",
+    "description": "POST /api/assignments/mine/{submissionId}/submit"
+  },
+  {
+    "name": "listAuditLogs",
+    "method": "GET",
+    "path": "/api/audit-logs",
+    "pathParams": [
+      "q"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/audit.ts",
+    "description": "Paged, newest-first audit trail for the Audit Log screen. Callers with platform-wide Settings:View (or Admin) see every actor's actions; everyone else — e.g. a Sub-Admin — is automatically scoped to their own actions only."
+  },
+  {
+    "name": "login",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "POST /api/auth/login"
+  },
+  {
+    "name": "completeTwoFactorLogin",
+    "method": "POST",
+    "path": "/api/auth/login/two-factor",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "Second sign-in step: the challenge from login() plus a 6-digit authenticator code or a recovery code."
+  },
+  {
+    "name": "getTwoFactorStatus",
+    "method": "GET",
+    "path": "/api/auth/two-factor",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "GET /api/auth/two-factor"
+  },
+  {
+    "name": "beginTwoFactorSetup",
+    "method": "POST",
+    "path": "/api/auth/two-factor/setup",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "POST /api/auth/two-factor/setup"
+  },
+  {
+    "name": "enableTwoFactor",
+    "method": "POST",
+    "path": "/api/auth/two-factor/enable",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "POST /api/auth/two-factor/enable"
+  },
+  {
+    "name": "disableTwoFactor",
+    "method": "POST",
+    "path": "/api/auth/two-factor/disable",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "POST /api/auth/two-factor/disable"
+  },
+  {
+    "name": "resetUserTwoFactor",
+    "method": "POST",
+    "path": "/api/users/{userId}/reset-two-factor",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "Admin: clears another staff member's two-step sign-in after they lose their phone."
+  },
+  {
+    "name": "getCurrentUser",
+    "method": "GET",
+    "path": "/api/auth/me",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "Refreshes the signed-in user's permissions/route, and swaps in a freshly-minted token that carries those same up-to-date claims — so an access grant made mid-session (e.g. an Admin approving a Relationship Manager's request) takes effect wi"
+  },
+  {
+    "name": "requestPinReset",
+    "method": "POST",
+    "path": "/api/auth/forgot-pin",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "Rejects with a 404 ApiError (readable message) if the identifier has no account."
+  },
+  {
+    "name": "resetPin",
+    "method": "POST",
+    "path": "/api/auth/reset-pin",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "POST /api/auth/reset-pin"
+  },
+  {
+    "name": "changePin",
+    "method": "POST",
+    "path": "/api/auth/change-pin",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "The signed-in user (any role, Admin included) changes their own PIN."
+  },
+  {
+    "name": "endViewAs",
+    "method": "POST",
+    "path": "/api/auth/view-as/end",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "Closes a read-only \"view as parent\" session (recorded in the audit log). Best effort."
+  },
+  {
+    "name": "verifyOwnPin",
+    "method": "GET",
+    "path": "/api/auth/me",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "Re-checks the signed-in user's own PIN before a sensitive change, without touching the stored login."
+  },
+  {
+    "name": "verifyOwnPin_2",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/auth.ts",
+    "description": "Re-checks the signed-in user's own PIN before a sensitive change, without touching the stored login."
+  },
+  {
+    "name": "listBatches",
+    "method": "GET",
+    "path": "/api/batches",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "GET /api/batches"
+  },
+  {
+    "name": "listTeacherOptions",
+    "method": "GET",
+    "path": "/api/users/teachers",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "GET /api/users/teachers"
+  },
+  {
+    "name": "setBatchStatus",
+    "method": "PUT",
+    "path": "/api/batches/{batchId}/status",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Archiving keeps the batch's history fully visible (just under a different status) — for actually removing one from every list, see deleteBatch below."
+  },
+  {
+    "name": "deleteBatch",
+    "method": "DELETE",
+    "path": "/api/batches/{batchId}",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Soft-deletes the batch — excluded from every future list. Rejected (400) while it still has an active student; withdraw them (or move them to another batch) first."
+  },
+  {
+    "name": "updateBatchFields",
+    "method": "PUT",
+    "path": "/api/batches/{batch_id}",
+    "pathParams": [
+      "batch_id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Update a batch's own fields (course stays fixed after creation — only teacher, name, capacity, dates and duration override can change)."
+  },
+  {
+    "name": "createBatch",
+    "method": "POST",
+    "path": "/api/batches",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "POST /api/batches"
+  },
+  {
+    "name": "generateSchedule",
+    "method": "POST",
+    "path": "/api/batches/{batchId}/generate-schedule",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Bulk-creates the batch's session plan on the chosen weekdays from the start date (skipping holidays), each at its own slot's time. Returns the created sessions."
+  },
+  {
+    "name": "listBatchSessions",
+    "method": "GET",
+    "path": "/api/sessions?batchId={batchId}&fromUtc=&toUtc={{query}}",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Every session ever generated for this batch, unbounded by the ±60/400-day window `listSessions`/`listMySessions` use for the calendar screens — a batch's own remaining schedule can run further out than that window covers. Used by the \"Manag"
+  },
+  {
+    "name": "updateFutureSchedule",
+    "method": "PUT",
+    "path": "/api/batches/{batchId}/schedule",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Edits the batch's schedule from now on — new weekday/time pattern and/or remaining session count — without re-entering the whole plan or touching sessions already completed/in progress. `slots` is the full intended weekly pattern going forw"
+  },
+  {
+    "name": "listBatchEnrollments",
+    "method": "GET",
+    "path": "/api/batches/{batchId}/enrollments",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "The batch's current student roster (WBS \"Assign Students\")."
+  },
+  {
+    "name": "listUnassignedStudents",
+    "method": "GET",
+    "path": "/api/batches/{batchId}/unassigned-students",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Active, approved children not yet placed in this batch — candidates for the assign picker."
+  },
+  {
+    "name": "assignStudentToBatch",
+    "method": "POST",
+    "path": "/api/batches/{batchId}/enrollments",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Places a child in the batch; rejected (400) once the batch is at capacity."
+  },
+  {
+    "name": "removeStudentFromBatch",
+    "method": "DELETE",
+    "path": "/api/batches/{batchId}/enrollments/{childId}",
+    "pathParams": [
+      "batchId",
+      "childId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Withdraws a child from the batch, freeing a seat."
+  },
+  {
+    "name": "listMyStudents",
+    "method": "GET",
+    "path": "/api/batches/mine/students",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "The signed-in teacher's own \"My Students\" roster — one row per active enrollment across every batch they teach, with per-batch progress and per-child attendance."
+  },
+  {
+    "name": "reconcileStaleSessionTeachers",
+    "method": "POST",
+    "path": "/api/batches/reconcile-stale-teachers",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "One-time data repair for batches reassigned before UpdateAsync's teacher-reassignment cascade existed: moves any still-undelivered session that's out of sync with its own batch's current teacher onto that teacher. Safe to call more than onc"
+  },
+  {
+    "name": "reconcileStaleSessionDurations",
+    "method": "POST",
+    "path": "/api/batches/reconcile-stale-durations",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "One-time data repair for batches whose duration was edited before UpdateAsync's duration cascade existed: corrects any still-undelivered session whose real length is out of sync with its own batch's current effective duration. Safe to call "
+  },
+  {
+    "name": "cancelUpcomingSessions",
+    "method": "POST",
+    "path": "/api/batches/{batchId}/cancel-upcoming",
+    "pathParams": [
+      "batchId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/batches.ts",
+    "description": "Cancels all of a batch's upcoming classes in one go — the batch, its students and completed classes are kept — so a fresh schedule can be generated (instead of deleting the batch)."
+  },
+  {
+    "name": "listInvoices",
+    "method": "GET",
+    "path": "/api/invoices?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "GET /api/invoices?"
+  },
+  {
+    "name": "recordPayment",
+    "method": "POST",
+    "path": "/api/invoices/{invoiceId}/payments",
+    "pathParams": [
+      "invoiceId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "POST /api/invoices/{invoiceId}/payments"
+  },
+  {
+    "name": "createInvoice",
+    "method": "POST",
+    "path": "/api/invoices",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "POST /api/invoices"
+  },
+  {
+    "name": "createPaymentLink",
+    "method": "POST",
+    "path": "/api/invoices/{invoiceId}/payment-link",
+    "pathParams": [
+      "invoiceId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "POST /api/invoices/{invoiceId}/payment-link"
+  },
+  {
+    "name": "listSuspensions",
+    "method": "GET",
+    "path": "/api/invoices/suspensions${status ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "GET /api/invoices/suspensions${status "
+  },
+  {
+    "name": "liftSuspension",
+    "method": "POST",
+    "path": "/api/invoices/suspensions/{id}/lift",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "POST /api/invoices/suspensions/{id}/lift"
+  },
+  {
+    "name": "listPackagePlans",
+    "method": "GET",
+    "path": "/api/package-plans",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "GET /api/package-plans"
+  },
+  {
+    "name": "listSubscriptions",
+    "method": "GET",
+    "path": "/api/subscriptions${status ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Renewal tracking: filter by status to see lapsed vs renewed subscriptions."
+  },
+  {
+    "name": "createSubscription",
+    "method": "POST",
+    "path": "/api/subscriptions",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Attaches a child to a plan; the hourly billing job invoices it from the start date."
+  },
+  {
+    "name": "renewSubscription",
+    "method": "POST",
+    "path": "/api/subscriptions/{id}/renew",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "POST /api/subscriptions/{id}/renew"
+  },
+  {
+    "name": "cancelSubscription",
+    "method": "POST",
+    "path": "/api/subscriptions/{id}/cancel",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "POST /api/subscriptions/{id}/cancel"
+  },
+  {
+    "name": "createPackagePlan",
+    "method": "POST",
+    "path": "/api/package-plans",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "POST /api/package-plans"
+  },
+  {
+    "name": "updatePackagePlan",
+    "method": "PUT",
+    "path": "/api/package-plans/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "PUT /api/package-plans/{id}"
+  },
+  {
+    "name": "bulkImportPackagePlans",
+    "method": "POST",
+    "path": "/api/package-plans/bulk-import",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/billing.ts",
+    "description": "Bulk-create package plans from a .csv/.xlsx. Columns: Name, CourseName (optional), BillingType, BillingCycle, Price, SessionsIncluded (optional), IsActive."
+  },
+  {
+    "name": "listPaymentAccounts",
+    "method": "GET",
+    "path": "/api/payment-accounts",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Department payment accounts with live collection stats, for the Payment Gateway Mapping screen."
+  },
+  {
+    "name": "updatePaymentAccount",
+    "method": "PUT",
+    "path": "/api/payment-accounts/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Admin edit of a department account's gateway wiring (name/provider/ref/active). applyToAllDepartments (default true server-side if omitted) syncs the same provider/ref/ active onto every other department's account too — most orgs here run o"
+  },
+  {
+    "name": "setPaymentMapping",
+    "method": "PUT",
+    "path": "/api/payment-accounts/mapping",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Pins a parent's payments to a specific department account (parent user id)."
+  },
+  {
+    "name": "listCashIntents",
+    "method": "GET",
+    "path": "/api/invoices/cash-intents",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Pending cash intents for Billing → Pending Cash Confirmations (Admin, Sub Admin, Admission Team)."
+  },
+  {
+    "name": "confirmCashIntent",
+    "method": "POST",
+    "path": "/api/invoices/cash-intents/{transactionId}/confirm",
+    "pathParams": [
+      "transactionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Confirms the cash was collected; omit amount to accept the parent's declared amount as-is."
+  },
+  {
+    "name": "rejectCashIntent",
+    "method": "POST",
+    "path": "/api/invoices/cash-intents/{transactionId}/reject",
+    "pathParams": [
+      "transactionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Rejects a cash intent (parent never showed up / paid another way)."
+  },
+  {
+    "name": "listInvoiceTransactions",
+    "method": "GET",
+    "path": "/api/invoices/{invoiceId}/transactions",
+    "pathParams": [
+      "invoiceId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "GET /api/invoices/{invoiceId}/transactions"
+  },
+  {
+    "name": "listRefunds",
+    "method": "GET",
+    "path": "/api/invoices/refunds",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Every refund request, newest first — Requested ones are the review queue."
+  },
+  {
+    "name": "requestRefund",
+    "method": "POST",
+    "path": "/api/invoices/refunds",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "POST /api/invoices/refunds"
+  },
+  {
+    "name": "reviewRefund",
+    "method": "POST",
+    "path": "/api/invoices/refunds/{id}/review",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/billing.ts",
+    "description": "Approve disburses through the original gateway (or is a no-op record for cash); reject just closes the request."
+  },
+  {
+    "name": "tenantLogo",
+    "method": "POST",
+    "path": "/api/settings/brand-logo",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/branding.ts",
+    "description": "POST /api/settings/brand-logo"
+  },
+  {
+    "name": "tenantLogo_2",
+    "method": "DELETE",
+    "path": "/api/settings/brand-logo",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/branding.ts",
+    "description": "DELETE /api/settings/brand-logo"
+  },
+  {
+    "name": "listCertificates",
+    "method": "GET",
+    "path": "/api/certificates",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/certificates.ts",
+    "description": "GET /api/certificates"
+  },
+  {
+    "name": "issueDueCertificates",
+    "method": "POST",
+    "path": "/api/certificates/issue-due",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/certificates.ts",
+    "description": "POST /api/certificates/issue-due"
+  },
+  {
+    "name": "revokeCertificate",
+    "method": "POST",
+    "path": "/api/certificates/{id}/revoke",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/certificates.ts",
+    "description": "POST /api/certificates/{id}/revoke"
+  },
+  {
+    "name": "reissueCertificate",
+    "method": "POST",
+    "path": "/api/certificates",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/certificates.ts",
+    "description": "POST /api/certificates"
+  },
+  {
+    "name": "listMyCertificates",
+    "method": "GET",
+    "path": "/api/certificates/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/certificates.ts",
+    "description": "GET /api/certificates/mine"
+  },
+  {
+    "name": "verifyCertificate",
+    "method": "GET",
+    "path": "/api/certificates/verify/",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/certificates.ts",
+    "description": "GET /api/certificates/verify/"
+  },
+  {
+    "name": "getAiChatConfiguration",
+    "method": "GET",
+    "path": "/api/chatbot/admin/ai-configuration",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "GET /api/chatbot/admin/ai-configuration"
+  },
+  {
+    "name": "updateAiChatConfiguration",
+    "method": "PUT",
+    "path": "/api/chatbot/admin/ai-configuration",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "PUT /api/chatbot/admin/ai-configuration"
+  },
+  {
+    "name": "testAiChat",
+    "method": "POST",
+    "path": "/api/chatbot/admin/ai-configuration/test",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "POST /api/chatbot/admin/ai-configuration/test"
+  },
+  {
+    "name": "listAiModels",
+    "method": "GET",
+    "path": "/api/chatbot/admin/ai-configuration/models",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "GET /api/chatbot/admin/ai-configuration/models"
+  },
+  {
+    "name": "getAiCostMonitor",
+    "method": "GET",
+    "path": "/api/chatbot/admin/ai-cost-monitor",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "GET /api/chatbot/admin/ai-cost-monitor"
+  },
+  {
+    "name": "getBusinessAiBrief",
+    "method": "GET",
+    "path": "/api/chatbot/business-brief",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "GET /api/chatbot/business-brief"
+  },
+  {
+    "name": "askBusinessCopilot",
+    "method": "POST",
+    "path": "/api/chatbot/business-copilot",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "POST /api/chatbot/business-copilot"
+  },
+  {
+    "name": "listActiveFaqs",
+    "method": "GET",
+    "path": "/api/chatbot/faqs",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "Active FAQs — every signed-in role, used by the widget's browse view and local matching."
+  },
+  {
+    "name": "askChatbot",
+    "method": "POST",
+    "path": "/api/chatbot/ask",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "Asks the bot a question; records both turns and escalates to a teacher when nothing matches."
+  },
+  {
+    "name": "listMyChatHistory",
+    "method": "GET",
+    "path": "/api/chatbot/history",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "The signed-in user's own chat history — private to them, like FloatingNotes."
+  },
+  {
+    "name": "submitChatFeedback",
+    "method": "PUT",
+    "path": "/api/chatbot/messages/{messageId}/feedback",
+    "pathParams": [
+      "messageId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "Rates a bot answer. Marking it unhelpful escalates the original question to a teacher — a matched FAQ isn't automatically the right answer, so this is a second escalation path alongside \"nothing matched at all\"."
+  },
+  {
+    "name": "listAllFaqs",
+    "method": "GET",
+    "path": "/api/chatbot/admin/faqs",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "All FAQs including inactive ones — admin/sub-admin FAQ management."
+  },
+  {
+    "name": "createChatFaq",
+    "method": "POST",
+    "path": "/api/chatbot/admin/faqs",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "POST /api/chatbot/admin/faqs"
+  },
+  {
+    "name": "updateChatFaq",
+    "method": "PUT",
+    "path": "/api/chatbot/admin/faqs/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "PUT /api/chatbot/admin/faqs/{id}"
+  },
+  {
+    "name": "deleteChatFaq",
+    "method": "DELETE",
+    "path": "/api/chatbot/admin/faqs/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "DELETE /api/chatbot/admin/faqs/{id}"
+  },
+  {
+    "name": "listChatEscalations",
+    "method": "GET",
+    "path": "/api/chatbot/escalations",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "Doubts the bot escalated — admin/sub-admin/teacher triage. Omit status for every escalation."
+  },
+  {
+    "name": "resolveChatEscalation",
+    "method": "PUT",
+    "path": "/api/chatbot/escalations/{id}/resolve",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "PUT /api/chatbot/escalations/{id}/resolve"
+  },
+  {
+    "name": "getChatbotUsageStats",
+    "method": "GET",
+    "path": "/api/chatbot/usage-stats",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/chatbot.ts",
+    "description": "GET /api/chatbot/usage-stats"
+  },
+  {
+    "name": "getClassSessionLogDashboard",
+    "method": "GET",
+    "path": "/api/class-session-logs/dashboard${qs ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/classSessionLogs.ts",
+    "description": "Live/next class status snapshot plus today's rollup counts — the dashboard header."
+  },
+  {
+    "name": "listClassSessionLogs",
+    "method": "GET",
+    "path": "/api/class-session-logs",
+    "pathParams": [
+      "q"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/classSessionLogs.ts",
+    "description": "Paged, filterable event trail — every join/leave/start/end/no-show/denial, demo or live."
+  },
+  {
+    "name": "getClassSessionTimeline",
+    "method": "GET",
+    "path": "/api/class-session-logs/session/{sessionId}",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/classSessionLogs.ts",
+    "description": "Full chronological event timeline for one class session — the drill-down row."
+  },
+  {
+    "name": "listCourses",
+    "method": "GET",
+    "path": "/api/courses",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/courses.ts",
+    "description": "GET /api/courses"
+  },
+  {
+    "name": "getCourse",
+    "method": "GET",
+    "path": "/api/courses/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/courses.ts",
+    "description": "Full record for one course — used to populate the Edit dialog with the fields toFrontendCourse() intentionally drops (categoryId, departmentId, totalSessions)."
+  },
+  {
+    "name": "listCourseOptions",
+    "method": "GET",
+    "path": "/api/courses/options",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/courses.ts",
+    "description": "Active courses as id/name pairs only — for role dropdowns (e.g. a teacher recommending a course), not gated behind course-management permissions."
+  },
+  {
+    "name": "listCategories",
+    "method": "GET",
+    "path": "/api/courses/categories",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/courses.ts",
+    "description": "GET /api/courses/categories"
+  },
+  {
+    "name": "listCategories_2",
+    "method": "POST",
+    "path": "/api/courses/categories",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/courses.ts",
+    "description": "POST /api/courses/categories"
+  },
+  {
+    "name": "createCourse",
+    "method": "POST",
+    "path": "/api/courses",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/courses.ts",
+    "description": "POST /api/courses"
+  },
+  {
+    "name": "updateCourse",
+    "method": "PUT",
+    "path": "/api/courses/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/courses.ts",
+    "description": "Edits an existing course. `totalSessions` should normally be the course's current value unchanged — CourseService.UpdateAsync rejects changing it (or durationMinutes) once a batch on this course already has a generated schedule."
+  },
+  {
+    "name": "bulkImportCourses",
+    "method": "POST",
+    "path": "/api/courses/bulk-import",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/courses.ts",
+    "description": "Bulk-create courses from a .csv/.xlsx. Columns: DepartmentName, CategoryName, Name, Description, Type (Individual/Group), DurationMinutes, Price, TotalSessions, IsActive."
+  },
+  {
+    "name": "getCrmMe",
+    "method": "GET",
+    "path": "/api/marketing/crm/me",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "GET /api/marketing/crm/me"
+  },
+  {
+    "name": "listCrmTeam",
+    "method": "GET",
+    "path": "/api/marketing/crm/team",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "GET /api/marketing/crm/team"
+  },
+  {
+    "name": "addCrmMember",
+    "method": "POST",
+    "path": "/api/marketing/crm/team",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/team"
+  },
+  {
+    "name": "updateCrmMember",
+    "method": "PUT",
+    "path": "/api/marketing/crm/team/{userId}",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "PUT /api/marketing/crm/team/{userId}"
+  },
+  {
+    "name": "getCrmToday",
+    "method": "GET",
+    "path": "/api/marketing/crm/today?utcOffsetMinutes=",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "GET /api/marketing/crm/today?utcOffsetMinutes="
+  },
+  {
+    "name": "listCrmTasks",
+    "method": "GET",
+    "path": "/api/marketing/crm/tasks",
+    "pathParams": [
+      "p"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "GET /api/marketing/crm/tasks"
+  },
+  {
+    "name": "createCrmTask",
+    "method": "POST",
+    "path": "/api/marketing/crm/tasks",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/tasks"
+  },
+  {
+    "name": "updateCrmTask",
+    "method": "PUT",
+    "path": "/api/marketing/crm/tasks/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "PUT /api/marketing/crm/tasks/{id}"
+  },
+  {
+    "name": "completeCrmTask",
+    "method": "POST",
+    "path": "/api/marketing/crm/tasks/{id}/complete",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/tasks/{id}/complete"
+  },
+  {
+    "name": "deleteCrmTask",
+    "method": "DELETE",
+    "path": "/api/marketing/crm/tasks/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "DELETE /api/marketing/crm/tasks/{id}"
+  },
+  {
+    "name": "createCrmLead",
+    "method": "POST",
+    "path": "/api/marketing/crm/leads",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/leads"
+  },
+  {
+    "name": "importCrmLeads",
+    "method": "POST",
+    "path": "/api/marketing/crm/leads/import",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/leads/import"
+  },
+  {
+    "name": "updateCrmDeal",
+    "method": "PUT",
+    "path": "/api/marketing/crm/leads/{id}/deal",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "PUT /api/marketing/crm/leads/{id}/deal"
+  },
+  {
+    "name": "logCrmInteraction",
+    "method": "POST",
+    "path": "/api/marketing/crm/leads/{id}/log",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/leads/{id}/log"
+  },
+  {
+    "name": "listFollowUpPlans",
+    "method": "GET",
+    "path": "/api/marketing/crm/followup-plans",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "GET /api/marketing/crm/followup-plans"
+  },
+  {
+    "name": "startFollowUpPlan",
+    "method": "POST",
+    "path": "/api/marketing/crm/leads/{leadId}/plan",
+    "pathParams": [
+      "leadId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/leads/{leadId}/plan"
+  },
+  {
+    "name": "bulkCrmLeads",
+    "method": "POST",
+    "path": "/api/marketing/crm/leads/bulk",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/leads/bulk"
+  },
+  {
+    "name": "getCrmReport",
+    "method": "GET",
+    "path": "/api/marketing/crm/reports",
+    "pathParams": [
+      "days"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "GET /api/marketing/crm/reports"
+  },
+  {
+    "name": "listCrmCustomers",
+    "method": "GET",
+    "path": "/api/marketing/crm/customers",
+    "pathParams": [
+      "p"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "GET /api/marketing/crm/customers"
+  },
+  {
+    "name": "getCrmCustomer",
+    "method": "GET",
+    "path": "/api/marketing/crm/customers/{tenantId}",
+    "pathParams": [
+      "tenantId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "GET /api/marketing/crm/customers/{tenantId}"
+  },
+  {
+    "name": "addCrmCustomerNote",
+    "method": "POST",
+    "path": "/api/marketing/crm/customers/{tenantId}/notes",
+    "pathParams": [
+      "tenantId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/crm.ts",
+    "description": "POST /api/marketing/crm/customers/{tenantId}/notes"
+  },
+  {
+    "name": "listParentDemoHistory",
+    "method": "GET",
+    "path": "/api/demo-bookings/parent-history",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "GET /api/demo-bookings/parent-history"
+  },
+  {
+    "name": "listDemoBookings",
+    "method": "GET",
+    "path": "/api/demo-bookings",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "GET /api/demo-bookings"
+  },
+  {
+    "name": "getDemoBooking",
+    "method": "GET",
+    "path": "/api/demo-bookings/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "GET /api/demo-bookings/{id}"
+  },
+  {
+    "name": "getDemoTeacherWorkload",
+    "method": "GET",
+    "path": "/api/demo-bookings/{bookingId}/teacher-workload",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "GET /api/demo-bookings/{bookingId}/teacher-workload"
+  },
+  {
+    "name": "getDemoReassignmentHistory",
+    "method": "GET",
+    "path": "/api/demo-bookings/{bookingId}/reassignment-history",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "GET /api/demo-bookings/{bookingId}/reassignment-history"
+  },
+  {
+    "name": "reassignDemoTeacher",
+    "method": "PUT",
+    "path": "/api/demo-bookings/{bookingId}/teacher",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Manually override the teacher assigned to a demo booking."
+  },
+  {
+    "name": "rescheduleDemoBooking",
+    "method": "PUT",
+    "path": "/api/demo-bookings/{bookingId}/reschedule",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Moves a still-scheduled demo to a new date/time — re-checks the teacher's availability and the holiday calendar server-side, then re-sends the confirmation emails with the new time."
+  },
+  {
+    "name": "updateDemoBooking",
+    "method": "PUT",
+    "path": "/api/demo-bookings/{bookingId}",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Corrects a booking's parent/child details (e.g. a mistyped email) without touching its slot, teacher or stage. The API emails the join link to any new or changed address while the demo is still upcoming."
+  },
+  {
+    "name": "resendDemoLink",
+    "method": "POST",
+    "path": "/api/demo-bookings/{bookingId}/resend-link",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Re-sends the demo's join link to the parent, every extra invitee, and the assigned teacher."
+  },
+  {
+    "name": "getDemoJoinLink",
+    "method": "GET",
+    "path": "/api/demo-bookings/{bookingId}/join-link",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "The full stable join URL and a genuinely short /m/{slug} form of the same link (for WhatsApp/SMS where every character counts) — both never expire on their own."
+  },
+  {
+    "name": "deleteDemoBooking",
+    "method": "DELETE",
+    "path": "/api/demo-bookings/{bookingId}",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Permanently removes a demo booking (a test entry, a mistaken double-booking) and frees the teacher's slot. The API refuses this once the lead is already invoiced or Enrolled."
+  },
+  {
+    "name": "createDemoBooking",
+    "method": "POST",
+    "path": "/api/demo-bookings",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "POST /api/demo-bookings"
+  },
+  {
+    "name": "createDirectAdmissionLead",
+    "method": "POST",
+    "path": "/api/demo-bookings/direct-admission",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "A lead with no demo class, ready for a payment link: a family enrolling directly, or (with siblingOfBookingId, which copies the parent) a second child who sat in on a sibling's demo."
+  },
+  {
+    "name": "updateConversionStatus",
+    "method": "PUT",
+    "path": "/api/demo-bookings/{id}/conversion-status",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "PUT /api/demo-bookings/{id}/conversion-status"
+  },
+  {
+    "name": "listDemoFollowUpNotes",
+    "method": "GET",
+    "path": "/api/demo-bookings/{bookingId}/follow-up-notes",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Every follow-up note ever logged on this booking, newest first."
+  },
+  {
+    "name": "submitDemoFeedback",
+    "method": "POST",
+    "path": "/api/demo-bookings/{demoBookingId}/feedback",
+    "pathParams": [
+      "demoBookingId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Mandatory post-demo feedback; moves the booking to DemoCompleted."
+  },
+  {
+    "name": "listDemoFeedback",
+    "method": "GET",
+    "path": "/api/demo-bookings/feedback",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "GET /api/demo-bookings/feedback"
+  },
+  {
+    "name": "listMyDemoBookings",
+    "method": "GET",
+    "path": "/api/demo-bookings/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Demo bookings assigned to the signed-in teacher."
+  },
+  {
+    "name": "listMyDemoFeedback",
+    "method": "GET",
+    "path": "/api/demo-bookings/feedback/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "The signed-in teacher's own submitted feedback."
+  },
+  {
+    "name": "sendAdmissionPaymentLink",
+    "method": "POST",
+    "path": "/api/demo-bookings/{bookingId}/payment-link",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Counsellor issues the parent's payment link for a course at the agreed (discounted) amount."
+  },
+  {
+    "name": "verifyAndEnrollLead",
+    "method": "POST",
+    "path": "/api/demo-bookings/{bookingId}/enroll",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Counsellor verified the payment: emails the parent's login automatically and moves the lead on."
+  },
+  {
+    "name": "getPublicAdmissionPayment",
+    "method": "GET",
+    "path": "/api/public/admission-payments/",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Anonymous: the /pay/{token} page's data."
+  },
+  {
+    "name": "startPublicAdmissionPayment",
+    "method": "POST",
+    "path": "/api/public/admission-payments//start",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "Anonymous: records the Terms & Conditions acceptance and returns the gateway checkout URL."
+  },
+  {
+    "name": "getManualAdmissionOptions",
+    "method": "GET",
+    "path": "/api/demo-bookings/manual-admission/options",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "GET /api/demo-bookings/manual-admission/options"
+  },
+  {
+    "name": "admitManually",
+    "method": "POST",
+    "path": "/api/demo-bookings/{bookingId}/manual-admission",
+    "pathParams": [
+      "bookingId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/demoBookings.ts",
+    "description": "POST /api/demo-bookings/{bookingId}/manual-admission"
+  },
+  {
+    "name": "listDepartments",
+    "method": "GET",
+    "path": "/api/departments",
+    "pathParams": [
+      "includeInactive"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/departments.ts",
+    "description": "GET /api/departments"
+  },
+  {
+    "name": "createDepartment",
+    "method": "POST",
+    "path": "/api/departments",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/departments.ts",
+    "description": "POST /api/departments"
+  },
+  {
+    "name": "updateDepartment",
+    "method": "PUT",
+    "path": "/api/departments/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/departments.ts",
+    "description": "PUT /api/departments/{id}"
+  },
+  {
+    "name": "bulkImportDepartments",
+    "method": "POST",
+    "path": "/api/departments/bulk-import",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/departments.ts",
+    "description": "Bulk-create departments from a .csv/.xlsx. Columns: Name, Description, IsActive."
+  },
+  {
+    "name": "listDiscountCodes",
+    "method": "GET",
+    "path": "/api/discount-codes",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/discounts.ts",
+    "description": "GET /api/discount-codes"
+  },
+  {
+    "name": "createDiscountCode",
+    "method": "POST",
+    "path": "/api/discount-codes",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/discounts.ts",
+    "description": "POST /api/discount-codes"
+  },
+  {
+    "name": "updateDiscountCode",
+    "method": "PUT",
+    "path": "/api/discount-codes/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/discounts.ts",
+    "description": "PUT /api/discount-codes/{id}"
+  },
+  {
+    "name": "applyDiscountToMyInvoice",
+    "method": "POST",
+    "path": "/api/discount-codes/mine/invoices/{invoiceId}",
+    "pathParams": [
+      "invoiceId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/discounts.ts",
+    "description": "POST /api/discount-codes/mine/invoices/{invoiceId}"
+  },
+  {
+    "name": "listEmailTemplates",
+    "method": "GET",
+    "path": "/api/email-templates",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/emailTemplates.ts",
+    "description": "GET /api/email-templates"
+  },
+  {
+    "name": "updateEmailTemplate",
+    "method": "PUT",
+    "path": "/api/email-templates/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/emailTemplates.ts",
+    "description": "PUT /api/email-templates/{id}"
+  },
+  {
+    "name": "previewEmailTemplate",
+    "method": "POST",
+    "path": "/api/email-templates/{id}/preview",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/emailTemplates.ts",
+    "description": "POST /api/email-templates/{id}/preview"
+  },
+  {
+    "name": "postEngagement",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/engagement",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/engagement.ts",
+    "description": "Fire-and-forget engagement signal from the live classroom. No-ops in demo mode or when the classroom was opened with a mock (non-GUID) session id, and never throws — tracking must not disturb the class."
+  },
+  {
+    "name": "postAward",
+    "method": "POST",
+    "path": "/api/gamification/awards",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/gamification.ts",
+    "description": "Fire-and-forget award persistence from the live classroom (stars auto-create milestones server-side). Never throws — gamification must not disturb the class."
+  },
+  {
+    "name": "getLeaderboard",
+    "method": "GET",
+    "path": "/api/gamification/leaderboard?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/gamification.ts",
+    "description": "Persisted leaderboard — session-scoped when a sessionId is given, all-time otherwise."
+  },
+  {
+    "name": "listIntegrations",
+    "method": "GET",
+    "path": "/api/integrations",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/integrations.ts",
+    "description": "GET /api/integrations"
+  },
+  {
+    "name": "createIntegration",
+    "method": "POST",
+    "path": "/api/integrations",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/integrations.ts",
+    "description": "POST /api/integrations"
+  },
+  {
+    "name": "updateIntegration",
+    "method": "PUT",
+    "path": "/api/integrations/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/integrations.ts",
+    "description": "PUT /api/integrations/{id}"
+  },
+  {
+    "name": "deleteIntegration",
+    "method": "DELETE",
+    "path": "/api/integrations/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/integrations.ts",
+    "description": "DELETE /api/integrations/{id}"
+  },
+  {
+    "name": "sendTestEmail",
+    "method": "POST",
+    "path": "/api/integrations/email/test",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/integrations.ts",
+    "description": "Sends a real test email; `message` says exactly what's wrong when delivery isn't working."
+  },
+  {
+    "name": "setLeadStage",
+    "method": "PUT",
+    "path": "/api/marketing/demo-requests/{id}/stage",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Moves a lead through the lifecycle; the server sends that stage's e-mail (demo confirmation, recap)."
+  },
+  {
+    "name": "getLeadAutomation",
+    "method": "GET",
+    "path": "/api/marketing/lead-automation",
+    "pathParams": [
+      "days"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/lead-automation"
+  },
+  {
+    "name": "saveLeadAutomationSettings",
+    "method": "PUT",
+    "path": "/api/marketing/lead-automation/settings",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "PUT /api/marketing/lead-automation/settings"
+  },
+  {
+    "name": "runLeadAutomation",
+    "method": "POST",
+    "path": "/api/marketing/lead-automation/run",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "POST /api/marketing/lead-automation/run"
+  },
+  {
+    "name": "requestPlatformDemo",
+    "method": "POST",
+    "path": "/api/marketing/demo-requests",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Public — no login required. A prospective academy owner asking to see the Meet to Manage platform itself, distinct from the parent-facing \"book a free demo class\" (see api/store.ts's bookStoreDemo)."
+  },
+  {
+    "name": "listPlatformDemoRequests",
+    "method": "GET",
+    "path": "/api/marketing/demo-requests",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Admin — the follow-up queue for platform-demo requests."
+  },
+  {
+    "name": "updatePlatformDemoRequestStatus",
+    "method": "PUT",
+    "path": "/api/marketing/demo-requests/{id}/status",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "PUT /api/marketing/demo-requests/{id}/status"
+  },
+  {
+    "name": "deletePlatformDemoRequest",
+    "method": "DELETE",
+    "path": "/api/marketing/demo-requests/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "DELETE /api/marketing/demo-requests/{id}"
+  },
+  {
+    "name": "updatePlatformDemoRequest",
+    "method": "PUT",
+    "path": "/api/marketing/demo-requests/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "PUT /api/marketing/demo-requests/{id}"
+  },
+  {
+    "name": "listPlatformDemoRequestsPaged",
+    "method": "GET",
+    "path": "/api/marketing/demo-requests/paged",
+    "pathParams": [
+      "q"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/demo-requests/paged"
+  },
+  {
+    "name": "getMarketingLead",
+    "method": "GET",
+    "path": "/api/marketing/demo-requests/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/demo-requests/{id}"
+  },
+  {
+    "name": "getMarketingLeadRecommendation",
+    "method": "GET",
+    "path": "/api/marketing/demo-requests/{id}/recommendation",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/demo-requests/{id}/recommendation"
+  },
+  {
+    "name": "logMarketingLeadActivity",
+    "method": "POST",
+    "path": "/api/marketing/demo-requests/{id}/activity",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "POST /api/marketing/demo-requests/{id}/activity"
+  },
+  {
+    "name": "bulkUpdateMarketingLeads",
+    "method": "POST",
+    "path": "/api/marketing/demo-requests/bulk",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "POST /api/marketing/demo-requests/bulk"
+  },
+  {
+    "name": "restoreMarketingLead",
+    "method": "POST",
+    "path": "/api/marketing/demo-requests/{id}/restore",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "POST /api/marketing/demo-requests/{id}/restore"
+  },
+  {
+    "name": "listMarketingCampaignBudgets",
+    "method": "GET",
+    "path": "/api/marketing/demo-requests/campaigns",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/demo-requests/campaigns"
+  },
+  {
+    "name": "saveMarketingCampaignBudget",
+    "method": "PUT",
+    "path": "/api/marketing/demo-requests/campaigns",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "PUT /api/marketing/demo-requests/campaigns"
+  },
+  {
+    "name": "getMarketingReportSettings",
+    "method": "GET",
+    "path": "/api/marketing/demo-requests/settings",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/demo-requests/settings"
+  },
+  {
+    "name": "saveMarketingReportSettings",
+    "method": "PUT",
+    "path": "/api/marketing/demo-requests/settings",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "PUT /api/marketing/demo-requests/settings"
+  },
+  {
+    "name": "askSalesAssistant",
+    "method": "POST",
+    "path": "/api/marketing/chat",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Public — no login required. The homepage chat assistant (Hetzner AI, called server-side so the key never reaches the browser). Sends the conversation so far; the backend accepts at most 20 turns and must start with the visitor, so older tur"
+  },
+  {
+    "name": "listMarketingChats",
+    "method": "GET",
+    "path": "/api/marketing/chats",
+    "pathParams": [
+      "q"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/chats"
+  },
+  {
+    "name": "getMarketingChat",
+    "method": "GET",
+    "path": "/api/marketing/chats/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/chats/{id}"
+  },
+  {
+    "name": "translateMarketingText",
+    "method": "POST",
+    "path": "/api/marketing/translate",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "POST /api/marketing/translate"
+  },
+  {
+    "name": "listBlogPosts",
+    "method": "GET",
+    "path": "/api/blog",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Public — no login required."
+  },
+  {
+    "name": "getBlogPost",
+    "method": "GET",
+    "path": "/api/blog/{slug}",
+    "pathParams": [
+      "slug"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Public — no login required."
+  },
+  {
+    "name": "listBlogPostsAdmin",
+    "method": "GET",
+    "path": "/api/blog/admin",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Admin — full CRUD."
+  },
+  {
+    "name": "getBlogPostAdmin",
+    "method": "GET",
+    "path": "/api/blog/admin/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/blog/admin/{id}"
+  },
+  {
+    "name": "createBlogPost",
+    "method": "POST",
+    "path": "/api/blog/admin",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "POST /api/blog/admin"
+  },
+  {
+    "name": "updateBlogPost",
+    "method": "PUT",
+    "path": "/api/blog/admin/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "PUT /api/blog/admin/{id}"
+  },
+  {
+    "name": "deleteBlogPost",
+    "method": "DELETE",
+    "path": "/api/blog/admin/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "DELETE /api/blog/admin/{id}"
+  },
+  {
+    "name": "getMarketingDashboard",
+    "method": "GET",
+    "path": "/api/marketing/analytics?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Marketing console only — first-party analytics for the last `days` days (or a custom range), in the browser's own calendar days."
+  },
+  {
+    "name": "getMarketingVisitorDetail",
+    "method": "GET",
+    "path": "/api/marketing/analytics/visitors/",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "One visitor's whole history: visits, pages in order, chats and demo requests."
+  },
+  {
+    "name": "analyzeMarketingVisitor",
+    "method": "POST",
+    "path": "/api/marketing/analytics/visitors//insight",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "AI read of one visitor: interests, buying intent and the next marketing actions. No names or contact details are sent."
+  },
+  {
+    "name": "getMarketingSiteBehaviour",
+    "method": "GET",
+    "path": "/api/marketing/analytics/behaviour?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Funnel to a booking, and per-page exit rate and time on page, for the Visitors page."
+  },
+  {
+    "name": "suggestSiteImprovements",
+    "method": "POST",
+    "path": "/api/marketing/analytics/improvements?",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "AI: how visitors behave and what to improve on the site, ranked by impact on demo bookings."
+  },
+  {
+    "name": "getMarketingVisitorJourneys",
+    "method": "GET",
+    "path": "/api/marketing/analytics/visitors",
+    "pathParams": [
+      "q"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Marketing console → Visitors: each anonymous visitor's pages in order, for the same window as the dashboard."
+  },
+  {
+    "name": "getMarketingContentPerformance",
+    "method": "GET",
+    "path": "/api/marketing/analytics/content?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "Which blog posts readers engage with and act on, for the Blog Posts page."
+  },
+  {
+    "name": "analyzeBlogPerformance",
+    "method": "POST",
+    "path": "/api/marketing/analytics/content-analysis?",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "POST /api/marketing/analytics/content-analysis?"
+  },
+  {
+    "name": "writeBlogDraft",
+    "method": "POST",
+    "path": "/api/marketing/analytics/blog-draft",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "AI: a full draft (about 1,000 words) for one idea, in the blog's own format. Returned only — never saved or published."
+  },
+  {
+    "name": "suggestBlogPosts",
+    "method": "POST",
+    "path": "/api/marketing/analytics/blog-ideas?",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "AI: the next five blog post ideas, from content performance and visitors' chat questions."
+  },
+  {
+    "name": "getMarketingInsights",
+    "method": "GET",
+    "path": "/api/marketing/analytics/insights?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/marketing.ts",
+    "description": "GET /api/marketing/analytics/insights?"
+  },
+  {
+    "name": "getMyMenu",
+    "method": "GET",
+    "path": "/api/menus/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/menus.ts",
+    "description": "The signed-in user's own sidebar — resolved server-side from their account role's portal and filtered by the module grants their assigned role carries. This is the menu the app shell renders so navigation reflects the role assigned to the u"
+  },
+  {
+    "name": "listMenuItems",
+    "method": "GET",
+    "path": "/api/menus",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/menus.ts",
+    "description": "All configured items including inactive, for the admin menu manager."
+  },
+  {
+    "name": "createMenuItem",
+    "method": "POST",
+    "path": "/api/menus",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/menus.ts",
+    "description": "POST /api/menus"
+  },
+  {
+    "name": "updateMenuItem",
+    "method": "PUT",
+    "path": "/api/menus/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/menus.ts",
+    "description": "PUT /api/menus/{id}"
+  },
+  {
+    "name": "deleteMenuItem",
+    "method": "DELETE",
+    "path": "/api/menus/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/menus.ts",
+    "description": "DELETE /api/menus/{id}"
+  },
+  {
+    "name": "getMitoConfiguration",
+    "method": "GET",
+    "path": "/api/mito/config",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/mito.ts",
+    "description": "GET /api/mito/config"
+  },
+  {
+    "name": "askMito",
+    "method": "POST",
+    "path": "/api/mito/chat",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/mito.ts",
+    "description": "POST /api/mito/chat"
+  },
+  {
+    "name": "getMitoToday",
+    "method": "GET",
+    "path": "/api/mito/today?childId=",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/mito.ts",
+    "description": "GET /api/mito/today?childId="
+  },
+  {
+    "name": "getMitoProgress",
+    "method": "GET",
+    "path": "/api/mito/progress?childId=",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/mito.ts",
+    "description": "GET /api/mito/progress?childId="
+  },
+  {
+    "name": "startMitoQuiz",
+    "method": "POST",
+    "path": "/api/mito/quiz",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/mito.ts",
+    "description": "POST /api/mito/quiz"
+  },
+  {
+    "name": "answerMitoQuiz",
+    "method": "POST",
+    "path": "/api/mito/quiz/answer",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/mito.ts",
+    "description": "POST /api/mito/quiz/answer"
+  },
+  {
+    "name": "getMitoInsights",
+    "method": "GET",
+    "path": "/api/mito-review/insights",
+    "pathParams": [
+      "days"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/mitoReview.ts",
+    "description": "GET /api/mito-review/insights"
+  },
+  {
+    "name": "listMitoFlags",
+    "method": "GET",
+    "path": "/api/mito-review/flags",
+    "pathParams": [
+      "open"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/mitoReview.ts",
+    "description": "GET /api/mito-review/flags"
+  },
+  {
+    "name": "resolveMitoFlag",
+    "method": "POST",
+    "path": "/api/mito-review/flags/{id}/resolve",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/mitoReview.ts",
+    "description": "POST /api/mito-review/flags/{id}/resolve"
+  },
+  {
+    "name": "getMonitoringSummary",
+    "method": "GET",
+    "path": "/api/monitoring/summary",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "GET /api/monitoring/summary"
+  },
+  {
+    "name": "getLiveUsers",
+    "method": "GET",
+    "path": "/api/monitoring/live-users",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Every live class session with a connected participant right now, and who's in it — admin-only visibility into other users' real-time presence."
+  },
+  {
+    "name": "getTodaySessions",
+    "method": "GET",
+    "path": "/api/monitoring/today-sessions",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Every session scheduled today (IST), live or not, with attendance counts."
+  },
+  {
+    "name": "getServerLogs",
+    "method": "GET",
+    "path": "/api/monitoring/servers/logs?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Error-filtered `docker logs` tail for one container on one server, fetched over SSH server-side — see IServerLogService. serverName travels as a query param, not a path segment: both real server names (\"Jitsi / Video\", \"App / API\") contain "
+  },
+  {
+    "name": "getScheduledTaskLog",
+    "method": "GET",
+    "path": "/api/monitoring/servers/task-log?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Recent log of one scheduled (cron) task on one server, as written by rn-job."
+  },
+  {
+    "name": "getDatabaseBackups",
+    "method": "GET",
+    "path": "/api/monitoring/backups",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Database backup files on the app server, newest first (Admin only -- see MonitoringController.ListDatabaseBackups)."
+  },
+  {
+    "name": "rescaleJibriNow",
+    "method": "POST",
+    "path": "/api/monitoring/servers/jibri/rescale?serverName=",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Runs the Jibri autoscaler immediately instead of waiting out its next cron minute — see IServerControlService. serverName is a query param; see getServerLogs for why."
+  },
+  {
+    "name": "startBurstWorker",
+    "method": "POST",
+    "path": "/api/monitoring/burst-worker/start",
+    "pathParams": [
+      "holdMinutes"
+    ],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Emergency manual start of the on-demand burst recording worker (billed hourly while it exists). holdMinutes keeps it up even if idle � see BurstWorkerControlService."
+  },
+  {
+    "name": "stopBurstWorker",
+    "method": "POST",
+    "path": "/api/monitoring/burst-worker/stop",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Stops the burst worker as soon as it is safe (every recorder idle, every recording on main). Never force-deletes."
+  },
+  {
+    "name": "broadcastReload",
+    "method": "POST",
+    "path": "/api/monitoring/broadcast-reload${message ",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Tells every browser currently in a live class to show a dismissible \"update available\" prompt — see MonitoringController.BroadcastReload for why this is a gentle notice, not a forced reload."
+  },
+  {
+    "name": "setJibriMinReplicas",
+    "method": "PUT",
+    "path": "/api/monitoring/servers/jibri/min-replicas?serverName=",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Sets how many Jibri instances stay warm even while idle (clamped server-side to 1-10, and further to the CPU/RAM-derived ceiling)."
+  },
+  {
+    "name": "restartService",
+    "method": "POST",
+    "path": "/api/monitoring/servers/services/restart?",
+    "pathParams": [],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "Restarts one configured container on one server — interrupts anything currently using that service."
+  },
+  {
+    "name": "getServerHistory",
+    "method": "GET",
+    "path": "/api/monitoring/servers/history?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/monitoring.ts",
+    "description": "CPU/memory history for one server over an admin-selected window — a longer look than the 1h the main summary already carries."
+  },
+  {
+    "name": "listMyNotes",
+    "method": "GET",
+    "path": "/api/notes",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/notes.ts",
+    "description": "The signed-in user's own floating notes — private to that user."
+  },
+  {
+    "name": "createNote",
+    "method": "POST",
+    "path": "/api/notes",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/notes.ts",
+    "description": "POST /api/notes"
+  },
+  {
+    "name": "updateNote",
+    "method": "PUT",
+    "path": "/api/notes/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/notes.ts",
+    "description": "PUT /api/notes/{id}"
+  },
+  {
+    "name": "deleteNote",
+    "method": "DELETE",
+    "path": "/api/notes/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/notes.ts",
+    "description": "DELETE /api/notes/{id}"
+  },
+  {
+    "name": "getMyNotifications",
+    "method": "GET",
+    "path": "/api/notifications/mine",
+    "pathParams": [
+      "take"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/notifications.ts",
+    "description": "GET /api/notifications/mine"
+  },
+  {
+    "name": "markNotificationRead",
+    "method": "POST",
+    "path": "/api/notifications/{id}/read",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/notifications.ts",
+    "description": "POST /api/notifications/{id}/read"
+  },
+  {
+    "name": "markAllNotificationsRead",
+    "method": "POST",
+    "path": "/api/notifications/read-all",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/notifications.ts",
+    "description": "POST /api/notifications/read-all"
+  },
+  {
+    "name": "getOnboardingStatus",
+    "method": "GET",
+    "path": "/api/onboarding",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/onboarding.ts",
+    "description": "GET /api/onboarding"
+  },
+  {
+    "name": "getPendingParentFeedback",
+    "method": "GET",
+    "path": "/api/parent-feedback/pending",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentFeedback.ts",
+    "description": "GET /api/parent-feedback/pending"
+  },
+  {
+    "name": "submitParentFeedback",
+    "method": "POST",
+    "path": "/api/parent-feedback",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentFeedback.ts",
+    "description": "POST /api/parent-feedback"
+  },
+  {
+    "name": "listParentFeedback",
+    "method": "GET",
+    "path": "/api/parent-feedback${kind ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentFeedback.ts",
+    "description": "Admin / Admission report: everything parents have submitted, newest first."
+  },
+  {
+    "name": "getParentDashboard",
+    "method": "GET",
+    "path": "/api/parent-portal/dashboard",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "GET /api/parent-portal/dashboard"
+  },
+  {
+    "name": "getParentSchedule",
+    "method": "GET",
+    "path": "/api/parent-portal/schedule",
+    "pathParams": [
+      "fromUtc",
+      "toUtc"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "GET /api/parent-portal/schedule"
+  },
+  {
+    "name": "getParentResources",
+    "method": "GET",
+    "path": "/api/parent-portal/resources",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "GET /api/parent-portal/resources"
+  },
+  {
+    "name": "getSessionRecordings",
+    "method": "GET",
+    "path": "/api/parent-portal/sessions/{sessionId}/recordings",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Recordings for one session, scoped to the signed-in parent's own child (verifies active batch enrollment and blocks while fee-suspended — see ParentPortalService.GetRecordingsAsync). Distinct from `listRecordings` in api/sessions.ts, which "
+  },
+  {
+    "name": "listMyRecordings",
+    "method": "GET",
+    "path": "/api/parent-portal/recordings",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Every non-expired recording across every one of the caller's children's batches, in one call — replaces fetching the schedule then calling getSessionRecordings once per completed session (the N+1 pattern already fixed on the admin and teach"
+  },
+  {
+    "name": "getParentInvoices",
+    "method": "GET",
+    "path": "/api/parent-portal/invoices",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "GET /api/parent-portal/invoices"
+  },
+  {
+    "name": "getParentChildren",
+    "method": "GET",
+    "path": "/api/parent-portal/children",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "The signed-in parent's own children (approved enrollments)."
+  },
+  {
+    "name": "getPaymentMethods",
+    "method": "GET",
+    "path": "/api/parent-portal/payment-methods",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Enabled payment-gateway integrations for the Pay Now popup (the UI adds Cash on top)."
+  },
+  {
+    "name": "submitEnrollmentForm",
+    "method": "POST",
+    "path": "/api/enrollment-forms",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "childId: filling in details for a child who already exists (no new child is created on approval)."
+  },
+  {
+    "name": "listMyEnrollmentForms",
+    "method": "GET",
+    "path": "/api/enrollment-forms/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "GET /api/enrollment-forms/mine"
+  },
+  {
+    "name": "listEnrollmentForms",
+    "method": "GET",
+    "path": "/api/enrollment-forms${status ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "GET /api/enrollment-forms${status "
+  },
+  {
+    "name": "payInvoice",
+    "method": "POST",
+    "path": "/api/parent-portal/invoices/{invoiceId}/pay",
+    "pathParams": [
+      "invoiceId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Pay Now: cash records a pending intent; a gateway key returns a checkout URL."
+  },
+  {
+    "name": "startInlineCheckout",
+    "method": "POST",
+    "path": "/api/parent-portal/invoices/{invoiceId}/checkout",
+    "pathParams": [
+      "invoiceId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Creates the gateway order for an in-page checkout popup — the payer never leaves the page."
+  },
+  {
+    "name": "verifyInlineCheckout",
+    "method": "POST",
+    "path": "/api/parent-portal/invoices/{invoiceId}/checkout/verify",
+    "pathParams": [
+      "invoiceId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Settles the invoice from the popup's success proof (verified server-side); returns the refreshed invoice."
+  },
+  {
+    "name": "refreshInvoicePayment",
+    "method": "POST",
+    "path": "/api/parent-portal/invoices/{invoiceId}/refresh-payment",
+    "pathParams": [
+      "invoiceId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "POST /api/parent-portal/invoices/{invoiceId}/refresh-payment"
+  },
+  {
+    "name": "getChildSchedulePreference",
+    "method": "GET",
+    "path": "/api/parent-portal/children/{childId}/schedule-preference",
+    "pathParams": [
+      "childId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "GET /api/parent-portal/children/{childId}/schedule-preference"
+  },
+  {
+    "name": "saveChildSchedulePreference",
+    "method": "PUT",
+    "path": "/api/parent-portal/children/{childId}/schedule-preference",
+    "pathParams": [
+      "childId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Saves the details onto the EXISTING child (no second child record is created)."
+  },
+  {
+    "name": "updateEnrollmentForm",
+    "method": "PUT",
+    "path": "/api/enrollment-forms/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Admin edits the submitted answers before approval."
+  },
+  {
+    "name": "reviewEnrollmentForm",
+    "method": "POST",
+    "path": "/api/enrollment-forms/{id}/review",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "POST /api/enrollment-forms/{id}/review"
+  },
+  {
+    "name": "getResourcePlayUrl",
+    "method": "GET",
+    "path": "/api/parent-portal/resources/{id}/play",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "A short-lived, view-only link to play a resource shared with this parent (e.g. a recording)."
+  },
+  {
+    "name": "getTermsStatus",
+    "method": "GET",
+    "path": "/api/parent-portal/terms-status",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Whether the Terms & Conditions still need accepting -- only before this parent's first payment."
+  },
+  {
+    "name": "acceptTerms",
+    "method": "POST",
+    "path": "/api/parent-portal/terms/accept",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/parentPortal.ts",
+    "description": "Records the parent's Terms & Conditions acceptance (asked once, at their first payment)."
+  },
+  {
+    "name": "listPayouts",
+    "method": "GET",
+    "path": "/api/payouts",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "GET /api/payouts"
+  },
+  {
+    "name": "listMyPayouts",
+    "method": "GET",
+    "path": "/api/payouts/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "The signed-in teacher's own payout history."
+  },
+  {
+    "name": "getMyEarningsSummary",
+    "method": "GET",
+    "path": "/api/payouts/mine/summary",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "Batch-wise breakdown for one month, defaulting to the current month."
+  },
+  {
+    "name": "finalizePayout",
+    "method": "POST",
+    "path": "/api/payouts/{id}/finalize",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "POST /api/payouts/{id}/finalize"
+  },
+  {
+    "name": "markPayoutPaid",
+    "method": "POST",
+    "path": "/api/payouts/{id}/mark-paid",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "POST /api/payouts/{id}/mark-paid"
+  },
+  {
+    "name": "addPayoutItem",
+    "method": "POST",
+    "path": "/api/payouts/{payoutId}/items",
+    "pathParams": [
+      "payoutId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "Adds a manual addition (positive amount) or deduction (negative) line to a payout, in any status."
+  },
+  {
+    "name": "getPayoutHistory",
+    "method": "GET",
+    "path": "/api/payouts/{payoutId}/history",
+    "pathParams": [
+      "payoutId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "Every manual correction made to a payout, newest first."
+  },
+  {
+    "name": "adjustPayoutItem",
+    "method": "PUT",
+    "path": "/api/payouts/{payoutId}/items/{itemId}",
+    "pathParams": [
+      "payoutId",
+      "itemId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "Corrects (or confirms as-is) one line item — allowed after the payout was finalized or paid too; every correction is kept in its history. Clears the review flag either way."
+  },
+  {
+    "name": "listPayoutRates",
+    "method": "GET",
+    "path": "/api/payout-rates",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "GET /api/payout-rates"
+  },
+  {
+    "name": "savePayoutRate",
+    "method": "POST",
+    "path": "/api/payout-rates",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "POST /api/payout-rates"
+  },
+  {
+    "name": "listPayoutApprovals",
+    "method": "GET",
+    "path": "/api/payouts/approvals",
+    "pathParams": [
+      "pending"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "GET /api/payouts/approvals"
+  },
+  {
+    "name": "listPayoutApprovalRecordings",
+    "method": "GET",
+    "path": "/api/payouts/approvals/{itemId}/recordings",
+    "pathParams": [
+      "itemId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "The recordings of the class behind one approval row (gated by the Payouts permission, not by being in the class)."
+  },
+  {
+    "name": "decidePayoutApproval",
+    "method": "POST",
+    "path": "/api/payouts/approvals/{itemId}/decide",
+    "pathParams": [
+      "itemId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/payouts.ts",
+    "description": "POST /api/payouts/approvals/{itemId}/decide"
+  },
+  {
+    "name": "listPermissionModules",
+    "method": "GET",
+    "path": "/api/permission-modules",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/permissionModules.ts",
+    "description": "GET /api/permission-modules"
+  },
+  {
+    "name": "createPermissionModule",
+    "method": "POST",
+    "path": "/api/permission-modules",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/permissionModules.ts",
+    "description": "POST /api/permission-modules"
+  },
+  {
+    "name": "deletePermissionModule",
+    "method": "DELETE",
+    "path": "/api/permission-modules/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/permissionModules.ts",
+    "description": "DELETE /api/permission-modules/{id}"
+  },
+  {
+    "name": "getPermissions",
+    "method": "GET",
+    "path": "/api/users/{userId}/permissions",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/permissions.ts",
+    "description": "GET /api/users/{userId}/permissions"
+  },
+  {
+    "name": "setPermissions",
+    "method": "PUT",
+    "path": "/api/users/{userId}/permissions",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/permissions.ts",
+    "description": "PUT /api/users/{userId}/permissions"
+  },
+  {
+    "name": "listProgressReports",
+    "method": "GET",
+    "path": "/api/progress-reports",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/progressReports.ts",
+    "description": "GET /api/progress-reports"
+  },
+  {
+    "name": "listMyProgressReports",
+    "method": "GET",
+    "path": "/api/progress-reports/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/progressReports.ts",
+    "description": "The signed-in parent's own children's sent reports."
+  },
+  {
+    "name": "saveProgressReportContent",
+    "method": "PUT",
+    "path": "/api/progress-reports/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/progressReports.ts",
+    "description": "PUT /api/progress-reports/{id}"
+  },
+  {
+    "name": "sendProgressReport",
+    "method": "POST",
+    "path": "/api/progress-reports/{id}/send",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/progressReports.ts",
+    "description": "POST /api/progress-reports/{id}/send"
+  },
+  {
+    "name": "listQuizQuestions",
+    "method": "GET",
+    "path": "/api/quiz-questions${qs ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/quizQuestions.ts",
+    "description": "GET /api/quiz-questions${qs "
+  },
+  {
+    "name": "createQuizQuestion",
+    "method": "POST",
+    "path": "/api/quiz-questions",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/quizQuestions.ts",
+    "description": "POST /api/quiz-questions"
+  },
+  {
+    "name": "updateQuizQuestion",
+    "method": "PUT",
+    "path": "/api/quiz-questions/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/quizQuestions.ts",
+    "description": "PUT /api/quiz-questions/{id}"
+  },
+  {
+    "name": "deleteQuizQuestion",
+    "method": "DELETE",
+    "path": "/api/quiz-questions/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/quizQuestions.ts",
+    "description": "DELETE /api/quiz-questions/{id}"
+  },
+  {
+    "name": "getQuizQuestionsForSession",
+    "method": "GET",
+    "path": "/api/quiz-questions/for-session/{sessionId}",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/quizQuestions.ts",
+    "description": "The resolved quiz set for one live class — this course's own questions first, then the department's shared ones (the only pool a Demo session draws from)."
+  },
+  {
+    "name": "bulkImportQuizQuestions",
+    "method": "POST",
+    "path": "/api/quiz-questions/bulk-import",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/quizQuestions.ts",
+    "description": "Bulk-create quiz questions from a .csv/.xlsx. Columns: DepartmentName (required unless CourseName is set), CourseName, Prompt, Option1..Option6 (2-6 filled), CorrectOptionNumber."
+  },
+  {
+    "name": "getMonthlyFinanceSummary",
+    "method": "GET",
+    "path": "/api/reports/monthly-finance",
+    "pathParams": [
+      "year",
+      "month"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "One IST calendar month's demos, conversions and collections, per counselor plus \"Others\"."
+  },
+  {
+    "name": "getDashboardSummary",
+    "method": "GET",
+    "path": "/api/reports/dashboard-summary",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "GET /api/reports/dashboard-summary"
+  },
+  {
+    "name": "getMyCollections",
+    "method": "GET",
+    "path": "/api/reports/my-collections",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "GET /api/reports/my-collections"
+  },
+  {
+    "name": "sendBulkEmail",
+    "method": "POST",
+    "path": "/api/communications/bulk-email",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "POST /api/communications/bulk-email"
+  },
+  {
+    "name": "getBulkEmailRecipientCount",
+    "method": "GET",
+    "path": "/api/communications/bulk-email/recipients",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "Live recipient count for the compose screen — same rule the send itself uses."
+  },
+  {
+    "name": "getBulkEmailHistory",
+    "method": "GET",
+    "path": "/api/communications/bulk-email/history",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "Past Bulk Email sends, newest first, for the admin History list."
+  },
+  {
+    "name": "getBulkEmailBlastDetail",
+    "method": "GET",
+    "path": "/api/communications/bulk-email/history/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "One blast's full recipient list with delivery status and any reply."
+  },
+  {
+    "name": "getEmailHistory",
+    "method": "GET",
+    "path": "/api/communications/email-history",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "Every individual (non-Bulk-Email) email ever sent, newest first — \"Bulk Email History\"'s other view. Omit `type` for every type; the 500-row cap matches the backend's own default."
+  },
+  {
+    "name": "replyToBulkEmail",
+    "method": "POST",
+    "path": "/api/communications/bulk-email/{recipientId}/reply",
+    "pathParams": [
+      "recipientId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "A parent's reply to one Bulk Email they received, addressed by their recipient row id."
+  },
+  {
+    "name": "getTeacherPerformance",
+    "method": "GET",
+    "path": "/api/reports/teacher-performance",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "GET /api/reports/teacher-performance"
+  },
+  {
+    "name": "getStudentAnalytics",
+    "method": "GET",
+    "path": "/api/reports/student-analytics/{childId}",
+    "pathParams": [
+      "childId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/reports.ts",
+    "description": "GET /api/reports/student-analytics/{childId}"
+  },
+  {
+    "name": "listResourceFolders",
+    "method": "GET",
+    "path": "/api/resource-folders",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "GET /api/resource-folders"
+  },
+  {
+    "name": "createResourceFolder",
+    "method": "POST",
+    "path": "/api/resource-folders",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "POST /api/resource-folders"
+  },
+  {
+    "name": "updateResourceFolder",
+    "method": "PUT",
+    "path": "/api/resource-folders/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "Rename and/or move (parentFolderId null = top level)."
+  },
+  {
+    "name": "deleteResourceFolder",
+    "method": "DELETE",
+    "path": "/api/resource-folders/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "DELETE /api/resource-folders/{id}"
+  },
+  {
+    "name": "listFolderAccess",
+    "method": "GET",
+    "path": "/api/resource-folders/{id}/access",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "GET /api/resource-folders/{id}/access"
+  },
+  {
+    "name": "setFolderAccess",
+    "method": "PUT",
+    "path": "/api/resource-folders/{id}/access",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "Shares with / unshares from any number of parents in one call; returns who has access afterwards."
+  },
+  {
+    "name": "listFolderBatchAccess",
+    "method": "GET",
+    "path": "/api/resource-folders/{id}/batch-access",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "GET /api/resource-folders/{id}/batch-access"
+  },
+  {
+    "name": "setFolderBatchAccess",
+    "method": "PUT",
+    "path": "/api/resource-folders/{id}/batch-access",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "Shares with / unshares from any number of batches in one call; returns which batches have access afterwards."
+  },
+  {
+    "name": "moveResource",
+    "method": "POST",
+    "path": "/api/resources/{resourceId}/move",
+    "pathParams": [
+      "resourceId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resourceFolders.ts",
+    "description": "Moves a file into a folder (null = top level)."
+  },
+  {
+    "name": "deleteResource",
+    "method": "DELETE",
+    "path": "/api/resources/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Removes a file from Content and Resources (and every parent/batch grant on it)."
+  },
+  {
+    "name": "addRecordingToResources",
+    "method": "POST",
+    "path": "/api/resources/from-recording",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Files a registered class recording into a Content and Resources folder by reference (no copy)."
+  },
+  {
+    "name": "listResources",
+    "method": "GET",
+    "path": "/api/resources",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "GET /api/resources"
+  },
+  {
+    "name": "listMyResources",
+    "method": "GET",
+    "path": "/api/resources/mine",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Teacher portal: resources tied to the signed-in teacher's own batches."
+  },
+  {
+    "name": "uploadMyResource",
+    "method": "POST",
+    "path": "/api/resources/mine",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/resources.ts",
+    "description": "Teacher portal: upload a resource to one of the teacher's own batches."
+  },
+  {
+    "name": "openResourceInNewTab",
+    "method": "GET",
+    "path": "/api/resources/{id}/view-url",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Staff (Admin / Sub Admin / Admission with Content Access): opens a resource in a new browser tab so it can be looked at without being saved first. The tab is opened synchronously (a popup blocker only allows that inside the click) and fille"
+  },
+  {
+    "name": "uploadResource",
+    "method": "POST",
+    "path": "/api/resources",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/resources.ts",
+    "description": "POST /api/resources"
+  },
+  {
+    "name": "uploadLargeResource",
+    "method": "POST",
+    "path": "/api/resources/uploads",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Multi-GB upload: the file is cut into 64 MB parts and each is PUT directly to object storage via a short-lived presigned URL (three at a time, each retried), so nothing large passes through the API. Then the server stitches the parts togeth"
+  },
+  {
+    "name": "uploadLargeResource_2",
+    "method": "POST",
+    "path": "/api/resources/uploads/parts",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Multi-GB upload: the file is cut into 64 MB parts and each is PUT directly to object storage via a short-lived presigned URL (three at a time, each retried), so nothing large passes through the API. Then the server stitches the parts togeth"
+  },
+  {
+    "name": "uploadLargeResource_3",
+    "method": "POST",
+    "path": "/api/resources/uploads/complete",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Multi-GB upload: the file is cut into 64 MB parts and each is PUT directly to object storage via a short-lived presigned URL (three at a time, each retried), so nothing large passes through the API. Then the server stitches the parts togeth"
+  },
+  {
+    "name": "uploadLargeResource_4",
+    "method": "POST",
+    "path": "/api/resources/uploads/abort",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Multi-GB upload: the file is cut into 64 MB parts and each is PUT directly to object storage via a short-lived presigned URL (three at a time, each retried), so nothing large passes through the API. Then the server stitches the parts togeth"
+  },
+  {
+    "name": "updateResource",
+    "method": "PUT",
+    "path": "/api/resources/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/resources.ts",
+    "description": "Admin console: toggle whether a resource is downloadable (books stay view-only server-side regardless)."
+  },
+  {
+    "name": "listRoles",
+    "method": "GET",
+    "path": "/api/roles",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/roles.ts",
+    "description": "GET /api/roles"
+  },
+  {
+    "name": "createRole",
+    "method": "POST",
+    "path": "/api/roles",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/roles.ts",
+    "description": "POST /api/roles"
+  },
+  {
+    "name": "updateRole",
+    "method": "PUT",
+    "path": "/api/roles/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/roles.ts",
+    "description": "PUT /api/roles/{id}"
+  },
+  {
+    "name": "deleteRole",
+    "method": "DELETE",
+    "path": "/api/roles/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/roles.ts",
+    "description": "DELETE /api/roles/{id}"
+  },
+  {
+    "name": "applyRoleToUser",
+    "method": "PUT",
+    "path": "/api/users/{userId}/permissions/preset/",
+    "pathParams": [
+      "userId"
+    ],
+    "query": true,
+    "body": true,
+    "form": false,
+    "source": "src/api/roles.ts",
+    "description": "Replaces a Sub Admin's grants with the named role's matrix."
+  },
+  {
+    "name": "saasTenant",
+    "method": "GET",
+    "path": "/api/saas-billing/status",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "GET /api/saas-billing/status"
+  },
+  {
+    "name": "saasTenant_2",
+    "method": "GET",
+    "path": "/api/saas-billing/banner",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "GET /api/saas-billing/banner"
+  },
+  {
+    "name": "saasTenant_3",
+    "method": "GET",
+    "path": "/api/saas-billing/ai-usage",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "GET /api/saas-billing/ai-usage"
+  },
+  {
+    "name": "saasTenant_4",
+    "method": "GET",
+    "path": "/api/saas-billing/plans",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "GET /api/saas-billing/plans"
+  },
+  {
+    "name": "saasTenant_5",
+    "method": "POST",
+    "path": "/api/saas-billing/change-plan",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "POST /api/saas-billing/change-plan"
+  },
+  {
+    "name": "saasTenant_6",
+    "method": "POST",
+    "path": "/api/saas-billing/cancel",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "POST /api/saas-billing/cancel"
+  },
+  {
+    "name": "saasTenant_7",
+    "method": "POST",
+    "path": "/api/saas-billing/resume",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "POST /api/saas-billing/resume"
+  },
+  {
+    "name": "saasTenant_8",
+    "method": "GET",
+    "path": "/api/saas-billing/invoices",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "GET /api/saas-billing/invoices"
+  },
+  {
+    "name": "saasTenant_9",
+    "method": "POST",
+    "path": "/api/saas-billing/invoices/{id}/pay-link",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "POST /api/saas-billing/invoices/{id}/pay-link"
+  },
+  {
+    "name": "saasTenant_10",
+    "method": "GET",
+    "path": "/api/saas-billing/profile",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "GET /api/saas-billing/profile"
+  },
+  {
+    "name": "saasTenant_11",
+    "method": "PUT",
+    "path": "/api/saas-billing/profile",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/saas.ts",
+    "description": "PUT /api/saas-billing/profile"
+  },
+  {
+    "name": "completeSession",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/complete",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Marks a session completed — accrues the teacher's payout for it, generates/stores the class summary, and (for a batch session) emails it to parents. This is the *only* thing that ever moves a session out of Scheduled into Completed; nothing"
+  },
+  {
+    "name": "updateSessionSummary",
+    "method": "PUT",
+    "path": "/api/sessions/{sessionId}/summary",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Teacher feedback: \"the report-writing option is also not visible after the session if we do not complete the report immediately.\" Edits an already-completed session's notes -- completeSession itself refuses to run twice, so this is the only"
+  },
+  {
+    "name": "getCalendarFeedUrl",
+    "method": "GET",
+    "path": "/api/sessions/calendar/feed-url",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Personal iCalendar feed URL (absolute) for external calendar apps — created server-side on first request."
+  },
+  {
+    "name": "registerRecording",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/recordings",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Registers a recording against the session (15-day parent window). Auto-called by the live classroom when Jitsi/Jibri hands back a recording link; also exposed as a manual fallback (teacher/admin pastes a URL) for classes recorded outside th"
+  },
+  {
+    "name": "listRecordings",
+    "method": "GET",
+    "path": "/api/sessions/{sessionId}/recordings",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Recordings already registered against a session (Admin/Teacher only)."
+  },
+  {
+    "name": "listAllRecordings",
+    "method": "GET",
+    "path": "/api/sessions/recordings?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Admin-only, paged, every registered recording across every class -- replaces fetching every completed session then calling listRecordings once per session (the \"Loading recordings...\" page that never seemed to finish once there were enough "
+  },
+  {
+    "name": "listMyRecordings_2",
+    "method": "GET",
+    "path": "/api/sessions/mine/recordings?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Teacher-only, paged, every registered recording across this teacher's own classes -- same shape and reasoning as listAllRecordings above, scoped instead of institution-wide. Replaces fetching every one of the teacher's completed sessions th"
+  },
+  {
+    "name": "listAllPersonalRoomRecordings",
+    "method": "GET",
+    "path": "/api/sessions/recordings/personal",
+    "pathParams": [
+      "page",
+      "pageSize"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Admin only: every member's Personal Meeting Room recordings, newest first."
+  },
+  {
+    "name": "deletePersonalRoomRecording",
+    "method": "DELETE",
+    "path": "/api/sessions/recordings/personal/{recordingId}",
+    "pathParams": [
+      "recordingId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Admin only: removes any member's Personal Meeting Room recording."
+  },
+  {
+    "name": "deleteRecording",
+    "method": "DELETE",
+    "path": "/api/sessions/{sessionId}/recordings/{recordingId}",
+    "pathParams": [
+      "sessionId",
+      "recordingId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "DELETE /api/sessions/{sessionId}/recordings/{recordingId}"
+  },
+  {
+    "name": "getClassroomSettings",
+    "method": "GET",
+    "path": "/api/sessions/classroom-settings",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Non-secret Jitsi settings for whoever is about to join a live class. `autoRecordEnabled` is admin-managed via Settings → Integrations → Jitsi Meet (\"autoRecord\" config field) — on means the classroom auto-starts recording when the host join"
+  },
+  {
+    "name": "getJitsiJoin",
+    "method": "GET",
+    "path": "/api/sessions/{sessionId}/jitsi-join",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Authorizes the caller for this exact session (same check as the classroom SignalR hub: Admin, the assigned teacher, or a parent with a child enrolled in the session's batch) and returns a signed, room-scoped join token when the deployment i"
+  },
+  {
+    "name": "listGuestLinkStudents",
+    "method": "GET",
+    "path": "/api/sessions/{sessionId}/guest-link/students",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "The session's batch roster for the \"Copy Guest Link\" student picker (GuestLinkDialog) — same SessionCalendarManagement:View permission as everything else on this screen, deliberately not CourseBatchManagement:View too, so an account with on"
+  },
+  {
+    "name": "createGuestLink",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/guest-link",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Mints a shareable Guest Link for this session. Pass `childId` to bind it to one specific, currently-active enrollment (the /guest-join bridge page auto-fills their name, skips prejoin, and marks their attendance on open); omit it for a gene"
+  },
+  {
+    "name": "guestJoin",
+    "method": "POST",
+    "path": "/api/sessions/guest-join",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Anonymous: resolves a Guest Link token into a live Jitsi join. Called only from the public /guest-join bridge page (GuestJoin.tsx) — never by a logged-in user, and never carries an auth token even if one happens to be present in this browse"
+  },
+  {
+    "name": "getRecordingObserverJoin",
+    "method": "GET",
+    "path": "/api/sessions/recordings/observer-join?room=",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Called by RecordingObserver.tsx — the page nginx on the Jitsi server proxies Jibri's own headless-Chrome navigation to instead of the bare Jitsi Meet SPA (see docs/JITSI_ARCHITECTURE.md's recording-observer section). No signed-in caller; th"
+  },
+  {
+    "name": "listMySessions",
+    "method": "GET",
+    "path": "/api/sessions/mine",
+    "pathParams": [
+      "from",
+      "to"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "The signed-in teacher's own sessions (default: 45 days back, 120 ahead)."
+  },
+  {
+    "name": "listSessions",
+    "method": "GET",
+    "path": "/api/sessions",
+    "pathParams": [
+      "from",
+      "to"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Every session in the academy in [from, to] (default: 30 days back, 60 ahead)."
+  },
+  {
+    "name": "scheduleSession",
+    "method": "POST",
+    "path": "/api/sessions",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Schedules one session (regular needs a batch; demo doesn't)."
+  },
+  {
+    "name": "rescheduleSession",
+    "method": "POST",
+    "path": "/api/sessions/{id}/reschedule",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Edits a session: new date/time (always) plus, optionally, a new teacher and/or batch — omit either to leave it as-is. Creates a fresh linked calendar entry under the hood (same as a plain time-only reschedule always has), so history stays t"
+  },
+  {
+    "name": "markNoShow",
+    "method": "POST",
+    "path": "/api/sessions/{id}/no-show",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Records a no-show: accrues the payout waiting-amount/deduction and carries the class forward 7 days (server-side, see SessionService.MarkNoShowAsync). Admin or Teacher only."
+  },
+  {
+    "name": "cancelSession",
+    "method": "POST",
+    "path": "/api/sessions/{id}/cancel",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "POST /api/sessions/{id}/cancel"
+  },
+  {
+    "name": "cancelSessionAsParent",
+    "method": "POST",
+    "path": "/api/sessions/{id}/parent-cancel",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Parent cancels their own child's upcoming class — immediate, no admin approval; the teacher is emailed the reason."
+  },
+  {
+    "name": "uploadPresentation",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/presentation",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/sessions.ts",
+    "description": "Teacher-only: uploads (replacing any prior one) the PDF deck to present live in this class."
+  },
+  {
+    "name": "getPresentation",
+    "method": "GET",
+    "path": "/api/sessions/{sessionId}/presentation",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "Whether a deck has been uploaded for this session yet — null if none."
+  },
+  {
+    "name": "startBrowserRecordingUpload",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/recordings/uploads",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "POST /api/sessions/{sessionId}/recordings/uploads"
+  },
+  {
+    "name": "browserRecordingPartUrl",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/recordings/uploads/parts",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "POST /api/sessions/{sessionId}/recordings/uploads/parts"
+  },
+  {
+    "name": "completeBrowserRecordingUpload",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/recordings/uploads/complete",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "POST /api/sessions/{sessionId}/recordings/uploads/complete"
+  },
+  {
+    "name": "abortBrowserRecordingUpload",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/recordings/uploads/abort",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/sessions.ts",
+    "description": "POST /api/sessions/{sessionId}/recordings/uploads/abort"
+  },
+  {
+    "name": "getPublicSettings",
+    "method": "GET",
+    "path": "/api/settings/public",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/settings.ts",
+    "description": "Anonymous branding settings (brand.*, org.name) for pre-login theming."
+  },
+  {
+    "name": "getSettings",
+    "method": "GET",
+    "path": "/api/settings",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/settings.ts",
+    "description": "GET /api/settings"
+  },
+  {
+    "name": "updateSettings",
+    "method": "PUT",
+    "path": "/api/settings",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/settings.ts",
+    "description": "Bulk upsert; returns the full settings list after saving."
+  },
+  {
+    "name": "getMarketingSettings",
+    "method": "GET",
+    "path": "/api/marketing/settings",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/settings.ts",
+    "description": "Marketing console only (Marketing role): the public site's seo.* and analytics.* settings."
+  },
+  {
+    "name": "updateMarketingSettings",
+    "method": "PUT",
+    "path": "/api/marketing/settings",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/settings.ts",
+    "description": "Marketing console only. Keys must be seo.* or analytics.*; returns the full marketing list after saving."
+  },
+  {
+    "name": "listMyStaffLeave",
+    "method": "GET",
+    "path": "/api/staff-leave/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/staffLeave.ts",
+    "description": "GET /api/staff-leave/mine"
+  },
+  {
+    "name": "applyStaffLeave",
+    "method": "POST",
+    "path": "/api/staff-leave/mine",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/staffLeave.ts",
+    "description": "POST /api/staff-leave/mine"
+  },
+  {
+    "name": "withdrawStaffLeave",
+    "method": "POST",
+    "path": "/api/staff-leave/mine/{id}/cancel",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/staffLeave.ts",
+    "description": "POST /api/staff-leave/mine/{id}/cancel"
+  },
+  {
+    "name": "listStaffLeave",
+    "method": "GET",
+    "path": "/api/staff-leave${status ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/staffLeave.ts",
+    "description": "GET /api/staff-leave${status "
+  },
+  {
+    "name": "reviewStaffLeave",
+    "method": "POST",
+    "path": "/api/staff-leave/{id}/review",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/staffLeave.ts",
+    "description": "POST /api/staff-leave/{id}/review"
+  },
+  {
+    "name": "listEligibleStaff",
+    "method": "GET",
+    "path": "/api/staff-payouts/eligible-staff",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/staffPayouts.ts",
+    "description": "GET /api/staff-payouts/eligible-staff"
+  },
+  {
+    "name": "setStaffCompensation",
+    "method": "PUT",
+    "path": "/api/staff-payouts/compensation/{userId}",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/staffPayouts.ts",
+    "description": "PUT /api/staff-payouts/compensation/{userId}"
+  },
+  {
+    "name": "getMyStaffEarnings",
+    "method": "GET",
+    "path": "/api/staff-payouts/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/staffPayouts.ts",
+    "description": "The signed-in staff member's own current month plus every past month on record."
+  },
+  {
+    "name": "getStaffEarningsForUser",
+    "method": "GET",
+    "path": "/api/staff-payouts/{userId}",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/staffPayouts.ts",
+    "description": "Admin/Management oversight: any one staff member's earnings."
+  },
+  {
+    "name": "adjustStaffPayout",
+    "method": "PUT",
+    "path": "/api/staff-payouts/{id}/amount",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/staffPayouts.ts",
+    "description": "Corrects a frozen (past-month) payout's payable amount, even after it was paid; kept in its history."
+  },
+  {
+    "name": "getStaffPayoutHistory",
+    "method": "GET",
+    "path": "/api/staff-payouts/{id}/history",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/staffPayouts.ts",
+    "description": "Every correction made to a frozen staff payout, newest first."
+  },
+  {
+    "name": "markStaffPayoutPaid",
+    "method": "POST",
+    "path": "/api/staff-payouts/{id}/mark-paid",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/staffPayouts.ts",
+    "description": "POST /api/staff-payouts/{id}/mark-paid"
+  },
+  {
+    "name": "getStorageStatus",
+    "method": "GET",
+    "path": "/api/storage/status",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/storage.ts",
+    "description": "GET /api/storage/status"
+  },
+  {
+    "name": "startStorageSync",
+    "method": "POST",
+    "path": "/api/storage/sync",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/storage.ts",
+    "description": "POST /api/storage/sync"
+  },
+  {
+    "name": "setStorageProvider",
+    "method": "PUT",
+    "path": "/api/storage/provider",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/storage.ts",
+    "description": "Switches where new uploads are stored, at once (saved in the database). Returns the new status."
+  },
+  {
+    "name": "listStoreDepartments",
+    "method": "GET",
+    "path": "/api/store/departments",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/store.ts",
+    "description": "Public — no login required. Active departments only, for the demo-booking form's optional filter."
+  },
+  {
+    "name": "listStorePlans",
+    "method": "GET",
+    "path": "/api/store/plans",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/store.ts",
+    "description": "Public — no login required."
+  },
+  {
+    "name": "submitStoreInquiry",
+    "method": "POST",
+    "path": "/api/store/inquiries",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/store.ts",
+    "description": "Public — no login required."
+  },
+  {
+    "name": "bookStoreDemo",
+    "method": "POST",
+    "path": "/api/store/demo-bookings",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/store.ts",
+    "description": "Public — no login required. Always auto-assigns a teacher; a visitor never picks who runs the demo. The backend rejects a slot under 2 hours out or more than 30 days away — surface those as the plain validation errors they are."
+  },
+  {
+    "name": "listDemoAvailability",
+    "method": "GET",
+    "path": "/api/store/demo-availability?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/store.ts",
+    "description": "Public — no login required. Which 30-minute slots on `date` (yyyy-MM-dd, the visitor's own local date) still have a teacher free — lets the booking form offer real openings instead of the visitor guessing a time and hitting \"no teacher avai"
+  },
+  {
+    "name": "listStoreInquiries",
+    "method": "GET",
+    "path": "/api/store/inquiries",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/store.ts",
+    "description": "Admin — the follow-up queue."
+  },
+  {
+    "name": "updateStoreInquiryStatus",
+    "method": "PUT",
+    "path": "/api/store/inquiries/{id}/status",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/store.ts",
+    "description": "PUT /api/store/inquiries/{id}/status"
+  },
+  {
+    "name": "listMySupportTickets",
+    "method": "GET",
+    "path": "/api/support-tickets/mine",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "GET /api/support-tickets/mine"
+  },
+  {
+    "name": "getMySupportTicket",
+    "method": "GET",
+    "path": "/api/support-tickets/mine/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "GET /api/support-tickets/mine/{id}"
+  },
+  {
+    "name": "createSupportTicket",
+    "method": "POST",
+    "path": "/api/support-tickets/mine",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "POST /api/support-tickets/mine"
+  },
+  {
+    "name": "replyToMySupportTicket",
+    "method": "POST",
+    "path": "/api/support-tickets/mine/{id}/messages",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "POST /api/support-tickets/mine/{id}/messages"
+  },
+  {
+    "name": "listSupportTickets",
+    "method": "GET",
+    "path": "/api/support-tickets${qs ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "GET /api/support-tickets${qs "
+  },
+  {
+    "name": "getSupportTicketCounts",
+    "method": "GET",
+    "path": "/api/support-tickets/counts",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "GET /api/support-tickets/counts"
+  },
+  {
+    "name": "getSupportTicket",
+    "method": "GET",
+    "path": "/api/support-tickets/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "GET /api/support-tickets/{id}"
+  },
+  {
+    "name": "replyToSupportTicket",
+    "method": "POST",
+    "path": "/api/support-tickets/{id}/messages",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "POST /api/support-tickets/{id}/messages"
+  },
+  {
+    "name": "updateSupportTicketStatus",
+    "method": "PUT",
+    "path": "/api/support-tickets/{id}/status",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/supportTickets.ts",
+    "description": "PUT /api/support-tickets/{id}/status"
+  },
+  {
+    "name": "updateStudentNotes",
+    "method": "PUT",
+    "path": "/api/users/students/{childId}/notes",
+    "pathParams": [
+      "childId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "RM special enrolment notes on a child profile."
+  },
+  {
+    "name": "deleteStudent",
+    "method": "DELETE",
+    "path": "/api/users/students/{childId}",
+    "pathParams": [
+      "childId"
+    ],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Removes a mistaken/test child record. Refused if the child has an unpaid invoice, or (unless `withdrawFromBatches` is set) an active batch enrolment -- previously there was no way to discover or clear that blocking enrolment from this same "
+  },
+  {
+    "name": "listStudents",
+    "method": "GET",
+    "path": "/api/users/students",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Admin students directory (real enrolled children). Attendance/fee show neutral defaults until those subsystems populate."
+  },
+  {
+    "name": "listUsers",
+    "method": "GET",
+    "path": "/api/users?",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "GET /api/users?"
+  },
+  {
+    "name": "resendCredentials",
+    "method": "POST",
+    "path": "/api/users/{userId}/resend-credentials",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Regenerates the account's temp PIN and (re)sends the onboarding welcome message over the chosen channel."
+  },
+  {
+    "name": "updateUser",
+    "method": "PUT",
+    "path": "/api/users/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "PUT /api/users/{id}"
+  },
+  {
+    "name": "getCredentialChannels",
+    "method": "GET",
+    "path": "/api/users/credential-channels",
+    "pathParams": [],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Which credential-delivery channels are enabled in Settings → Integrations (drives which Send buttons show)."
+  },
+  {
+    "name": "revealPin",
+    "method": "GET",
+    "path": "/api/users/{userId}/pin",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "The PIN the system last issued to this user (decrypted server-side; Admin role only, audit-logged)."
+  },
+  {
+    "name": "resetPin_2",
+    "method": "POST",
+    "path": "/api/users/{userId}/reset-pin",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Regenerates the account's PIN and hands it back directly instead of sending it anywhere — for an admin to read out or write down when no delivery channel currently reaches this person. Unlike resendCredentials, this doesn't depend on Email/"
+  },
+  {
+    "name": "startViewAsParent",
+    "method": "POST",
+    "path": "/api/users/{userId}/view-as",
+    "pathParams": [
+      "userId"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Starts a read-only, 30-minute \"view as parent\" session (Relationship Managers / Admins with User Management edit): the parent's portal as they see it, without their PIN. Audit-logged."
+  },
+  {
+    "name": "deleteUser",
+    "method": "DELETE",
+    "path": "/api/users/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Soft-deletes the account; excluded from all lists afterwards and its email becomes reusable."
+  },
+  {
+    "name": "getParentHardDeletePreview",
+    "method": "GET",
+    "path": "/api/users/{id}/hard-delete-preview",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Everything a hard delete of this Parent (and every one of their children) would permanently remove — read-only, for the confirmation popup before {@link hardDeleteParent}."
+  },
+  {
+    "name": "hardDeleteParent",
+    "method": "DELETE",
+    "path": "/api/users/{id}/hard-delete",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Permanently deletes this Parent account, every one of their children, and every row that's actually theirs (financial records included) — logged first for future reference, but there is no undo once this resolves. Call {@link getParentHardD"
+  },
+  {
+    "name": "getStudentHardDeletePreview",
+    "method": "GET",
+    "path": "/api/users/students/{childId}/hard-delete-preview",
+    "pathParams": [
+      "childId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Everything a hard delete of this Student would permanently remove — read-only, for the confirmation popup before {@link hardDeleteStudent}."
+  },
+  {
+    "name": "hardDeleteStudent",
+    "method": "DELETE",
+    "path": "/api/users/students/{childId}/hard-delete",
+    "pathParams": [
+      "childId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Permanently deletes this Student and every row that's actually theirs — never the parent account, siblings, batches or class sessions. Logged first for future reference, but there is no undo once this resolves. Call {@link getStudentHardDel"
+  },
+  {
+    "name": "changeUserRole",
+    "method": "PUT",
+    "path": "/api/users/{id}/role",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "Converts the account to a different base type (swaps Parent/Teacher profile as needed)."
+  },
+  {
+    "name": "createUser",
+    "method": "POST",
+    "path": "/api/users",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/users.ts",
+    "description": "POST /api/users"
+  },
+  {
+    "name": "bulkImportUsers",
+    "method": "POST",
+    "path": "/api/users/bulk-import",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/users.ts",
+    "description": "Bulk-create Parent or Teacher accounts from a .csv/.xlsx. Columns: Email, FirstName, LastName, Phone, DepartmentName (Teacher rows only)."
+  },
+  {
+    "name": "bulkImportStudents",
+    "method": "POST",
+    "path": "/api/users/students/bulk-import",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": true,
+    "source": "src/api/users.ts",
+    "description": "Bulk-create Students (Child records) from a .csv/.xlsx. Each row's ParentEmail must match an existing Parent account. Columns: ParentEmail, StudentFullName, DateOfBirth (YYYY-MM-DD, optional), AcademicLevel (optional)."
+  },
+  {
+    "name": "listWhiteboardActivities",
+    "method": "GET",
+    "path": "/api/whiteboard-activities${qs ",
+    "pathParams": [],
+    "query": true,
+    "body": false,
+    "form": false,
+    "source": "src/api/whiteboardActivities.ts",
+    "description": "GET /api/whiteboard-activities${qs "
+  },
+  {
+    "name": "createWhiteboardActivity",
+    "method": "POST",
+    "path": "/api/whiteboard-activities",
+    "pathParams": [],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/whiteboardActivities.ts",
+    "description": "POST /api/whiteboard-activities"
+  },
+  {
+    "name": "updateWhiteboardActivity",
+    "method": "PUT",
+    "path": "/api/whiteboard-activities/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": true,
+    "form": false,
+    "source": "src/api/whiteboardActivities.ts",
+    "description": "PUT /api/whiteboard-activities/{id}"
+  },
+  {
+    "name": "deleteWhiteboardActivity",
+    "method": "DELETE",
+    "path": "/api/whiteboard-activities/{id}",
+    "pathParams": [
+      "id"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/whiteboardActivities.ts",
+    "description": "DELETE /api/whiteboard-activities/{id}"
+  },
+  {
+    "name": "getWhiteboardActivitiesForSession",
+    "method": "GET",
+    "path": "/api/whiteboard-activities/for-session/{sessionId}",
+    "pathParams": [
+      "sessionId"
+    ],
+    "query": false,
+    "body": false,
+    "form": false,
+    "source": "src/api/whiteboardActivities.ts",
+    "description": "The resolved activity set for one live class — this course's own activities first, then the department's shared ones (the only pool a Demo session draws from)."
+  }
+]

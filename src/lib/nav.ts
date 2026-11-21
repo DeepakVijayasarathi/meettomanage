@@ -62,6 +62,8 @@ export interface NavItem {
   icon: LucideIcon;
   end?: boolean;
   badge?: string;
+  /** Tailwind text-colour class for the sidebar icon; defaults to a stable colour derived from `to`. */
+  iconClass?: string;
 }
 
 export interface NavSection {
