@@ -204,6 +204,11 @@ function validPhone(value: string): boolean {
   return digits.length >= 7 && digits.length <= 15 && /^[+\d\s().-]+$/.test(value.trim());
 }
 
+function validEmail(value: string): boolean {
+  if (!value.trim()) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 function localDateTimeMinimum() {
   const date = new Date(Date.now() + 2 * 60 * 60 * 1000);
   const offset = date.getTimezoneOffset() * 60_000;
@@ -273,6 +278,22 @@ export default function GetStarted() {
     trackMarketingEvent("form_started", undefined, tag);
   }
 
+  function updateName(value: string) {
+    markFormStarted();
+    setError(null);
+    setForm((current) => ({ ...current, fullName: value }));
+  }
+
+  function updateContact(value: string) {
+    markFormStarted();
+    setError(null);
+    // One visible contact field removes the misleading choice between two "optional" fields.
+    // Keep the API contract unchanged by classifying the value only in local state.
+    setForm((current) => value.includes("@")
+      ? { ...current, workEmail: value, phone: "" }
+      : { ...current, workEmail: "", phone: value });
+  }
+
   useEffect(() => {
     tagRef.current = tag;
     if (tag) trackMarketingEvent("experiment_viewed", undefined, tag);
@@ -299,6 +320,11 @@ export default function GetStarted() {
     if (!form.workEmail.trim() && !form.phone.trim()) {
       trackMarketingEvent("form_validation_failed", undefined, tag);
       setError(lang === "en" ? "Enter an email address or WhatsApp number so we can contact you." : "أدخل بريدًا إلكترونيًا أو رقم واتساب لنتواصل معك.");
+      return;
+    }
+    if (!validEmail(form.workEmail)) {
+      trackMarketingEvent("form_validation_failed", undefined, tag);
+      setError(lang === "en" ? "Enter a valid email address." : "أدخل عنوان بريد إلكتروني صالحًا.");
       return;
     }
     if (!validPhone(form.phone)) {
@@ -421,30 +447,36 @@ export default function GetStarted() {
                       ))}
                     </ol>
                   )}
-                  <form onSubmit={handleSubmit} onFocus={markFormStarted} className="mt-6 flex flex-col gap-4">
+                  <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>
                       <Field icon={User}>
-                        <Input id="gs-fullName" required maxLength={150} className={FIELD} value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} placeholder={t.namePlaceholder} />
+                        <Input id="gs-fullName" required autoComplete="name" enterKeyHint="next" maxLength={150} className={FIELD} value={form.fullName} onChange={(e) => updateName(e.target.value)} placeholder={t.namePlaceholder} />
                       </Field>
                     </div>
-                    <div>
-                      <p className="mb-1.5 text-sm font-semibold text-[#1C1917]">{lang === "en" ? "Where should we reply?" : "أين نرسل ردنا؟"} <span className="text-[#C2410C]">*</span></p>
-                      <p className="mb-3 text-xs text-[#78716C]">{lang === "en" ? "Add either WhatsApp or email — you do not need both." : "أضف واتساب أو البريد الإلكتروني — لا تحتاج إلى كليهما."}</p>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
-                        <Field icon={Mail}>
-                          <Input id="gs-workEmail" type="email" autoComplete="email" maxLength={256} className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
-                        </Field>
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{lang === "en" ? "WhatsApp number" : t.phone} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
-                        <Field icon={Phone}>
-                          <Input id="gs-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} pattern="[+0-9 ()\-.]{7,20}" className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
-                        </Field>
-                      </div>
-                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gs-contact" className="font-semibold text-[#1C1917]">
+                        {lang === "en" ? "Email or WhatsApp number" : "البريد الإلكتروني أو رقم واتساب"} <span aria-hidden className="text-[#C2410C]">*</span>
+                      </Label>
+                      <Field icon={form.workEmail ? Mail : Phone}>
+                        <Input
+                          id="gs-contact"
+                          required
+                          type="text"
+                          inputMode={form.workEmail ? "email" : "text"}
+                          enterKeyHint="send"
+                          autoComplete="email"
+                          maxLength={256}
+                          aria-describedby="gs-contact-help"
+                          className={FIELD}
+                          value={form.workEmail || form.phone}
+                          onChange={(e) => updateContact(e.target.value)}
+                          placeholder={lang === "en" ? "you@academy.com or +91 98765 43210" : "you@academy.com أو +91 98765 43210"}
+                        />
+                      </Field>
+                      <p id="gs-contact-help" className="text-xs text-[#78716C]">
+                        {lang === "en" ? "Use whichever is easiest. We only use it to arrange your demo." : "استخدم الأسهل لك. نستخدمه فقط لترتيب العرض التوضيحي."}
+                      </p>
                     </div>
                     <button
                       type="button"
