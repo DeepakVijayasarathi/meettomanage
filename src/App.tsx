@@ -51,6 +51,9 @@ const ForgotPin = lazy(() => import("@/features/auth/ForgotPin"));
 // kept out of every academy portal.
 const MarketingLogin = lazy(() => import("@/features/marketingConsole/MarketingLogin"));
 const MarketingDashboard = lazy(() => import("@/features/marketingConsole/MarketingDashboard"));
+const MarketingWebinars = lazy(() => import("@/features/marketingConsole/MarketingWebinars"));
+const WebinarRegistration = lazy(() => import("@/features/marketing/WebinarRegistration"));
+const WebinarsPage = lazy(() => import("@/features/marketing/WebinarListing"));
 const MarketingSeo = lazy(() => import("@/features/marketingConsole/MarketingSeo"));
 const MarketingAutomation = lazy(() => import("@/features/marketingConsole/MarketingAutomation"));
 const CrmToday = lazy(() => import("@/features/marketingConsole/crm/CrmToday"));
@@ -354,6 +357,9 @@ export default function App() {
                 outside RequireAuth the same way the Jibri route above does; see GuestJoin.tsx's
                 own doc comment for why it hands off to raw Jitsi rather than the in-app classroom. */}
             <Route path="/guest-join" element={<GuestJoin />} />
+            <Route path="/webinars/register" element={<WebinarRegistration />} />
+            <Route path="/webinars" element={<WebinarsPage />} />
+            <Route path="/webinars/:slug" element={<WebinarRegistration />} />
             {/* The new tab a Relationship Manager's "View as parent" opens (lib/viewAs.ts) —
                 it receives its read-only session from the opener, so no login here either. */}
             <Route path="/view-as" element={<ViewAsHandoff />} />
@@ -475,6 +481,7 @@ export default function App() {
             <Route path="/marketing/login" element={<MarketingLogin />} />
             <Route path="/marketing" element={<RequireAuth role="marketing"><MarketingShell><Outlet /></MarketingShell></RequireAuth>}>
               <Route index element={<MarketingDashboard />} />
+              <Route path="webinars" element={<MarketingWebinars />} />
               <Route path="demo-requests" element={<MarketingDemoRequests />} />
               <Route path="leads/:id" element={<LeadDetailPage />} />
               <Route path="chats" element={<MarketingChats />} />

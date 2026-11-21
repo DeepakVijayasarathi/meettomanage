@@ -13,6 +13,7 @@ import { trackMarketingEvent } from "@/lib/analytics";
 import { detectMarketCurrency, formatMarketPrice, INR_PER_USD } from "@/lib/region";
 import { ChaosToOne } from "./ChaosToOne";
 import { MarketingFooter } from "./MarketingFooter";
+import { WebinarListing } from "./WebinarListing";
 import { BTN_PRIMARY, MarketingNav } from "./MarketingNav";
 import { OpenSourceStrip } from "./OpenSourceStrip";
 import { SALES_WHATSAPP_URL } from "./WalkthroughCta";
@@ -677,6 +678,7 @@ export default function MarketingHome() {
         </section>
       </main>
 
+      <WebinarListing landing />
       <MarketingFooter />
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#EBD9C8] bg-white/95 p-3 shadow-[0_-12px_30px_-22px_rgba(28,25,23,0.7)] backdrop-blur sm:hidden">
         <div className="mx-auto flex max-w-lg gap-2">

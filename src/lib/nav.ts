@@ -152,6 +152,7 @@ const MARKETING_NAV: NavSection[] = [
   {
     items: [
       { label: "Dashboard", to: "/marketing", icon: LayoutDashboard, end: true },
+      { label: "Webinars", to: "/marketing/webinars", icon: Video },
       { label: "Chats", to: "/marketing/chats", icon: MessagesSquare },
       { label: "Blog Posts", to: "/marketing/blog-posts", icon: Newspaper },
     ],
