@@ -1,4 +1,5 @@
 import { apiFetchGlobal } from "@/lib/api";
+import type { ApiPaged, ApiPlatformDemoRequest } from "@/api/marketing";
 
 const root = "/api/marketing/webinars";
 
@@ -8,6 +9,7 @@ export interface WebinarDetails {
   offers: string;
   start: string;
   end: string;
+  bannerImage?: string | null;
 }
 
 export interface Webinar {
@@ -27,6 +29,9 @@ export const getWebinar = (slug: string) => apiFetchGlobal<Webinar>(`${root}/${e
 export const registerForWebinar = (slug: string, input: { fullName: string; workEmail: string; phone: string; academyName: string }) =>
   apiFetchGlobal<void>(`${root}/${encodeURIComponent(slug)}/register`, { method: "POST", body: JSON.stringify(input) }, false);
 export const listManagedWebinars = () => apiFetchGlobal<Webinar[]>(`${root}/manage`);
+export type WebinarRegistration = Pick<ApiPlatformDemoRequest, "id" | "fullName" | "workEmail" | "phone" | "academyName" | "createdAtUtc">;
+export const listWebinarRegistrations = (id: string, page: number) =>
+  apiFetchGlobal<ApiPaged<WebinarRegistration>>(`${root}/manage/${id}/registrations?page=${page}`);
 export const saveWebinar = (input: WebinarInput, id?: string) => apiFetchGlobal<void>(
   id ? `${root}/manage/${id}` : `${root}/manage`,
   { method: id ? "PUT" : "POST", body: JSON.stringify(input) },

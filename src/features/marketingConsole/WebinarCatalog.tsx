@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Link, useHref } from "react-router-dom";
-import { createWebinarAttendeeLink, listManagedWebinars, saveWebinar, startWebinar, type Webinar } from "@/api/webinars";
+import { ImagePlus, Trash2 } from "lucide-react";
+import { createWebinarAttendeeLink, listManagedWebinars, listWebinarRegistrations, saveWebinar, startWebinar, type Webinar } from "@/api/webinars";
 import { useApiData } from "@/api/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { userMessage } from "@/lib/api";
@@ -20,17 +22,37 @@ export default function WebinarCatalog() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [banner, setBanner] = useState("");
+  const [readingBanner, setReadingBanner] = useState(false);
+  const [bannerError, setBannerError] = useState("");
   const details = editing?.details;
 
   function openEditor(webinar: Webinar | null) {
     setEditing(webinar);
+    setBanner(webinar?.details.bannerImage ?? "");
+    setBannerError("");
     setSaveError("");
     setFeedback("");
   }
 
+  function selectBanner(file?: File) {
+    if (!file) return;
+    setBannerError("");
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 500_000 || !file.size) {
+      setBannerError("Choose a PNG, JPG, or WebP image up to 500 KB.");
+      return;
+    }
+    const reader = new FileReader();
+    setReadingBanner(true);
+    reader.onload = () => setBanner(String(reader.result));
+    reader.onerror = () => setBannerError("Could not read the banner image. Try selecting it again.");
+    reader.onloadend = () => setReadingBanner(false);
+    reader.readAsDataURL(file);
+  }
+
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving) return;
+    if (saving || readingBanner) return;
     const form = new FormData(event.currentTarget);
     const value = (name: string) => String(form.get(name) ?? "").trim();
     const title = value("title");
@@ -48,7 +70,7 @@ export default function WebinarCatalog() {
     try {
       await saveWebinar({
         title, excerpt, description, benefits: value("benefits"), offers: value("offers"),
-        start: start.toISOString(), end: end.toISOString(), isPublished: publish,
+        start: start.toISOString(), end: end.toISOString(), isPublished: publish, bannerImage: banner,
       }, editing?.id);
       reload();
       setEditing(undefined);
@@ -70,6 +92,38 @@ export default function WebinarCatalog() {
         {editing !== undefined && (
           <form key={editing?.id ?? "new"} onSubmit={save} className="space-y-3 rounded-lg border p-4">
             <label className="block space-y-1 text-sm">Title<Input name="title" required maxLength={150} defaultValue={editing?.title} /></label>
+            <fieldset className="space-y-3 rounded-xl border bg-muted/30 p-4">
+              <legend className="px-1 text-sm font-medium">Webinar banner</legend>
+              {banner && <img src={banner} alt="Webinar banner preview" className="aspect-video w-full rounded-lg border bg-background object-contain" />}
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  id="webinar-banner"
+                  className="peer sr-only"
+                  type="file"
+                  aria-label="Webinar banner image"
+                  aria-describedby="webinar-banner-hint"
+                  accept="image/png,image/jpeg,image/webp"
+                  disabled={saving || readingBanner}
+                  onChange={(event) => {
+                    selectBanner(event.currentTarget.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <Button asChild variant="outline" size="sm">
+                  <label htmlFor="webinar-banner" className="cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-disabled:pointer-events-none peer-disabled:opacity-50">
+                    <ImagePlus className="h-4 w-4" /> {banner ? "Replace banner" : "Choose banner"}
+                  </label>
+                </Button>
+                {banner && (
+                  <Button type="button" size="sm" variant="ghost" disabled={saving || readingBanner} onClick={() => { setBanner(""); setBannerError(""); }}>
+                    <Trash2 className="h-4 w-4" /> Remove banner
+                  </Button>
+                )}
+              </div>
+              <p id="webinar-banner-hint" className="text-xs text-muted-foreground">Optional. A 16:9 PNG, JPG, or WebP up to 500 KB works well.</p>
+              {readingBanner && <p role="status" className="text-sm">Loading preview…</p>}
+              {bannerError && <p role="alert" className="text-sm text-destructive">{bannerError}</p>}
+            </fieldset>
             <label className="block space-y-1 text-sm">Landing page summary<Input name="summary" required maxLength={240} defaultValue={editing?.excerpt} /></label>
             <label className="block space-y-1 text-sm">Description<Textarea name="description" required maxLength={3000} defaultValue={details?.description} /></label>
             <label className="block space-y-1 text-sm">Benefits, one per line<Textarea name="benefits" maxLength={2000} defaultValue={details?.benefits} /></label>
@@ -79,9 +133,9 @@ export default function WebinarCatalog() {
               <label className="block space-y-1 text-sm">Ends in your time zone<Input type="datetime-local" name="end" required defaultValue={localInput(details ? new Date(details.end) : undefined)} /></label>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" value="publish" disabled={saving}>{editing?.isPublished ? "Update published webinar" : "Publish webinar"}</Button>
-              <Button type="submit" variant="outline" disabled={saving}>{editing?.isPublished ? "Unpublish and save draft" : "Save draft"}</Button>
-              <Button type="button" variant="ghost" disabled={saving} onClick={() => setEditing(undefined)}>Cancel</Button>
+              <Button type="submit" value="publish" disabled={saving || readingBanner}>{editing?.isPublished ? "Update published webinar" : "Publish webinar"}</Button>
+              <Button type="submit" variant="outline" disabled={saving || readingBanner}>{editing?.isPublished ? "Unpublish and save draft" : "Save draft"}</Button>
+              <Button type="button" variant="ghost" disabled={saving || readingBanner} onClick={() => setEditing(undefined)}>Cancel</Button>
             </div>
             {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
           </form>
@@ -91,7 +145,7 @@ export default function WebinarCatalog() {
         {loading && <p role="status" className="text-sm text-muted-foreground">Loading webinars…</p>}
         {!loading && !error && !data.length && editing === undefined && <p className="text-sm text-muted-foreground">No webinars yet.</p>}
         {data.map((webinar) => (
-          <WebinarRow key={`${webinar.id}:${webinar.details.end}:${webinar.isPublished}`} webinar={webinar} disabled={saving} onEdit={() => openEditor(webinar)} />
+          <WebinarRow key={`${webinar.id}:${webinar.details.end}:${webinar.isPublished}`} webinar={webinar} disabled={saving || readingBanner} onEdit={() => openEditor(webinar)} />
         ))}
       </CardContent>
     </Card>
@@ -152,6 +206,7 @@ function WebinarRow({ webinar, disabled, onEdit }: { webinar: Webinar; disabled:
       </div>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" disabled={disabled} onClick={onEdit}>Edit</Button>
+        <WebinarRegistrations webinar={webinar} />
         <Button size="sm" disabled={pending || ended} onClick={openRoom}>Start Jitsi webinar</Button>
         {webinar.isPublished && (
           <>
@@ -173,5 +228,73 @@ function WebinarRow({ webinar, disabled, onEdit }: { webinar: Webinar; disabled:
       {pending && <p role="status" className="text-sm">Connecting to the webinar service…</p>}
       {feedback && <p role="status" className="text-sm">{feedback}</p>}
     </article>
+  );
+}
+
+function WebinarRegistrations({ webinar }: { webinar: Webinar }) {
+  const [page, setPage] = useState(1);
+  return (
+    <Dialog onOpenChange={(open) => { if (open) setPage(1); }}>
+      <DialogTrigger asChild><Button size="sm" variant="outline">Registrations</Button></DialogTrigger>
+      <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Webinar registrations</DialogTitle>
+          <DialogDescription>{webinar.title}</DialogDescription>
+        </DialogHeader>
+        <RegistrationPage key={page} webinarId={webinar.id} page={page} onPageChange={setPage} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RegistrationPage({ webinarId, page, onPageChange }: { webinarId: string; page: number; onPageChange: (page: number) => void }) {
+  const { data, loading, error, reload } = useApiData(() => listWebinarRegistrations(webinarId, page), null);
+  if (loading) return <p role="status" className="text-sm text-muted-foreground">Loading registrations…</p>;
+  if (error) return (
+    <div className="space-y-2">
+      <p role="alert" className="text-sm text-destructive">{error}</p>
+      <Button variant="outline" size="sm" onClick={reload}>Try again</Button>
+    </div>
+  );
+  if (!data?.totalCount) return <p className="text-sm text-muted-foreground">No registrations to show for this webinar.</p>;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">{data.totalCount} {data.totalCount === 1 ? "registration" : "registrations"}</p>
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              <th scope="col" className="px-3 py-2">Attendee</th>
+              <th scope="col" className="px-3 py-2">Contact</th>
+              <th scope="col" className="px-3 py-2">Registered</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {data.items.map((registration) => (
+              <tr key={registration.id}>
+                <td className="px-3 py-2">
+                  <Link to={`/marketing/leads/${registration.id}`} className="font-medium hover:underline">{registration.fullName}</Link>
+                  <p className="text-muted-foreground">{registration.academyName}</p>
+                </td>
+                <td className="px-3 py-2">
+                  <div>{registration.workEmail}</div>
+                  <div className="text-muted-foreground">{registration.phone}</div>
+                </td>
+                <td className="min-w-36 px-3 py-2">
+                  <time dateTime={registration.createdAtUtc}>{localWebinarTime(new Date(registration.createdAtUtc))}</time>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {(page > 1 || data.totalCount > data.pageSize) && (
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
+          <Button variant="outline" size="sm" disabled={page * data.pageSize >= data.totalCount} onClick={() => onPageChange(page + 1)}>Next</Button>
+        </div>
+      )}
+    </div>
   );
 }
