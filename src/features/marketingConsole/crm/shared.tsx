@@ -65,7 +65,7 @@ export function TaskList({ tasks, onChanged, showContext = true, empty = "No tas
                   <Badge variant="outline">{TASK_TYPE_LABEL[t.type]}</Badge>
                   <span className={overdue ? "font-semibold text-destructive" : ""}>{overdue ? "Overdue · " : ""}{when(t.dueAtUtc)}</span>
                   {t.assignedTo && <span>· {t.assignedTo}</span>}
-                  {showContext && t.leadId && <Link className="text-primary hover:underline" to={`/marketing/demo-requests?lead=${t.leadId}`}>· {t.leadLabel}</Link>}
+                  {showContext && t.leadId && <Link className="text-primary hover:underline" to={`/marketing/leads/${t.leadId}`}>· {t.leadLabel}</Link>}
                   {showContext && t.tenantId && <Link className="text-primary hover:underline" to={`/marketing/customers?open=${t.tenantId}`}>· {t.customerName ?? "Customer"}</Link>}
                 </p>
                 {t.outcome && <p className="mt-1 text-sm text-muted-foreground">Outcome: {t.outcome}</p>}

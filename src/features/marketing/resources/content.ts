@@ -109,8 +109,8 @@ export const RESOURCE_GUIDES: ResourceGuide[] = [
   {
     slug: "teacher-handover-checklist",
     title: "Teacher leave handover checklist for coaching centres",
-    seoTitle: "Free Teacher Handover Checklist | Meet to Manage",
-    description: "Download a practical teacher handover checklist for coaching classes. Prepare a substitute teacher, confirm the lesson and record what happened afterwards.",
+    seoTitle: "Free Teacher Handover Checklist Template | Meet to Manage",
+    description: "Download a free editable teacher handover checklist template. Brief a substitute teacher, confirm lesson resources and record follow-up after class.",
     category: "Teaching and scheduling",
     intro: [
       "A substitute teacher should be able to answer what to teach, when to join, and who can resolve a problem without searching through an entire chat history. Use this checklist when a teacher takes leave or another educator covers a scheduled class.",

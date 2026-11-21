@@ -23,6 +23,8 @@ interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   rowKey: (row: T) => string;
   searchPlaceholder?: string;
+  /** Hide the built-in search when the parent already provides server-side search. */
+  hideSearch?: boolean;
   searchFn?: (row: T, query: string) => boolean;
   toolbar?: ReactNode;
   onRowClick?: (row: T) => void;
@@ -75,6 +77,7 @@ export function DataTable<T>({
   columns,
   rowKey,
   searchPlaceholder = "Search…",
+  hideSearch = false,
   searchFn,
   toolbar,
   onRowClick,
@@ -212,13 +215,13 @@ export function DataTable<T>({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {(!hideSearch || toolbar || (selectable && selection.size > 0)) && <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* sm:max-w-md (not sm:max-w-sm/384px, nor the old max-w-xs/320px): the longest
             real placeholder in use, "Search parents by name, email or their child's
             name…", still overflowed max-w-sm by ~20px (measured: 354.9px of text in
             333.8px of available padding-adjusted width) — same hard-clip-mid-word-on-
             first-paint symptom the max-w-sm bump was meant to fix, just past its margin. */}
-        <div className="relative w-full sm:max-w-md">
+        {!hideSearch && <div className="relative w-full sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -230,7 +233,7 @@ export function DataTable<T>({
             aria-label={searchPlaceholder ?? "Search"}
             className="pl-9"
           />
-        </div>
+        </div>}
         {(toolbar || (selectable && selection.size > 0)) && (
           <div className="flex flex-wrap items-center gap-2">
             {selectable && selection.size > 0 ? (
@@ -246,7 +249,7 @@ export function DataTable<T>({
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       {sorted.length === 0 ? (
         error ? (

@@ -26,6 +26,10 @@ const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, 
 const BLOG_TITLE_SUFFIX = " | Meet to Manage";
 const NO_SHOWS_SLUG = "reduce-no-shows-online-classes";
 const NO_SHOWS_DESCRIPTION = "A practical guide for Indian coaching centres and online academies to reduce student and demo-class no-shows with reminders, attendance tracking and clear follow-up.";
+const BLOG_SEARCH_DESCRIPTIONS = {
+  "interactive-whiteboard-activities-online-classes": "Try 10 practical interactive whiteboard activities for online classes, with ideas for participation, checking understanding and keeping students engaged.",
+  "how-to-automate-monthly-fee-invoices-for-coaching-students": "Learn how to automate monthly fee invoices for coaching students, including billing cycles, reminders, payment tracking and handling exceptions.",
+};
 const BLOG_SEARCH_TITLES = {
   "single-subject-academy-growth-playbook": "Growth Playbook for Phonics, Maths and Coding Academies",
   "whatsapp-automation-for-coaching-centres": "WhatsApp Automation for Coaching Centres",
@@ -42,6 +46,7 @@ const BLOG_SEARCH_TITLES = {
   "online-coaching-software-checklist": "Online Coaching Software Checklist",
   "automatic-fee-suspension-payment-conversations": "Automatic Fee Suspension for Late Payments",
   "demo-booking-to-enrolled-family": "From Demo Booking to Enrolled Family",
+  "how-to-turn-more-website-visitors-into-demo-bookings": "How to Convert Website Visitors into Demo Bookings",
 };
 const NO_SHOWS_CONTEXT = "<aside><h2>For coaching centres and online academies</h2><p>This guide is for academy owners and administrators in India who want fewer missed student classes and demo bookings. It focuses on parent reminders, class scheduling, attendance tracking and follow-up—not sports lessons or event ticketing.</p></aside>";
 /** Brand suffix only when it fits in ~60 characters; a long title stays whole (never cut with "…"), so its keywords stay in. */
@@ -58,6 +63,7 @@ const clipDescription = (value, max = 160) => {
 };
 const blogSeoDescription = (post, content) => {
   if (post.slug === NO_SHOWS_SLUG) return NO_SHOWS_DESCRIPTION;
+  if (BLOG_SEARCH_DESCRIPTIONS[post.slug]) return BLOG_SEARCH_DESCRIPTIONS[post.slug];
   const excerpt = String(post.excerpt ?? "").trim();
   if (excerpt.length >= 70) return clipDescription(excerpt);
   const plain = String(content ?? "").replace(/^##\s+.*$/gm, " ").replace(/[*_#-]+/g, " ").replace(/\s+/g, " ").trim();

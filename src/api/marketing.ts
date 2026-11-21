@@ -15,6 +15,8 @@ export interface ApiPlatformDemoRequest {
   medium?: string | null;
   campaign?: string | null;
   landingPath?: string | null;
+  /** The website visitor who submitted this lead, for their journey. */
+  visitorId?: string | null;
   assignedTo?: string | null;
   nextFollowUpAtUtc?: string | null;
   lastContactedAtUtc?: string | null;
@@ -207,6 +209,7 @@ export async function listMarketingChats(input: { page: number; pageSize?: numbe
   return apiFetch<ApiPaged<ApiMarketingChatConversation>>(`/api/marketing/chats?${q}`);
 }
 export const getMarketingChat = (id: string) => apiFetch<ApiMarketingChatDetail>(`/api/marketing/chats/${id}`);
+export const deleteMarketingChat = (id: string) => apiFetch<void>(`/api/marketing/chats/${id}`, { method: "DELETE" });
 
 export async function translateMarketingText(texts: string[], targetLanguage: string): Promise<string[]> {
   const response = await apiFetch<{ translations: string[] }>("/api/marketing/translate", {
@@ -304,9 +307,12 @@ export interface ApiMarketingTotals {
   chatsStarted: number;
   demoRequests: number;
   formStartedVisitors: number;
+  formSubmitAttemptedVisitors: number;
+  formSubmitFailedVisitors: number;
   formSubmittedVisitors: number;
   formValidationFailedVisitors: number;
   formAbandonedVisitors: number;
+  whatsAppVisitors: number;
   chatBookings: number;
   conversionRate: number;
   pagesPerVisitor: number;
@@ -320,6 +326,7 @@ export interface ApiMarketingDashboard {
   endDate: string;
   totals: ApiMarketingTotals;
   previous: ApiMarketingTotals;
+  conversionDetail: ApiMarketingConversionDetail;
   daily: { date: string; pageViews: number; visitors: number; demoRequests: number; chatsStarted: number; conversionRate: number; pagesPerVisitor: number }[];
   topPages: ApiNamedCount[];
   topBlogPosts: ApiNamedCount[];
@@ -332,6 +339,22 @@ export interface ApiMarketingDashboard {
   sourceQuality: ApiMarketingPerformance[];
   campaignPerformance: ApiMarketingPerformance[];
   landingPagePerformance: ApiMarketingPerformance[];
+}
+
+export interface ApiMarketingConversionDetail {
+  visitors: number;
+  highIntentPageVisitors: number;
+  pricingVisitors: number;
+  demoPageVisitors: number;
+  formStartedVisitors: number;
+  submitAttemptedVisitors: number;
+  validationFailedVisitors: number;
+  abandonedVisitors: number;
+  apiFailedVisitors: number;
+  savedFormLeadVisitors: number;
+  chatBookedVisitors: number;
+  whatsAppVisitors: number;
+  totalSavedLeadVisitors: number;
 }
 
 export interface ApiMarketingPerformance { name: string; visitors: number; leads: number; converted: number; leadConversionRate: number; conversionRate: number }
@@ -431,7 +454,7 @@ export interface ApiMarketingExperimentVariant { experiment: string; variant: st
 export interface ApiMarketingSiteBehaviour {
   days: number; startDate: string; endDate: string;
   visitors: number; visits: number; singlePageVisits: number; returningVisitors: number; chatVisitors: number; bookedVisitors: number;
-  formStartedVisitors: number; formValidationFailedVisitors: number; formAbandonedVisitors: number; formSubmittedVisitors: number; whatsAppVisitors: number;
+  formStartedVisitors: number; formSubmitAttemptedVisitors: number; formSubmitFailedVisitors: number; formValidationFailedVisitors: number; formAbandonedVisitors: number; formSubmittedVisitors: number; whatsAppVisitors: number;
   exitIntentShownVisitors: number; exitIntentSubmittedVisitors: number;
   experiments: ApiMarketingExperimentVariant[];
   signInClickedVisitors: number; demoLoginVisitors: number;
@@ -469,7 +492,11 @@ export async function getMarketingVisitorJourneys(days: number, range: Marketing
   return apiFetch<ApiMarketingVisitorJourneys>(`/api/marketing/analytics/visitors?${q}`);
 }
 
-export interface ApiMarketingContentStat { path: string; title: string | null; readers: number; views: number; wentOn: number; toBuyingPages: number; bookedDemo: number }
+export interface ApiMarketingContentStat {
+  path: string; title: string | null; readers: number; views: number; wentOn: number;
+  toBuyingPages: number; toPricing: number; toDemoPage: number;
+  formStarted: number; formSubmitted: number; bookedDemo: number;
+}
 export interface ApiMarketingContentPerformance { days: number; startDate: string; endDate: string; blogReaders: number; posts: ApiMarketingContentStat[] }
 export interface ApiMarketingBlogAnalysis { executiveSummary: string; winningPatterns: string[]; contentGaps: string[]; nextActions: string[]; aiPowered: boolean; generatedAtUtc: string }
 export interface ApiMarketingBlogIdea { title: string; targetKeyword: string; why: string; outline: string[] }

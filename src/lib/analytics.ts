@@ -9,7 +9,7 @@
  * IDs are format-checked before they go anywhere near a script URL; a malformed value is
  * ignored rather than injected.
  */
-import { apiEnabled, apiFetch } from "@/lib/api";
+import { apiEnabled, apiFetch, getAccessToken } from "@/lib/api";
 import { countryFromTimeZone } from "@/lib/timezoneCountry";
 import { getPublicSettings, toSettingsMap } from "@/api/settings";
 
@@ -217,11 +217,13 @@ function isAutomatedBrowser(): boolean {
 }
 
 /** First-party beacon to the marketing console's own dashboard; never blocks or throws. */
-export type MarketingEventType = "page_view" | "chat_started" | "form_started" | "form_validation_failed" | "form_abandoned" | "form_submitted" | "whatsapp_clicked"
+export type MarketingEventType = "page_view" | "chat_started" | "form_started" | "form_submit_attempted" | "form_submit_failed" | "form_validation_failed" | "form_abandoned" | "form_submitted" | "whatsapp_clicked"
   | "exit_intent_shown" | "exit_intent_submitted" | "experiment_viewed" | "signin_clicked" | "demo_login_clicked" | "content_cta_clicked" | "sales_cta_clicked";
 
 function beacon(type: MarketingEventType, path: string, variant?: string) {
-  if (!apiEnabled() || isAutomatedBrowser()) return;
+  // Acquisition analytics should describe prospects, not staff/customers checking the public
+  // website while signed in. This also prevents routine QA from inflating Direct traffic.
+  if (!apiEnabled() || isAutomatedBrowser() || getAccessToken()) return;
   void apiFetch<void>("/api/marketing/track", {
     method: "POST",
     keepalive: true,

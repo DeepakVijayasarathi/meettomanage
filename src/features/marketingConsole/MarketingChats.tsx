@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Bot, CalendarCheck2, ChevronLeft, ChevronRight, Loader2, MessagesSquare, Search, User } from "lucide-react";
+import { Bot, CalendarCheck2, ChevronLeft, ChevronRight, Loader2, MessagesSquare, Search, Trash2, User } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { InlineAlert } from "@/components/InlineAlert";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useApiData } from "@/api/hooks";
-import { getMarketingChat, listMarketingChats, type ApiMarketingChatConversation, type ApiMarketingChatDetail, type ApiPaged } from "@/api/marketing";
+import { deleteMarketingChat, getMarketingChat, listMarketingChats, type ApiMarketingChatConversation, type ApiMarketingChatDetail, type ApiPaged } from "@/api/marketing";
 import { userMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ export default function MarketingChats() {
   const [openId, setOpenId] = useState<string | null>(() => searchParams.get("open"));
   const [detail, setDetail] = useState<ApiMarketingChatDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [deleteRequest, setDeleteRequest] = useState<ApiMarketingChatConversation | null>(null);
 
   // Search the whole history (server side), a moment after typing stops.
   useEffect(() => {
@@ -58,6 +60,15 @@ export default function MarketingChats() {
   }, [openId]);
 
   const pages = Math.max(1, Math.ceil(data.totalCount / PAGE_SIZE));
+
+  async function removeConversation() {
+    if (!deleteRequest) return;
+    await deleteMarketingChat(deleteRequest.id);
+    setOpenId(null);
+    setDetail(null);
+    if (data.items.length === 1 && page > 1) setPage((p) => p - 1);
+    else reload();
+  }
 
   return (
     <div>
@@ -142,24 +153,41 @@ export default function MarketingChats() {
           ) : !detail ? (
             <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : (
-            <div className="space-y-3">
-              {detail.messages.map((m, i) => {
-                const visitor = m.role === "user";
-                return (
-                  <div key={i} className={cn("flex gap-2", visitor ? "flex-row-reverse" : "")}>
-                    <span className={cn("mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full", visitor ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-                      {visitor ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                    </span>
-                    <div className={cn("max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm", visitor ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
-                      {m.text}
+            <div className="space-y-5">
+              <div className="space-y-3">
+                {detail.messages.map((m, i) => {
+                  const visitor = m.role === "user";
+                  return (
+                    <div key={i} className={cn("flex gap-2", visitor ? "flex-row-reverse" : "")}>
+                      <span className={cn("mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full", visitor ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                        {visitor ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                      </span>
+                      <div className={cn("max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm", visitor ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
+                        {m.text}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <div className="flex justify-end border-t pt-4">
+                <Button variant="outline" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleteRequest(detail.conversation)}>
+                  <Trash2 className="h-4 w-4" />Delete conversation
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteRequest !== null}
+        onOpenChange={(open) => { if (!open) setDeleteRequest(null); }}
+        title="Delete chat conversation?"
+        description="This permanently removes the conversation and all of its messages from the Marketing Console. This cannot be undone."
+        confirmLabel="Delete conversation"
+        destructive
+        onConfirm={removeConversation}
+      />
     </div>
   );
 }

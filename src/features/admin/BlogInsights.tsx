@@ -80,7 +80,7 @@ export function BlogInsights({ onDraft }: { onDraft: (draft: BlogDraftPrefill) =
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-3">
           <div>
             <CardTitle className="flex items-center gap-2 text-base"><TrendingUp className="h-4 w-4 text-primary" />What readers like</CardTitle>
-            <CardDescription>{data.blogReaders} blog readers · ranked by how many went on to pricing or a demo page</CardDescription>
+            <CardDescription>{data.blogReaders} blog readers · ranked by measurable actions after reading</CardDescription>
           </div>
           <div role="group" aria-label="Period" className="inline-flex rounded-md border p-0.5">
             {WINDOWS.map((w) => (
@@ -106,16 +106,27 @@ export function BlogInsights({ onDraft }: { onDraft: (draft: BlogDraftPrefill) =
                     <a href={p.path} target="_blank" rel="noreferrer" className="line-clamp-1 font-medium hover:underline">{name(p)}</a>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {p.views} views · {p.readers} {p.readers === 1 ? "reader" : "readers"} · {p.readers ? Math.round((p.wentOn / p.readers) * 100) : 0}% continued
-                      {p.toBuyingPages > 0 && <span className="ml-1 font-semibold text-success">· {p.toBuyingPages} → pricing/demo</span>}
-                      {p.bookedDemo > 0 && <span className="ml-1 font-semibold text-success">· {p.bookedDemo} booked</span>}
                     </span>
                   </div>
+                  {(p.toBuyingPages > 0 || p.formStarted > 0 || p.formSubmitted > 0 || p.bookedDemo > 0) && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      {(p.toPricing ?? 0) > 0 && <Badge variant="secondary" className="font-medium">{p.toPricing} pricing</Badge>}
+                      {(p.toDemoPage ?? 0) > 0 && <Badge variant="secondary" className="font-medium">{p.toDemoPage} demo page</Badge>}
+                      {(p.formStarted ?? 0) > 0 && <Badge variant="outline" className="font-medium">{p.formStarted} form start</Badge>}
+                      {(p.formSubmitted ?? 0) > 0 && <Badge variant="outline" className="font-medium">{p.formSubmitted} submitted</Badge>}
+                      {p.bookedDemo > 0
+                        ? <Badge className="bg-success text-success-foreground hover:bg-success/90">{p.bookedDemo} saved lead</Badge>
+                        : <Badge variant="outline" className="border-warning/40 text-warning-foreground">0 saved leads</Badge>}
+                    </div>
+                  )}
                   <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-muted" title={`${p.wentOn} of ${p.readers} read another page`}>
                     <div className="h-full bg-primary" style={{ width: `${(p.readers / maxReaders) * 100}%` }} />
                   </div>
                 </div>
               ))}
-              <p className="pt-1 text-xs text-muted-foreground">Small numbers — read these as early signals, not proof.</p>
+              <p className="pt-1 text-xs text-muted-foreground">
+                Pricing and demo-page counts are visits only. Actions use the last blog read within 30 minutes; a saved lead's explicit source link takes priority. Form starts, browser submits, and saved leads are separate. Small numbers are early signals, not proof.
+              </p>
             </div>
           )}
         </CardContent>

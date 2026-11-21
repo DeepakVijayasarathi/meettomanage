@@ -71,6 +71,7 @@ export const updateCrmDeal = (id: string, input: { expectedPlan?: string | null;
   apiFetch<ApiPlatformDemoRequest>(`/api/marketing/crm/leads/${id}/deal`, { method: "PUT", body: J(input) });
 export const logCrmInteraction = (id: string, input: { type: "Call" | "Meeting" | "Email" | "WhatsApp"; outcome: string; detail?: string; nextStepTitle?: string; nextStepDueAtUtc?: string }) =>
   apiFetch<ApiPlatformDemoRequest>(`/api/marketing/crm/leads/${id}/log`, { method: "POST", body: J(input) });
+export const optOutCrmLead = (id: string) => apiFetch<ApiPlatformDemoRequest>(`/api/marketing/crm/leads/${id}/opt-out`, { method: "POST" });
 
 export interface FollowUpPlan { key: string; name: string; description: string; steps: { day: number; type: CrmTaskType; title: string }[]; stopAt: ApiLeadStage[] }
 export interface CrmBulkResult { done: number; skipped: string[] }
@@ -163,3 +164,13 @@ export function parseLeadCsv(text: string): { rows: CrmLeadRow[]; mapped: string
   });
   return { rows, mapped, ignored };
 }
+
+// ---- monthly targets and stuck leads
+export interface CrmTargetRow { userId: string; name: string; role: CrmRole; wonTarget: number | null; valueTarget: number | null; won: number; wonValue: number }
+export interface CrmTargets { month: string; dayOfMonth: number; daysInMonth: number; rows: CrmTargetRow[] }
+export const getCrmTargets = () => apiFetch<CrmTargets>(`/api/marketing/crm/targets?utcOffsetMinutes=${-new Date().getTimezoneOffset()}`);
+export const saveCrmTarget = (userId: string, input: { won: number | null; value: number | null }) =>
+  apiFetch<void>(`/api/marketing/crm/targets/${userId}`, { method: "PUT", body: JSON.stringify(input) });
+
+export interface CrmStuckLead { id: string; fullName: string; academyName: string; owner: string | null; stage: ApiLeadStage; reason: string; days: number; expectedMonthlyValue: number | null }
+export const getCrmStuck = () => apiFetch<CrmStuckLead[]>("/api/marketing/crm/stuck");

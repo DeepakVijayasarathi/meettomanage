@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AlertTriangle, BarChart3, CalendarCheck2, CheckCircle2, ChevronLeft, ChevronRight, Eye, Info, Loader2, MessageCircle, MousePointerClick, Sparkles, Table2, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
@@ -26,8 +27,9 @@ const EMPTY: ApiMarketingDashboard = {
   days: 30,
   startDate: "",
   endDate: "",
-  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
-  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  conversionDetail: { visitors: 0, highIntentPageVisitors: 0, pricingVisitors: 0, demoPageVisitors: 0, formStartedVisitors: 0, submitAttemptedVisitors: 0, validationFailedVisitors: 0, abandonedVisitors: 0, apiFailedVisitors: 0, savedFormLeadVisitors: 0, chatBookedVisitors: 0, whatsAppVisitors: 0, totalSavedLeadVisitors: 0 },
   daily: [],
   topPages: [],
   topBlogPosts: [],
@@ -91,13 +93,14 @@ function RankedList({ title, items, emptyText, loading, format }: { title: strin
 function PerformanceList({ title, items }: { title: string; items: ApiMarketingDashboard["sourceQuality"] }) {
   return <Card><CardHeader className="pb-3"><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent>
     {items.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No attributed leads in this period.</p> :
-      <div className="overflow-auto"><table className="w-full text-sm"><thead className="text-left text-xs text-muted-foreground"><tr><th className="pb-2">Channel</th><th className="pb-2 text-right">Visitors</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">Lead rate</th><th className="pb-2 text-right">Won</th><th className="pb-2 text-right">Sales rate</th></tr></thead><tbody className="divide-y divide-border">{items.map(x => <tr key={x.name}><td className="max-w-40 truncate py-2" title={x.name}>{x.name}</td><td className="text-right">{x.visitors}</td><td className="text-right">{x.leads}</td><td className="text-right font-medium">{x.leadConversionRate}%</td><td className="text-right">{x.converted}</td><td className="text-right font-medium">{x.conversionRate}%</td></tr>)}</tbody></table></div>}
+      <div className="overflow-auto" tabIndex={0} aria-label={`${title} data`}><table className="w-full text-sm"><thead className="text-left text-xs text-muted-foreground"><tr><th className="pb-2">Channel</th><th className="pb-2 text-right">Visitors</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">Lead rate</th><th className="pb-2 text-right">Won</th><th className="pb-2 text-right">Sales rate</th></tr></thead><tbody className="divide-y divide-border">{items.map(x => <tr key={x.name}><td className="max-w-40 truncate py-2" title={x.name}>{x.name}</td><td className="text-right">{x.visitors}</td><td className="text-right">{x.leads}</td><td className="text-right font-medium">{x.leadConversionRate}%</td><td className="text-right">{x.converted}</td><td className="text-right font-medium">{x.conversionRate}%</td></tr>)}</tbody></table></div>}
   </CardContent></Card>;
 }
 
 const DEVICE_LABEL: Record<string, string> = { desktop: "Desktop", mobile: "Mobile", tablet: "Tablet" };
 
 export default function MarketingDashboard() {
+  const navigate = useNavigate();
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
   // Custom from–to range; null = the preset buttons are in charge.
   const [custom, setCustom] = useState<MarketingDateRange | null>(null);
@@ -158,7 +161,7 @@ export default function MarketingDashboard() {
   const kpis: { label: string; value: string; detail?: string; icon: LucideIcon; tone: "primary" | "success" | "warning" | "neutral"; trend?: { value: number; label: string } }[] = [
     { label: "Visitors", value: fmt(t.visitors), icon: Users, tone: "primary", trend: change(t.visitors, p.visitors) },
     { label: "Page views", value: fmt(t.pageViews), icon: Eye, tone: "neutral", trend: change(t.pageViews, p.pageViews) },
-    { label: "Chats started", value: fmt(t.chatsStarted), icon: MessageCircle, tone: "primary", trend: change(t.chatsStarted, p.chatsStarted) },
+    { label: "Saved chats", value: fmt(t.chatsStarted), detail: "open conversation history", icon: MessageCircle, tone: "primary", trend: change(t.chatsStarted, p.chatsStarted) },
     {
       label: "Demo requests",
       value: fmt(t.demoRequests),
@@ -169,14 +172,18 @@ export default function MarketingDashboard() {
     },
     { label: "Visitor → demo", value: `${t.conversionRate}%`, detail: "per 100 visitors", icon: TrendingUp, tone: "warning" },
     { label: "Pages / visitor", value: t.pagesPerVisitor.toFixed(1), detail: "content depth", icon: BarChart3, tone: "neutral" },
-    { label: "Chat engagement", value: `${t.chatStartRate}%`, detail: "visitors starting chat", icon: MousePointerClick, tone: "primary" },
+    { label: "Saved chat rate", value: `${t.chatStartRate}%`, detail: "visitors with a saved chat", icon: MousePointerClick, tone: "primary" },
     { label: "Demo → converted", value: `${t.demoPipelineConversionRate}%`, detail: "sales pipeline", icon: TrendingUp, tone: "success" },
   ];
-  const supportingKpis = kpis.filter(k => ["Page views", "Chats started", "Pages / visitor", "Chat engagement"].includes(k.label));
+  const supportingKpis = kpis.filter(k => ["Page views", "Saved chats", "Pages / visitor", "Saved chat rate"].includes(k.label));
   const demoTrend = change(t.demoRequests, p.demoRequests);
   const formStarts = t.formStartedVisitors ?? 0;
+  const formAttempts = t.formSubmitAttemptedVisitors ?? 0;
+  const formFailures = t.formSubmitFailedVisitors ?? 0;
   const formSubmits = t.formSubmittedVisitors ?? 0;
-  const trackingHealth = formSubmits > t.demoRequests
+  const trackingHealth = formFailures > 0
+    ? { tone: "warning", label: "Submission failures detected", message: `${fmt(formFailures)} visitor${formFailures === 1 ? "" : "s"} passed validation but the request failed. Check the API and server logs before changing the page.`, icon: AlertTriangle }
+    : formSubmits > t.demoRequests
     ? { tone: "warning", label: "Needs verification", message: `${fmt(formSubmits)} visitor${formSubmits === 1 ? "" : "s"} submitted the form, but only ${fmt(t.demoRequests)} saved demo request${t.demoRequests === 1 ? "" : "s"} exist. Run one end-to-end test and inspect the API response.`, icon: AlertTriangle }
     : t.demoRequests > 0
       ? { tone: "success", label: "Conversion tracking active", message: "Saved demo requests confirm that the conversion path is recording successfully.", icon: CheckCircle2 }
@@ -184,6 +191,19 @@ export default function MarketingDashboard() {
         ? { tone: "warning", label: "Form activity detected", message: `${fmt(formStarts)} visitor${formStarts === 1 ? "" : "s"} started the form, but no saved demo request was recorded. Review validation failures and abandonments before changing the page.`, icon: AlertTriangle }
         : { tone: "neutral", label: "No form attempts", message: "Page tracking is active, but nobody started the demo form in this period. Zero requests alone does not indicate a tracking failure.", icon: Info };
   const TrackingIcon = trackingHealth.icon;
+  const conversion = data.conversionDetail ?? EMPTY.conversionDetail;
+  const conversionStages = [
+    { label: "Website visitors", value: conversion.visitors, detail: "unique people reached" },
+    { label: "High-intent page", value: conversion.highIntentPageVisitors, detail: "pricing, get started or demo" },
+    { label: "Form started", value: conversion.formStartedVisitors, detail: "interacted with the demo form" },
+    { label: "Submit attempted", value: conversion.submitAttemptedVisitors, detail: "passed browser validation" },
+    { label: "Form lead saved", value: conversion.savedFormLeadVisitors, detail: "confirmed in the CRM" },
+  ].map((stage, index, stages) => {
+    const previous = index === 0 ? stage.value : stages[index - 1].value;
+    return { ...stage, rate: index === 0 ? 100 : previous === 0 ? 0 : Math.round(stage.value * 1000 / previous) / 10, drop: index === 0 ? 0 : Math.max(0, previous - stage.value) };
+  });
+  const biggestLeak = conversionStages.slice(1).filter(stage => conversionStages[conversionStages.indexOf(stage) - 1]?.value > 0)
+    .sort((a, b) => a.rate - b.rate)[0];
 
   return (
     <div>
@@ -211,7 +231,7 @@ export default function MarketingDashboard() {
                   aria-pressed={active}
                   className={cn(
                     "rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
-                    active ? "bg-[#F05A0A] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    active ? "bg-[#C2410C] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   {rangeLabel(r)}
@@ -225,7 +245,7 @@ export default function MarketingDashboard() {
                 aria-expanded={customOpen}
                 className={cn(
                   "rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
-                  custom || customOpen ? "bg-[#F05A0A] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  custom || customOpen ? "bg-[#C2410C] text-white shadow-lg" : "text-slate-300 hover:bg-white/10 hover:text-white"
                 )}
               >
                 Custom
@@ -258,7 +278,7 @@ export default function MarketingDashboard() {
               ["Demo requests", fmt(t.demoRequests), demoTrend ? `${demoTrend.value >= 0 ? "+" : ""}${demoTrend.value}% vs prior` : "new opportunities"],
               ["Visitor → demo", `${t.conversionRate}%`, "acquisition conversion"],
               ["Demo → won", `${t.demoPipelineConversionRate}%`, "pipeline conversion"],
-            ].map(([label, value, detail]) => <div key={label} className="bg-[#0B132B]/80 p-5 backdrop-blur"><p className="text-xs font-medium text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold tabular-nums">{value}</p><p className="mt-1 text-xs text-slate-400">{detail}</p></div>)}
+            ].map(([label, value, detail]) => <div key={label} role={label === "Demo requests" ? "button" : undefined} tabIndex={label === "Demo requests" ? 0 : undefined} onClick={label === "Demo requests" ? () => navigate("/marketing/demo-requests") : undefined} onKeyDown={label === "Demo requests" ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/marketing/demo-requests"); } } : undefined} className={cn("bg-[#0B132B]/80 p-5 backdrop-blur", label === "Demo requests" && "cursor-pointer transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-300")}><p className="text-xs font-medium text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold tabular-nums">{value}</p><p className="mt-1 text-xs text-slate-400">{detail}</p></div>)}
           </div>
         </div>
       </section>
@@ -266,7 +286,7 @@ export default function MarketingDashboard() {
       <div className="mb-3 flex items-end justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Engagement</p><h2 className="mt-1 text-xl font-bold">How visitors interact</h2></div><p className="hidden text-sm text-muted-foreground sm:block">Supporting signals behind conversion</p></div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {supportingKpis.map((k) => (
-          <KpiCard key={k.label} label={k.label} value={k.value} detail={k.detail} icon={k.icon} tone={k.tone} trend={k.trend} loading={loading} error={error} />
+          <KpiCard key={k.label} label={k.label} value={k.value} detail={k.detail} icon={k.icon} tone={k.tone} trend={k.trend} loading={loading} error={error} onClick={k.label === "Saved chats" ? () => navigate("/marketing/chats") : undefined} />
         ))}
       </div>
 
@@ -276,9 +296,42 @@ export default function MarketingDashboard() {
             <span className={cn("mt-0.5 rounded-full bg-muted p-2", trackingHealth.tone === "warning" && "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300", trackingHealth.tone === "success" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300")}><TrackingIcon className="h-4 w-4" aria-hidden="true" /></span>
             <div><p className="font-semibold">Tracking health · {trackingHealth.label}</p><p className="mt-1 text-sm text-muted-foreground">{trackingHealth.message}</p></div>
           </div>
-          <dl className="grid shrink-0 grid-cols-3 gap-2 text-center text-sm">
-            {[["Form starts", formStarts], ["Submits", formSubmits], ["Saved demos", t.demoRequests]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-lg border bg-background/80 px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
+          <dl className="grid shrink-0 grid-cols-2 gap-2 text-center text-sm sm:grid-cols-5">
+            {[["Form starts", formStarts], ["Attempts", formAttempts], ["API failures", formFailures], ["Saved demos", t.demoRequests], ["WhatsApp opens", t.whatsAppVisitors ?? 0]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-lg border bg-background/80 px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 overflow-hidden shadow-sm">
+        <CardHeader className="border-b bg-muted/20">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Visitor → demo analysis</p><CardTitle className="mt-1 text-xl">Where prospective customers stop</CardTitle><p className="mt-1 text-sm text-muted-foreground">Unique visitors in {exactRange}; rates compare each stage with the stage immediately before it.</p></div>
+            <div className="rounded-xl border bg-background px-4 py-2 text-end"><p className="text-xs text-muted-foreground">Overall visitor → saved lead</p><p className="text-2xl font-bold tabular-nums">{conversion.visitors === 0 ? "0%" : `${(conversion.totalSavedLeadVisitors * 100 / conversion.visitors).toFixed(1)}%`}</p></div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5">
+          <div className="grid gap-3 lg:grid-cols-5">
+            {conversionStages.map((stage, index) => (
+              <div key={stage.label} className="relative rounded-xl border bg-card p-4">
+                <div className="flex items-start justify-between gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>{index > 0 && <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", stage.rate >= 50 ? "bg-emerald-100 text-emerald-700" : stage.rate >= 20 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700")}>{stage.rate}%</span>}</div>
+                <p className="mt-3 text-2xl font-bold tabular-nums">{fmt(stage.value)}</p><p className="mt-1 font-semibold">{stage.label}</p><p className="mt-1 text-xs text-muted-foreground">{stage.detail}</p>
+                {index > 0 && <p className="mt-3 border-t pt-2 text-xs text-muted-foreground">{fmt(stage.drop)} dropped before this stage</p>}
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${conversion.visitors === 0 ? 0 : Math.min(100, stage.value * 100 / conversion.visitors)}%` }} /></div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <p className="font-semibold">Detailed signals</p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+                {[["Pricing viewers", conversion.pricingVisitors], ["Demo-page viewers", conversion.demoPageVisitors], ["Validation failures", conversion.validationFailedVisitors], ["Abandoned forms", conversion.abandonedVisitors], ["API failures", conversion.apiFailedVisitors], ["WhatsApp opens", conversion.whatsAppVisitors], ["Chat bookings", conversion.chatBookedVisitors], ["All saved leads", conversion.totalSavedLeadVisitors]].map(([label, value]) => <div key={String(label)}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 text-lg font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
+              </dl>
+            </div>
+            <div className={cn("rounded-xl border p-4", biggestLeak && biggestLeak.rate < 30 ? "border-amber-300 bg-amber-50/60 dark:bg-amber-950/10" : "bg-emerald-50/50 dark:bg-emerald-950/10")}>
+              <p className="font-semibold">Recommended focus</p>
+              {biggestLeak ? <><p className="mt-2 text-sm">The largest proportional leak is before <strong>{biggestLeak.label}</strong>: only {biggestLeak.rate}% continued and {fmt(biggestLeak.drop)} stopped.</p><p className="mt-2 text-xs text-muted-foreground">Review the message, required effort and technical health at that exact transition before adding more traffic.</p></> : <p className="mt-2 text-sm text-muted-foreground">More visitor activity is needed before a reliable funnel leak can be identified.</p>}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -319,7 +372,7 @@ export default function MarketingDashboard() {
         }
       >
         {showTable ? (
-          <div className="h-full overflow-auto">
+          <div className="h-full overflow-auto" tabIndex={0} aria-label="Daily visitors and conversion data">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -394,7 +447,7 @@ export default function MarketingDashboard() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Card><CardHeader><CardTitle className="text-base">Campaign ROI</CardTitle><p className="text-sm text-muted-foreground">Add spend and won revenue using the exact utm_campaign value.</p></CardHeader><CardContent className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-5"><input aria-label="Campaign" placeholder="Campaign" value={campaignForm.campaign} onChange={e => setCampaignForm({ ...campaignForm, campaign: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Spend" type="number" min="0" placeholder="Spend ₹" value={campaignForm.spend} onChange={e => setCampaignForm({ ...campaignForm, spend: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Won revenue" type="number" min="0" placeholder="Won ₹" value={campaignForm.wonRevenue} onChange={e => setCampaignForm({ ...campaignForm, wonRevenue: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Start date" type="date" value={campaignForm.startDate} onChange={e => setCampaignForm({ ...campaignForm, startDate: e.target.value })} className="h-10 rounded-md border bg-background px-2 text-sm" /><Button disabled={operationsBusy} onClick={() => void addCampaign()}>Add</Button></div>
-          <div className="overflow-auto"><table className="w-full text-sm"><thead className="text-xs text-muted-foreground"><tr><th className="pb-2 text-left">Campaign</th><th className="pb-2 text-right">Spend</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">CPA</th><th className="pb-2 text-right">ROAS</th></tr></thead><tbody className="divide-y">{campaignState.data.map(c => <tr key={c.id}><td className="py-2">{c.campaign}</td><td className="text-right">₹{c.spend.toLocaleString()}</td><td className="text-right">{c.leads}</td><td className="text-right">{c.costPerAcquisition == null ? "—" : `₹${c.costPerAcquisition.toLocaleString()}`}</td><td className="text-right font-semibold">{c.returnOnAdSpend == null ? "—" : `${c.returnOnAdSpend}×`}</td></tr>)}</tbody></table></div>
+          <div className="overflow-auto" tabIndex={0} aria-label="Campaign return on investment data"><table className="w-full text-sm"><thead className="text-xs text-muted-foreground"><tr><th className="pb-2 text-left">Campaign</th><th className="pb-2 text-right">Spend</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">CPA</th><th className="pb-2 text-right">ROAS</th></tr></thead><tbody className="divide-y">{campaignState.data.map(c => <tr key={c.id}><td className="py-2">{c.campaign}</td><td className="text-right">₹{c.spend.toLocaleString()}</td><td className="text-right">{c.leads}</td><td className="text-right">{c.costPerAcquisition == null ? "—" : `₹${c.costPerAcquisition.toLocaleString()}`}</td><td className="text-right font-semibold">{c.returnOnAdSpend == null ? "—" : `${c.returnOnAdSpend}×`}</td></tr>)}</tbody></table></div>
         </CardContent></Card>
         <Card><CardHeader><CardTitle className="text-base">Reports, reminders and retention</CardTitle><p className="text-sm text-muted-foreground">Email performance summaries at 08:00 IST and remind the team about overdue follow-ups.</p></CardHeader><CardContent className="space-y-4">
           <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={reportForm.enabled} onChange={e => setReportForm({ ...reportForm, enabled: e.target.checked })} /> Enable scheduled report</label>

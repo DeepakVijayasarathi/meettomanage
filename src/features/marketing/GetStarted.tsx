@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, CalendarClock, CheckCircle2, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, PhoneCall, User, Users, Video, type LucideIcon } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, ChevronDown, CreditCard, Landmark, Loader2, Mail, MessageCircle, MessageSquare, Phone, PhoneCall, User, Users, Video, type LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -198,6 +198,17 @@ const FIELD = "h-12 w-full !rounded-xl border border-[#EBD9C8] bg-white ps-11 pe
 
 const EMPTY_FORM = { fullName: "", workEmail: "", phone: "", academyName: "", contactMethod: "Video call", preferredAt: "", message: "" };
 
+function validPhone(value: string): boolean {
+  if (!value.trim()) return true;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15 && /^[+\d\s().-]+$/.test(value.trim());
+}
+
+function validEmail(value: string): boolean {
+  if (!value.trim()) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
 function localDateTimeMinimum() {
   const date = new Date(Date.now() + 2 * 60 * 60 * 1000);
   const offset = date.getTimezoneOffset() * 60_000;
@@ -255,6 +266,7 @@ export default function GetStarted() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [showDetails, setShowDetails] = useState(() => wantsCall || wantsMigration || searchParams.has("plan") || searchParams.has("hours"));
   const [minPreferredAt] = useState(localDateTimeMinimum);
   const startedRef = useRef(false);
   const submittedRef = useRef(false);
@@ -264,6 +276,22 @@ export default function GetStarted() {
     if (startedRef.current) return;
     startedRef.current = true;
     trackMarketingEvent("form_started", undefined, tag);
+  }
+
+  function updateName(value: string) {
+    markFormStarted();
+    setError(null);
+    setForm((current) => ({ ...current, fullName: value }));
+  }
+
+  function updateContact(value: string) {
+    markFormStarted();
+    setError(null);
+    // One visible contact field removes the misleading choice between two "optional" fields.
+    // Keep the API contract unchanged by classifying the value only in local state.
+    setForm((current) => value.includes("@")
+      ? { ...current, workEmail: value, phone: "" }
+      : { ...current, workEmail: "", phone: value });
   }
 
   useEffect(() => {
@@ -294,6 +322,18 @@ export default function GetStarted() {
       setError(lang === "en" ? "Enter an email address or WhatsApp number so we can contact you." : "أدخل بريدًا إلكترونيًا أو رقم واتساب لنتواصل معك.");
       return;
     }
+    if (!validEmail(form.workEmail)) {
+      trackMarketingEvent("form_validation_failed", undefined, tag);
+      setError(lang === "en" ? "Enter a valid email address." : "أدخل عنوان بريد إلكتروني صالحًا.");
+      return;
+    }
+    if (!validPhone(form.phone)) {
+      trackMarketingEvent("form_validation_failed", undefined, tag);
+      setError(lang === "en" ? "Enter a valid WhatsApp number with 7 to 15 digits." : "أدخل رقم واتساب صالحًا من 7 إلى 15 رقمًا.");
+      return;
+    }
+
+    trackMarketingEvent("form_submit_attempted", undefined, tag);
 
     if (!live) {
       submittedRef.current = true;
@@ -331,6 +371,7 @@ export default function GetStarted() {
       void trackDemoBooked(window.location.pathname);
       setSubmitted(true);
     } catch (err) {
+      trackMarketingEvent("form_submit_failed", undefined, tag);
       setError(err instanceof Error ? err.message : t.submitError);
     } finally {
       setSubmitting(false);
@@ -406,27 +447,47 @@ export default function GetStarted() {
                       ))}
                     </ol>
                   )}
-                  <form onSubmit={handleSubmit} onFocus={markFormStarted} className="mt-6 flex flex-col gap-4">
+                  <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>
                       <Field icon={User}>
-                        <Input id="gs-fullName" required maxLength={150} className={FIELD} value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} placeholder={t.namePlaceholder} />
+                        <Input id="gs-fullName" required autoComplete="name" enterKeyHint="next" maxLength={150} className={FIELD} value={form.fullName} onChange={(e) => updateName(e.target.value)} placeholder={t.namePlaceholder} />
                       </Field>
                     </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="gs-workEmail" className="font-semibold text-[#1C1917]">{t.workEmail} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
-                        <Field icon={Mail}>
-                          <Input id="gs-workEmail" type="email" autoComplete="email" maxLength={256} className={FIELD} value={form.workEmail} onChange={(e) => setForm((f) => ({ ...f, workEmail: e.target.value }))} placeholder={t.emailPlaceholder} />
-                        </Field>
-                      </div>
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="gs-phone" className="font-semibold text-[#1C1917]">{lang === "en" ? "WhatsApp number" : t.phone} <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span></Label>
-                        <Field icon={Phone}>
-                          <Input id="gs-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={20} className={FIELD} value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder={t.phonePlaceholder} />
-                        </Field>
-                      </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="gs-contact" className="font-semibold text-[#1C1917]">
+                        {lang === "en" ? "Email or WhatsApp number" : "البريد الإلكتروني أو رقم واتساب"} <span aria-hidden className="text-[#C2410C]">*</span>
+                      </Label>
+                      <Field icon={form.workEmail ? Mail : Phone}>
+                        <Input
+                          id="gs-contact"
+                          required
+                          type="text"
+                          inputMode={form.workEmail ? "email" : "text"}
+                          enterKeyHint="send"
+                          autoComplete="email"
+                          maxLength={256}
+                          aria-describedby="gs-contact-help"
+                          className={FIELD}
+                          value={form.workEmail || form.phone}
+                          onChange={(e) => updateContact(e.target.value)}
+                          placeholder={lang === "en" ? "you@academy.com or +91 98765 43210" : "you@academy.com أو +91 98765 43210"}
+                        />
+                      </Field>
+                      <p id="gs-contact-help" className="text-xs text-[#78716C]">
+                        {lang === "en" ? "Use whichever is easiest. We only use it to arrange your demo." : "استخدم الأسهل لك. نستخدمه فقط لترتيب العرض التوضيحي."}
+                      </p>
                     </div>
+                    <button
+                      type="button"
+                      aria-expanded={showDetails}
+                      onClick={() => setShowDetails((shown) => !shown)}
+                      className="flex w-full items-center justify-between rounded-xl border border-[#EBD9C8] bg-[#FFF8F1] px-4 py-3 text-start text-sm font-bold text-[#7C2D12] transition-colors hover:bg-[#FFF1E6]"
+                    >
+                      <span>{lang === "en" ? "Personalise my demo (optional)" : "خصّص العرض التوضيحي (اختياري)"}</span>
+                      <ChevronDown className={cn("h-4 w-4 transition-transform", showDetails && "rotate-180")} />
+                    </button>
+                    {showDetails && <div className="flex flex-col gap-4 rounded-2xl border border-[#F0E0D2] bg-[#FFFCF9] p-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-academyName" className="font-semibold text-[#1C1917]">{isCoach ? t.academyNameCoach : t.academyNameAcademy} {!isCoach && <span className="font-normal text-[#78716C]">({lang === "en" ? "optional" : "اختياري"})</span>}</Label>
                       <Field icon={Landmark}>
@@ -458,12 +519,16 @@ export default function GetStarted() {
                         <Textarea id="gs-message" rows={3} maxLength={700} className={cn(FIELD, "h-auto py-3.5")} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} placeholder={t.messagePlaceholder} />
                       </div>
                     </div>
+                    </div>}
                     {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
                     <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
-                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{wantsCall ? (lang === "en" ? "Request this call" : "اطلب هذه المكالمة") : wantsMigration ? (lang === "en" ? "Get my migration plan" : "احصل على خطة الانتقال") : pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
+                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{wantsCall ? (lang === "en" ? "Request this call" : "اطلب هذه المكالمة") : wantsMigration ? (lang === "en" ? "Get my migration plan" : "احصل على خطة الانتقال") : lang === "en" ? "Book my free 30-minute demo" : pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
                     </button>
                     <p className="text-center text-xs leading-relaxed text-[#78716C]">
-                      {lang === "en" ? "We only use these details to arrange your walkthrough." : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
+                      {lang === "en" ? "Takes less than a minute · No payment details · No commitment" : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
+                    </p>
+                    <p className="text-center text-[11px] leading-relaxed text-[#8A817A]">
+                      {lang === "en" ? <>By requesting a demo, you agree that our team may contact you about your request. See our <Link to="/policy" className="font-semibold text-[#9A3412] underline underline-offset-2">privacy policy</Link>.</> : <>بطلب العرض، فإنك توافق على أن يتواصل فريقنا معك بشأن طلبك. راجع <Link to="/policy" className="font-semibold text-[#9A3412] underline underline-offset-2">سياسة الخصوصية</Link>.</>}
                     </p>
                     <a
                       href="https://wa.me/919344773231?text=I%27d%20like%20a%20free%20Meet%20to%20Manage%20walkthrough."

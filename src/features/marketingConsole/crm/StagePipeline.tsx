@@ -1,0 +1,189 @@
+import { useState } from "react";
+import { AlertTriangle, CalendarCheck2, Flame, Loader2, MessageCircle, Phone } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiEnabled } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { inr } from "@/api/crm";
+import { LEAD_STAGE_LABEL, setLeadStage, type ApiLeadStage, type ApiPlatformDemoRequest } from "@/api/marketing";
+
+/** The sales path in order; Lost sits beside it. */
+export const STAGE_PATH: ApiLeadStage[] = ["New", "Contacted", "DemoBooked", "DemoDone", "Trial", "ActiveTrial", "Customer"];
+export const STAGE_DOT: Record<ApiLeadStage, string> = {
+  New: "bg-amber-500", Contacted: "bg-sky-500", DemoBooked: "bg-indigo-500", DemoDone: "bg-violet-500",
+  Trial: "bg-teal-500", ActiveTrial: "bg-emerald-500", Customer: "bg-green-600", Lost: "bg-slate-400",
+};
+export const LOST_REASONS = ["Price too high", "Chose another tool", "Not the right fit", "No response", "Not ready yet", "Too small / solo"];
+
+const isOverdue = (l: ApiPlatformDemoRequest) => !!l.nextFollowUpAtUtc && new Date(l.nextFollowUpAtUtc).getTime() < Date.now() && l.stage !== "Customer" && l.stage !== "Lost";
+const daysSince = (iso?: string | null) => (iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000) : null);
+const shortDate = (iso: string) => new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+
+function localSlot(daysAhead: number, hour: number) {
+  const d = new Date(); d.setDate(d.getDate() + daysAhead); d.setHours(hour, 0, 0, 0);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+/**
+ * Moves a lead to a stage. Stages that need details (demo time, lost reason) or that e-mail the lead (demo done sends the
+ * recap) ask first; the rest move straight away.
+ */
+export function StageMoveDialog({ move, onClose, onMoved }: { move: { lead: ApiPlatformDemoRequest; to: ApiLeadStage } | null; onClose: () => void; onMoved: (lead: ApiPlatformDemoRequest) => void }) {
+  const { toast } = useToast();
+  const [demoAt, setDemoAt] = useState(() => localSlot(1, 11));
+  const [note, setNote] = useState("");
+  const [recap, setRecap] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const to = move?.to;
+
+  async function save() {
+    if (!move) return;
+    if (!apiEnabled()) { toast({ variant: "error", title: "Demo mode", description: "Nothing was changed." }); return; }
+    setBusy(true);
+    try {
+      const updated = await setLeadStage(move.lead.id, {
+        stage: move.to, note: note.trim() || undefined,
+        demoAtUtc: move.to === "DemoBooked" ? new Date(demoAt).toISOString() : undefined,
+        lostReason: move.to === "Lost" ? reason : undefined,
+        recapNote: move.to === "DemoDone" ? recap.trim() || undefined : undefined,
+      });
+      toast({ variant: "success", title: `${move.lead.academyName} moved to ${LEAD_STAGE_LABEL[move.to]}` });
+      setNote(""); setRecap(""); setReason("");
+      onMoved(updated);
+      onClose();
+    } catch (err) {
+      toast({ variant: "error", title: "Couldn't move the lead", description: err instanceof Error ? err.message : undefined });
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open={move !== null} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Move to {to ? LEAD_STAGE_LABEL[to] : ""}</DialogTitle>
+          <DialogDescription>{move ? `${move.lead.academyName} · ${move.lead.fullName}` : ""}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {to === "DemoBooked" && <>
+            <label className="block space-y-1 text-sm"><span className="font-medium">Demo date and time (your time)</span><Input type="datetime-local" value={demoAt} onChange={(e) => setDemoAt(e.target.value)} /></label>
+            <p className="text-xs text-muted-foreground">{move?.lead.workEmail ? "The lead gets a confirmation e-mail, and reminders if they're switched on in Lead automation." : "No e-mail on this lead, so confirm the time on WhatsApp."}</p>
+          </>}
+          {to === "DemoDone" && <>
+            <label className="block space-y-1 text-sm"><span className="font-medium">One line for the recap e-mail (optional, the lead sees this)</span><Input value={recap} onChange={(e) => setRecap(e.target.value)} placeholder="e.g. You run 6 abacus batches and want fee reminders." /></label>
+            <p className="text-xs text-muted-foreground">The lead gets one thank-you e-mail with the free-trial link.</p>
+          </>}
+          {to === "Lost" && (
+            <label className="block space-y-1 text-sm"><span className="font-medium">Why was it lost?</span>
+              <select className="h-10 w-full rounded-md border bg-background px-3" value={reason} onChange={(e) => setReason(e.target.value)}>
+                <option value="">Choose a reason…</option>{LOST_REASONS.map((r) => <option key={r}>{r}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="block space-y-1 text-sm"><span className="font-medium">Note for the team (optional)</span><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button variant={to === "Lost" ? "destructive" : "default"} disabled={busy || (to === "Lost" && !reason) || (to === "DemoBooked" && !demoAt)} onClick={() => void save()}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}Move</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Stages that move without asking anything. */
+const NEEDS_DIALOG: ApiLeadStage[] = ["DemoBooked", "DemoDone", "Lost"];
+
+/**
+ * The lead pipeline by lifecycle stage: one column per stage with its count and deal value, drag a card to move it.
+ */
+export function StagePipeline({ leads, canWrite, onOpen, onWhatsApp, onChanged, stuck }: {
+  leads: ApiPlatformDemoRequest[]; canWrite: boolean; onOpen: (lead: ApiPlatformDemoRequest) => void; onWhatsApp: (lead: ApiPlatformDemoRequest) => void; onChanged: () => void;
+  /** Lead id → why it's stuck, for the warning on its card. */
+  stuck?: Map<string, string>;
+}) {
+  const { toast } = useToast();
+  const [showLost, setShowLost] = useState(false);
+  const [dragOver, setDragOver] = useState<ApiLeadStage | null>(null);
+  const [pending, setPending] = useState<{ lead: ApiPlatformDemoRequest; to: ApiLeadStage } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const onlyLost = leads.length > 0 && leads.every((lead) => (lead.stage ?? "New") === "Lost");
+  const columns = showLost || onlyLost ? [...STAGE_PATH, "Lost" as ApiLeadStage] : STAGE_PATH;
+  const lostCount = leads.filter((l) => l.stage === "Lost").length;
+
+  async function drop(id: string, to: ApiLeadStage) {
+    setDragOver(null);
+    const lead = leads.find((l) => l.id === id);
+    if (!lead || (lead.stage ?? "New") === to) return;
+    if (NEEDS_DIALOG.includes(to)) { setPending({ lead, to }); return; }
+    if (!apiEnabled()) { toast({ variant: "error", title: "Demo mode", description: "Nothing was changed." }); return; }
+    setBusyId(id);
+    try { await setLeadStage(id, { stage: to }); toast({ variant: "success", title: `${lead.academyName} moved to ${LEAD_STAGE_LABEL[to]}` }); onChanged(); }
+    catch (err) { toast({ variant: "error", title: "Couldn't move the lead", description: err instanceof Error ? err.message : undefined }); }
+    finally { setBusyId(null); }
+  }
+
+  return (
+    <div className="min-w-0 max-w-full rounded-xl border bg-muted/20 shadow-sm">
+      <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b bg-background px-4 py-2 text-xs text-muted-foreground">
+        <span>{canWrite ? "Drag leads between stages, or open a card for full details" : "Read-only board · open a card for full details"}</span>
+        <Button size="sm" variant="ghost" className="h-8 shrink-0" onClick={() => setShowLost((v) => !v)}>{showLost ? "Hide lost" : `Lost (${lostCount})`}</Button>
+      </div>
+      <div className="flex snap-x scroll-px-3 items-start gap-3 overflow-x-auto p-3 md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-3 2xl:grid-cols-4">
+        {columns.map((stage) => {
+          const items = leads.filter((l) => (l.stage ?? "New") === stage);
+          const value = items.reduce((s, l) => s + (l.expectedMonthlyValue ?? 0), 0);
+          return (
+            <section key={stage} aria-label={LEAD_STAGE_LABEL[stage]}
+              className={cn("flex min-h-[18rem] w-[17rem] shrink-0 snap-start flex-col rounded-lg border border-transparent bg-muted/55 p-2.5 transition-colors md:w-auto", dragOver === stage && "border-primary/40 bg-primary/10 ring-2 ring-primary/30")}
+              onDragOver={(e) => { if (canWrite) { e.preventDefault(); setDragOver(stage); } }} onDragLeave={() => setDragOver((s) => (s === stage ? null : s))}
+              onDrop={(e) => { const id = e.dataTransfer.getData("text/lead-id"); if (id) void drop(id, stage); }}>
+              <header className="mb-2 px-1 py-0.5">
+                <div className="flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><span className={cn("h-2 w-2 shrink-0 rounded-full", STAGE_DOT[stage])} /><h2 className="truncate text-xs font-semibold uppercase tracking-wide">{LEAD_STAGE_LABEL[stage]}</h2><span className="text-xs text-muted-foreground">{items.length}</span></div>{value > 0 && <span className="text-xs font-medium text-muted-foreground">{inr(value)}/mo</span>}</div>
+              </header>
+              <div className="flex flex-1 flex-col gap-2">
+                {items.map((lead) => {
+                  const inStage = daysSince(lead.stageChangedAtUtc ?? lead.createdAtUtc);
+                  return (
+                    <article key={lead.id} draggable={canWrite} tabIndex={0} onDragStart={(e) => e.dataTransfer.setData("text/lead-id", lead.id)} onClick={() => onOpen(lead)}
+                      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(lead); } }}
+                      className={cn("group cursor-pointer rounded-md border bg-card p-2.5 shadow-sm transition duration-150 hover:-translate-y-px hover:border-primary/30 hover:shadow-md", busyId === lead.id && "pointer-events-none opacity-50")}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0"><p className="truncate text-sm font-semibold leading-tight group-hover:text-primary">{lead.academyName}</p><p className="mt-1 truncate text-xs text-muted-foreground">{lead.fullName}{lead.city ? ` · ${lead.city}` : ""}</p></div>
+                        <Badge className="h-5 px-1.5 text-[10px]" variant={lead.leadTemperature === "Hot" ? "destructive" : lead.leadTemperature === "Warm" ? "warning" : "muted"} title="Lead score">{lead.leadScore ?? 0}</Badge>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                        {lead.expectedMonthlyValue != null && <span className="font-semibold">{inr(lead.expectedMonthlyValue)}/mo</span>}
+                        {lead.segment && <span className="text-muted-foreground">{lead.segment}</span>}
+                        {lead.highIntentAtUtc && stage !== "Customer" && <span className="inline-flex items-center gap-0.5 font-semibold text-destructive"><Flame className="h-3 w-3" />High intent</span>}
+                        {stage === "DemoBooked" && lead.demoAtUtc && <span className="inline-flex items-center gap-1 text-indigo-700 dark:text-indigo-300"><CalendarCheck2 className="h-3 w-3" />{shortDate(lead.demoAtUtc)}</span>}
+                        {stage === "Lost" && lead.lostReason && <span className="text-muted-foreground">{lead.lostReason}</span>}
+                      </div>
+                      {stuck?.get(lead.id) && <p className="mt-2 flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300"><AlertTriangle className="h-3 w-3 shrink-0" />{stuck.get(lead.id)}</p>}
+                      <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2 text-[11px] text-muted-foreground">
+                        <span className="truncate">{lead.assignedTo ?? "Unassigned"}{inStage !== null && inStage > 0 ? ` · ${inStage}d here` : ""}</span>
+                        <span className={isOverdue(lead) ? "shrink-0 font-semibold text-destructive" : "shrink-0"}>{lead.nextFollowUpAtUtc ? (isOverdue(lead) ? "Overdue" : shortDate(lead.nextFollowUpAtUtc)) : ""}</span>
+                      </div>
+                      {lead.phone && stage !== "Lost" && (
+                        <div className="mt-2 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="outline" className="h-7 flex-1 bg-background text-emerald-700" onClick={() => onWhatsApp(lead)}><MessageCircle className="h-3.5 w-3.5" />WhatsApp</Button>
+                          <Button size="sm" variant="outline" className="h-7 bg-background" asChild><a href={`tel:${lead.phone.replace(/[^\d+]/g, "")}`} title={`Call ${lead.phone}`}><Phone className="h-3.5 w-3.5" /><span className="sr-only">Call</span></a></Button>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+                {items.length === 0 && <div className="rounded-md border border-dashed border-muted-foreground/30 bg-background/40 p-5 text-center text-xs text-muted-foreground">{canWrite ? "Drop leads here" : "No leads"}</div>}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+      <StageMoveDialog move={pending} onClose={() => setPending(null)} onMoved={() => onChanged()} />
+    </div>
+  );
+}

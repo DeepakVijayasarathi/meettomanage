@@ -132,7 +132,7 @@ export default function CrmCustomers() {
                 )}
               </div>
 
-              {detail.leads.length > 0 && <div className="rounded-xl border p-4"><h3 className="mb-2 font-semibold">Came from</h3><ul className="text-sm">{detail.leads.map((l) => <li key={l.id}><Link className="text-primary hover:underline" to={`/marketing/demo-requests?lead=${l.id}`}>{l.fullName}</Link> · {LEAD_STAGE_LABEL[l.stage]}{l.owner ? ` · ${l.owner}` : ""}</li>)}</ul></div>}
+              {detail.leads.length > 0 && <div className="rounded-xl border p-4"><h3 className="mb-2 font-semibold">Came from</h3><ul className="text-sm">{detail.leads.map((l) => <li key={l.id}><Link className="text-primary hover:underline" to={`/marketing/leads/${l.id}`}>{l.fullName}</Link> · {LEAD_STAGE_LABEL[l.stage]}{l.owner ? ` · ${l.owner}` : ""}</li>)}</ul></div>}
             </div>
           )}
         </DialogContent>

@@ -57,6 +57,7 @@ const CrmToday = lazy(() => import("@/features/marketingConsole/crm/CrmToday"));
 const CrmCustomers = lazy(() => import("@/features/marketingConsole/crm/CrmCustomers"));
 const CrmReports = lazy(() => import("@/features/marketingConsole/crm/CrmReports"));
 const CrmTeam = lazy(() => import("@/features/marketingConsole/crm/CrmTeam"));
+const LeadDetailPage = lazy(() => import("@/features/marketingConsole/crm/LeadDetailPage"));
 const MarketingAnalytics = lazy(() => import("@/features/marketingConsole/MarketingAnalytics"));
 const MarketingDemoRequests = lazy(() => import("@/features/admin/DemoRequests"));
 const MarketingChats = lazy(() => import("@/features/marketingConsole/MarketingChats"));
@@ -475,6 +476,7 @@ export default function App() {
             <Route path="/marketing" element={<RequireAuth role="marketing"><MarketingShell><Outlet /></MarketingShell></RequireAuth>}>
               <Route index element={<MarketingDashboard />} />
               <Route path="demo-requests" element={<MarketingDemoRequests />} />
+              <Route path="leads/:id" element={<LeadDetailPage />} />
               <Route path="chats" element={<MarketingChats />} />
               <Route path="automation" element={<MarketingAutomation />} />
               <Route path="today" element={<CrmToday />} />

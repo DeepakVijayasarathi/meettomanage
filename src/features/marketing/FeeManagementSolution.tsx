@@ -38,6 +38,7 @@ export default function FeeManagementSolution() {
           <Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>attendance</Link>, and families see and pay everything from the parent app.
           Read the <Link to="/pricing" className={LINK}>pricing</Link> or see{" "}
           <Link to="/customers" className={LINK}>how other centres use it</Link>. If you are organising fees manually, start with the <Link to="/resources/coaching-centre-fee-tracker" className={LINK}>free coaching centre fee tracker</Link>, including a worked example for partial payments and credits.
+          Then use the <Link to="/blog/how-to-automate-monthly-fee-invoices-for-coaching-students" className={LINK}>monthly fee-invoice automation guide</Link> to plan billing cycles, reminders and exceptions.
         </>
       }
     />

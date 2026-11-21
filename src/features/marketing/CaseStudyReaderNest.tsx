@@ -88,11 +88,11 @@ export default function CaseStudyReaderNest() {
   return (
     <PageShell
       eyebrow="Customer story"
-      title="Every Great Classroom Has a Story Behind It"
-      seo={{ title: "The Reader Nest Customer Story | Meet to Manage", description: "How The Reader Nest brought admissions, live classrooms, teacher scheduling and parent access together in one customised platform with Meet to Manage.", path: "/customers/the-reader-nest", type: "article" }}
+      title="The Reader Nest academy customer story"
+      seo={{ title: "The Reader Nest Academy Customer Story | Meet to Manage", description: "Read The Reader Nest's customer story: how the growing academy brought admissions, live classrooms, teacher scheduling and parent access together.", path: "/customers/the-reader-nest", type: "article" }}
       jsonLd={{
         "@context": "https://schema.org", "@type": "Article",
-        headline: "Every Great Classroom Has a Story Behind It",
+        headline: "The Reader Nest Academy Customer Story",
         url: "https://meettomanage.cloud/customers/the-reader-nest",
         image: "https://meettomanage.cloud/clients/reader-nest/reading-photo.webp",
         publisher: { "@type": "Organization", name: "Meet to Manage" },
@@ -105,7 +105,7 @@ export default function CaseStudyReaderNest() {
             <Link to="/customers" className="inline-flex items-center gap-2 text-xs font-semibold text-[#70675C] transition-colors hover:text-[#C2410C]"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Customer stories</Link>
             <div className="mt-9 grid items-center gap-10 lg:mt-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
               <div>
-                <h1 className="font-display mt-6 max-w-[620px] text-[clamp(2.6rem,4.5vw,4.3rem)] font-extrabold leading-[1.06] tracking-[-0.055em] text-[#26231E]">Every great classroom has <span className="font-serif font-normal italic text-[#B34B26]">a story</span> behind it.</h1>
+                <h1 className="font-display mt-6 max-w-[620px] text-[clamp(2.6rem,4.5vw,4.3rem)] font-extrabold leading-[1.06] tracking-[-0.055em] text-[#26231E]">The Reader Nest: from one young reader to a <span className="font-serif font-normal italic text-[#B34B26]">growing academy.</span></h1>
                 <p className="mt-6 max-w-[490px] text-[17px] leading-[1.85] text-[#70675C]">How The Reader Nest and MeetToManage brought educators, students and parents together around what matters most: the joy of learning.</p>
                 <div className="mt-8 flex items-center gap-3.5 border-t border-[#E5DCCD] pt-6">
                   <img src="/clients/thereader-128.webp" alt="The Reader Nest logo" width={48} height={48} className="h-12 w-12 rounded-full bg-white object-cover ring-1 ring-[#E5DCCD]" />

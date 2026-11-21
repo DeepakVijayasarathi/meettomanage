@@ -24,6 +24,7 @@ interface Niche {
   specific: SolutionFeature[];
   closingHeading: string;
   closing: string;
+  faq?: readonly (readonly [question: string, answer: string])[];
 }
 
 const NICHES: Niche[] = [
@@ -46,13 +47,15 @@ const NICHES: Niche[] = [
   },
   {
     slug: "art-class-software",
-    eyebrow: "For art and craft teachers",
-    title: "Online class software for drawing, painting and craft teachers.",
-    sub: "Teach art live with video, a shared drawing board and recordings, and keep attendance, fees and the parent app in the same place.",
-    seoTitle: "Online Art Class Software for Teachers | Meet to Manage",
-    seoDescription: "Teach drawing, painting and craft online with live video, a shared whiteboard, screen sharing and recordings. Attendance, fees and a parent app are built in.",
-    name: "Online class software for art teachers",
+    eyebrow: "Art class management for creative teachers",
+    title: "Art class management software for scheduling, registration and live teaching.",
+    sub: "Manage drawing, painting and craft registrations, class schedules, attendance and fees, then teach live with video, a shared drawing board and recordings.",
+    seoTitle: "Art Class Management & Scheduling Software | Meet to Manage",
+    seoDescription: "Manage art class registration, schedules, attendance and fees, then teach drawing, painting and craft live with video, whiteboard and recordings.",
+    name: "Art class management and scheduling software",
     specific: [
+      { title: "Art class registration in one record", body: "Keep each enquiry, demo, enrolment and family contact together instead of copying registration details between forms, messages and spreadsheets." },
+      { title: "Schedule group and private lessons", body: "Plan recurring batches and one-to-one lessons, handle rescheduling, and give teachers and families one view of upcoming art classes." },
       { title: "Live video of the work", body: "Students switch their camera on so you can see paper, brush and craft work as it happens." },
       { title: "A shared drawing board", body: "Sketch examples on the whiteboard, and open it full screen when a lesson needs the space." },
       { title: "Present references", body: "Present your screen to show reference images, slides or a finished piece." },
@@ -60,16 +63,24 @@ const NICHES: Niche[] = [
     ],
     closingHeading: "Built for creative classes",
     closing: "Recordings let students replay a technique after class.",
+    faq: [
+      ["What does art class management software handle?", "It keeps enquiries, registrations, schedules, attendance, fees, live classes, recordings and family updates connected to the same student record."],
+      ["Can I schedule both group art classes and private lessons?", "Yes. You can schedule recurring group batches and one-to-one sessions, then manage changes from the same calendar."],
+      ["Can students show their artwork during an online class?", "Yes. Students can use live video while the teacher demonstrates through video, screen sharing or the shared whiteboard."],
+      ["Does it work for drawing, painting and craft classes?", "Yes. The same workflow supports drawing, painting, colouring, origami, craft, calligraphy and clay-modelling programmes."],
+    ],
   },
   {
     slug: "yoga-class-software",
-    eyebrow: "For yoga and fitness teachers",
-    title: "Online class software for yoga and meditation teachers.",
-    sub: "Teach yoga live with clear video and recordings, and keep attendance, fees and the parent app in the same place.",
-    seoTitle: "Online Yoga Class Software for Teachers | Meet to Manage",
-    seoDescription: "Run yoga and meditation classes online with live video, a waiting room, recordings and automatic attendance. Fees and a parent app are built in.",
-    name: "Online class software for yoga teachers",
+    eyebrow: "Yoga class management for teachers and studios",
+    title: "Yoga class management software for registration, scheduling and online sessions.",
+    sub: "Manage yoga class registrations, recurring schedules, attendance and fees, then teach group or private sessions with live video and recordings.",
+    seoTitle: "Yoga Class Management & Registration Software | Meet to Manage",
+    seoDescription: "Manage yoga class registration, schedules, attendance and fees, then run group or private online sessions with live video and recordings.",
+    name: "Yoga class management and registration software",
     specific: [
+      { title: "Registration and follow-up", body: "Keep each enquiry, demo session, enrolment and contact detail in one admissions pipeline, with follow-up tasks for your team." },
+      { title: "Recurring yoga class schedules", body: "Plan regular group batches and private sessions, manage changes, and show every student their upcoming class from one calendar." },
       { title: "Live video you can demonstrate on", body: "Students join with their camera on, so you can see them and demonstrate each pose." },
       { title: "Everyone in one place", body: "See who has joined from the participants list, and mute the whole class with one control." },
       { title: "Replay a session", body: "Recorded classes can be replayed from the parent app, so students can practise again at home." },
@@ -77,6 +88,12 @@ const NICHES: Niche[] = [
     ],
     closingHeading: "Built for wellness classes",
     closing: "Run group sessions and private one-to-one classes from the same account.",
+    faq: [
+      ["What does yoga class management software include?", "It connects enquiries, registration, recurring schedules, attendance, fees, online sessions, recordings and student communication in one system."],
+      ["Can I manage group classes and one-to-one yoga sessions?", "Yes. The same account supports recurring group batches and private one-to-one sessions."],
+      ["Does attendance work for online yoga classes?", "Yes. Attendance is connected to the scheduled live session when a student opens the class link."],
+      ["Can students replay a recorded yoga session?", "Yes. Recordings can be replayed from the student or parent experience for the retention period included with the academy's plan."],
+    ],
   },
   {
     slug: "abacus-class-software",
@@ -132,8 +149,11 @@ function makePage(n: Niche) {
             <Link to="/solutions/online-attendance-software-for-institutes" className={LINK}>online attendance</Link> or{" "}
             <Link to="/solutions/fee-management-software-for-coaching-centres" className={LINK}>fee management</Link>, or check the{" "}
             <Link to="/pricing" className={LINK}>pricing</Link>.
+            {n.slug === "online-whiteboard-for-teaching" && <>{" "}Try these <Link to="/blog/interactive-whiteboard-activities-online-classes" className={LINK}>10 interactive whiteboard activities for online classes</Link>.</>}
+            {n.slug === "art-class-software" && <>{" "}For lesson ideas, explore the <Link to="/blog/interactive-whiteboard-activities-online-classes" className={LINK}>interactive whiteboard activity guide</Link>.</>}
           </>
         }
+        faq={n.faq}
       />
     );
   };
