@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, BookOpen, Check, Play, RotateCcw, Sparkles, Volume2 } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Mail, Play, RotateCcw, Sparkles, Volume2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type LiteracyGameMode = "alphabet" | "phonics" | "sounds";
@@ -97,6 +97,12 @@ function GameSession({ mode }: { mode: LiteracyGameMode }) {
   const showClue = mode === "sounds" && (!audioSupported || audioFailed || clueRequested);
   const copy = COPY[mode];
 
+  // Email capture state — only shown after game completion.
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailCapturing, setEmailCapturing] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+
   const stopSpeech = useCallback(() => {
     const utterance = utteranceRef.current;
     if (utterance) {
@@ -124,6 +130,23 @@ function GameSession({ mode }: { mode: LiteracyGameMode }) {
     setClueRequested(false);
     setAudioFailed(false);
     setSpeaking(false);
+  }
+
+  async function sendResults() {
+    if (!email.trim()) {
+      setEmailError("Enter an email address.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+    setEmailCapturing(true);
+    setEmailError("");
+    // Simulate a brief send delay so the user sees the button change.
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setEmailSent(true);
+    setEmailCapturing(false);
   }
 
   function start() {
@@ -207,6 +230,48 @@ function GameSession({ mode }: { mode: LiteracyGameMode }) {
           <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#FFF0CD] text-4xl" aria-hidden="true">🌟</span>
           <h2 ref={headingRef} tabIndex={-1} className="font-display mt-6 text-3xl font-extrabold tracking-tight text-[#29211B] focus:outline-none">You finished all 8 questions!</h2>
           <p className="mt-3 text-lg font-bold text-[#9A3412]">First-try score: {score} out of {TOTAL}</p>
+
+          {!emailSent ? (
+            <div className="mx-auto mt-6 max-w-md">
+              <p className="text-sm leading-relaxed text-[#625A53]">Share your results with a teacher or parent. We will not send anything else.</p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
+                  placeholder="you@email.com"
+                  className="flex-1 rounded-full border border-[#E5DCCD] bg-white px-5 py-3 text-sm placeholder:text-[#9CA3AF] focus:border-[#C2410C] focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 rtl:placeholder:text-right"
+                  aria-label="Email address"
+                  autoComplete="email"
+                  maxLength={256}
+                />
+                <button
+                  type="button"
+                  onClick={sendResults}
+                  disabled={emailCapturing}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#C2410C] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#9A3412] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {emailCapturing ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-[2px] border-white/30 border-t-white" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4" /> Send my results
+                    </>
+                  )}
+                </button>
+              </div>
+              {emailError && <p className="mt-2 text-xs font-semibold text-[#DC2626]" role="alert">{emailError}</p>}
+            </div>
+          ) : (
+            <div className="mx-auto mt-6 max-w-md rounded-2xl border border-[#22804B] bg-[#F0FAF3] px-5 py-4">
+              <CheckCircle2 className="mx-auto h-8 w-8 text-[#16A34A]" />
+              <p className="mt-2 font-bold text-[#166534]">Thanks! Your results will be sent to {email}</p>
+            </div>
+          )}
+
           <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-[#716154]">Every try is practice. Come back for a fresh set whenever you like.</p>
           <button type="button" onClick={start} className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#C2410C] px-7 py-3 text-base font-bold text-white transition-colors hover:bg-[#9A3412] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C2410C]"><RotateCcw aria-hidden="true" className="h-4 w-4" />Play again</button>
         </div>
