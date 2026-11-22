@@ -3,6 +3,7 @@ import { useLightBrandScope } from "@/lib/theme";
 import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
+import { FloatingWhatsApp } from "./FloatingWhatsApp";
 
 export type LegalBlock = { p: string } | { ul: string[] };
 export interface LegalSection {
@@ -60,6 +61,7 @@ export function LegalPage({ title, description, path, updated, intro, sections }
       </article>
 
       <MarketingFooter />
+      <FloatingWhatsApp />
     </div>
   );
 }

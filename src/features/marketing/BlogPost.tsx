@@ -5,6 +5,7 @@ import { AlertCircle, ArrowRight, Check, Clock, Link2, Linkedin, Loader2, Messag
 import { Seo } from "@/components/Seo";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
+import { FloatingWhatsApp } from "./FloatingWhatsApp";
 import { EmptyState } from "@/components/EmptyState";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
@@ -684,6 +685,7 @@ export default function BlogPost() {
       )}
 
       <MarketingFooter />
+      <FloatingWhatsApp />
     </div>
   );
 }

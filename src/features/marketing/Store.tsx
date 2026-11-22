@@ -17,6 +17,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
+import { FloatingWhatsApp } from "./FloatingWhatsApp";
 import { CARD, CTA_DARK, CTA_ORANGE, HERO_OVERLAP } from "./styles";
 
 const DEMO_PLANS: ApiStorePlan[] = [
@@ -175,6 +176,7 @@ export default function Store() {
       </section>
 
       <MarketingFooter />
+      <FloatingWhatsApp />
 
       <Dialog open={selectedPlan !== null} onOpenChange={(open) => !open && setSelectedPlan(null)}>
         <DialogContent className="max-w-md">

@@ -17,6 +17,7 @@ import { WebinarListing } from "./WebinarListing";
 import { BTN_PRIMARY, MarketingNav } from "./MarketingNav";
 import { OpenSourceStrip } from "./OpenSourceStrip";
 import { SALES_WHATSAPP_URL } from "./WalkthroughCta";
+import { FloatingWhatsApp } from "./FloatingWhatsApp";
 import { COPY } from "./home/copy";
 import { ExplainerVideo } from "./home/ExplainerVideo";
 import { CountUp, Reveal } from "./home/fx";
@@ -709,6 +710,7 @@ export default function MarketingHome() {
           <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" aria-label="Chat with Meet to Manage on WhatsApp" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#E8C8AD] bg-white px-4 text-sm font-bold text-[#9A3412]"><MessageSquare className="h-4 w-4" /> WhatsApp</a>
         </div>
       </div>
+      <FloatingWhatsApp />
       {chatReady && (
         <Suspense fallback={null}>
           <PromoPopup lang={lang} />

@@ -10,6 +10,7 @@ import { requestPlatformDemo } from "@/api/marketing";
 import { cn } from "@/lib/utils";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
+import { FloatingWhatsApp } from "./FloatingWhatsApp";
 import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
@@ -548,6 +549,7 @@ export default function GetStarted() {
       </section>
 
       <MarketingFooter />
+      <FloatingWhatsApp />
     </div>
   );
 }

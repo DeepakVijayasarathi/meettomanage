@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
+import { FloatingWhatsApp } from "./FloatingWhatsApp";
 import { ARROW_LINK, CTA_ORANGE, FOCUS_RING } from "./styles";
 import { PostCard, PostCover, TopicChip } from "./blogMeta";
 import { TOPIC_ORDER, formatDate, topicOf, type BlogTopic } from "./blogTopics";
@@ -281,6 +282,7 @@ export default function BlogList() {
       </section>
 
       <MarketingFooter />
+      <FloatingWhatsApp />
     </div>
   );
 }
