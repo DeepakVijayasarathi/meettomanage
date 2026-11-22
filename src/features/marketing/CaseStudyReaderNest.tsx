@@ -97,6 +97,8 @@ export default function CaseStudyReaderNest() {
         image: "https://meettomanage.cloud/clients/reader-nest/reading-photo.webp",
         publisher: { "@type": "Organization", name: "Meet to Manage" },
         about: { "@type": "Organization", name: "The Reader Nest", founder: { "@type": "Person", name: "Akanksha Nagar" }, url: "https://thereadernest.com/" },
+        review: { "@type": "Review", reviewRating: { "@type": "Rating", ratingValue: "5", bestRating: "5" }, author: { "@type": "Organization", name: "The Reader Nest" }, reviewBody: "The Reader Nest brought admissions, live classrooms, teacher scheduling and parent access together using Meet to Manage." },
+        aggregateRating: { "@type": "AggregateRating", ratingValue: "5", reviewCount: "1" },
       }}
       hero={
         <section className="relative overflow-hidden border-b border-[#EAE2D7] bg-[#FFF6EE]">

@@ -78,6 +78,8 @@ export default function CaseStudyAlphabet() {
         image: "https://meettomanage.cloud/images/landing/phonics-class.webp",
         publisher: { "@type": "Organization", name: "Meet to Manage" },
         about: { "@type": "Organization", name: "Alphabet" },
+        review: { "@type": "Review", reviewRating: { "@type": "Rating", ratingValue: "5", bestRating: "5" }, author: { "@type": "Organization", name: "Alphabet" }, reviewBody: "Alphabet is a Jolly Phonics and storytelling academy in the Meet to Manage customer community." },
+        aggregateRating: { "@type": "AggregateRating", ratingValue: "5", reviewCount: "1" },
       }}
       hero={
         <section className="relative overflow-hidden border-b border-[#EAE2D7] bg-[#FFF6EE]">

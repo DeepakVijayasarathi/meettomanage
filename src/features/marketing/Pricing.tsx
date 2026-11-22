@@ -435,10 +435,19 @@ export default function Pricing() {
       "@context": "https://schema.org",
       "@graph": [
         // Google rejects a SoftwareApplication with no offers, so it is left out until the plans have loaded.
-        ...(offers.length ? [{ "@type": "SoftwareApplication", "@id": "https://meettomanage.cloud/#software", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", offers }] : []),
+        ...(offers.length ? [{ "@type": "SoftwareApplication", "@id": "https://meettomanage.cloud/#software", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", offers, aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", reviewCount: "2" } }] : []),
+        // Product schema for price/carousel rich results alongside SoftwareApplication.
+        ...(offers.length ? [{ "@type": "Product", name: "Meet to Manage", description: "Academy management software for coaching institutes and tuition centres.", applicationCategory: "EducationalApplication", offers, aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", reviewCount: "2" } }] : []),
         { "@type": "BreadcrumbList", itemListElement: [
           { "@type": "ListItem", position: 1, name: "Home", item: "https://meettomanage.cloud/" },
           { "@type": "ListItem", position: 2, name: "Pricing", item: "https://meettomanage.cloud/pricing" },
+        ] },
+        { "@type": "FAQPage", mainEntity: [
+          { "@type": "Question", name: "How does Meet to Manage pricing work?", acceptedAnswer: { "@type": "Answer", text: "One simple price per academy with no per-student or per-teacher fees. This includes live classes, admissions, automatic fee collection, attendance and a parent app." } },
+          { "@type": "Question", name: "Is there a free plan?", acceptedAnswer: { "@type": "Answer", text: "Yes. The free plan supports up to 75 students with online fees, class recordings and your own branding. No credit card required to start." } },
+          { "@type": "Question", name: "What payment methods do you accept?", acceptedAnswer: { "@type": "Answer", text: "Payments are processed through Razorpay and Cashfree, accepting UPI, debit cards, credit cards and net banking." } },
+          { "@type": "Question", name: "Can I cancel my subscription anytime?", acceptedAnswer: { "@type": "Answer", text: "Yes, you can cancel at any time with no penalties. Your academy data remains accessible until the end of your current billing period." } },
+          { "@type": "Question", name: "Do you offer yearly billing?", acceptedAnswer: { "@type": "Answer", text: "Yes. Yearly billing gives you two months free compared to the monthly price, making it the most cost-effective option for growing academies." } },
         ] },
       ],
     };

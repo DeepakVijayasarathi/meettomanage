@@ -5,6 +5,15 @@ import { PageShell } from "./PageShell";
 import { ProductTour } from "./ProductTour";
 import { DOC_SECTIONS } from "./docsContent";
 
+const DOCS_FAQ: readonly (readonly [question: string, answer: string])[] = [
+  ["Which portals are available in Meet to Manage?", "Eleven role-based portals: Admin, IT Admin, Executive, Marketing, Platform, Teacher, Parent, Student, Admission, Coordinator and Management. Each shows only the features relevant to that role."],
+  ["How does the live classroom work?", "It runs in the browser using WebRTC via Jitsi. Teachers can start a class from their portal; students and parents join from a link with no app download. Classes support video, a shared whiteboard, screen sharing, quizzes and recordings."],
+  ["Can parents pay fees online?", "Yes. Parents see invoices, due dates and payment links in the parent app. Payments go through Razorpay or Cashfree and support UPI, cards and net banking."],
+  ["Is there a parent app for iOS and Android?", "Yes. The parent app is available as a Progressive Web App that can be added to the home screen. It works in all modern mobile browsers without an app store install."],
+  ["How is student data stored and secured?", "Each academy's data is stored in a separate database. Access is role-based and all connections are encrypted via TLS."],
+  ["Can I try the platform before committing?", "Yes. There is a free plan for up to 75 students, and you can book a free demo walkthrough to see the full platform in action."],
+];
+
 export default function Docs() {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -32,13 +41,23 @@ export default function Docs() {
         description: "Complete feature documentation for Meet to Manage: every portal, the live classroom, billing and payments, scheduling, admissions and the platform console.",
         path: "/docs",
       }}
-      jsonLd={{
-        "@context": "https://schema.org",
-        "@type": "TechArticle",
-        headline: "Meet to Manage documentation",
-        url: "https://meettomanage.cloud/docs",
-        about: { "@id": "https://meettomanage.cloud/#software" },
-      }}
+      jsonLd={[
+        {
+          "@context": "https://schema.org",
+          "@type": "TechArticle",
+          headline: "Meet to Manage documentation",
+          url: "https://meettomanage.cloud/docs",
+          about: { "@id": "https://meettomanage.cloud/#software" },
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: DOCS_FAQ.map(([question, answer]) => ({
+            "@type": "Question", name: question,
+            acceptedAnswer: { "@type": "Answer", text: answer },
+          })),
+        },
+      ]}
     >
       <div className="mx-auto grid max-w-[1180px] gap-10 px-5 pb-[clamp(64px,7vw,104px)] lg:grid-cols-[260px_1fr]">
         <aside className="lg:sticky lg:top-24 lg:self-start">

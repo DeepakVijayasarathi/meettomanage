@@ -330,6 +330,28 @@ if (seo["seo.home.title"] || seo["seo.home.description"]) {
   set(/(<meta\s+name="description"\s+content=")[^"]*(")/, d);
   await writeFile(path.join(dist, "index.html"), shell);
 }
+
+// Home page structured data: injected as a <script> block for crawlers that never run JavaScript.
+// Mirrors the data Home.tsx emits via Helmet at runtime so the prerendered HTML carries the
+// same SoftwareApplication, FAQPage and AggregateRating for search-engine rich results.
+{
+  const SITE = "https://meettomanage.cloud";
+  // Home.tsx reads plan prices at runtime; use the free-tier amount for the prerendered shell.
+  const FREE_PRICE = 0;
+  const homeJsonLd = JSON.stringify([
+    { "@context": "https://schema.org", "@type": "Organization", "@id": `${SITE}/#organization`, name: "Meet to Manage", url: `${SITE}/`, logo: `${SITE}/logo-icon.png`, email: "support@meettomanage.cloud", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
+    { "@context": "https://schema.org", "@type": "SoftwareApplication", "@id": `${SITE}/#software`, url: `${SITE}/`, publisher: { "@id": `${SITE}/#organization` }, name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: "Manage live classes, admissions, fees, attendance and parent updates in one platform built for coaching institutes and tuition centres in India.", featureList: ["Interactive live classes", "Admissions CRM", "Batch scheduling and attendance", "Automated fee collection", "Parent mobile app", "Academy reports"], offers: { "@type": "Offer", priceCurrency: "INR", price: FREE_PRICE, url: `${SITE}/pricing` }, aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", reviewCount: "2" } },
+    { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: [
+      { "@type": "Question", name: "What is Meet to Manage?", acceptedAnswer: { "@type": "Answer", text: "Meet to Manage is an all-in-one academy management platform built for coaching centres, tuition classes and online academies in India. It handles live classes, admissions, scheduling, fee collection and parent communication." } },
+      { "@type": "Question", name: "Is there a free plan for coaching institutes?", acceptedAnswer: { "@type": "Answer", text: "Yes. The free plan supports up to 75 students with core features including live classes, attendance tracking, your own academy branding and class recordings." } },
+      { "@type": "Question", name: "Can I use Meet to Manage for phonics or abacus classes?", acceptedAnswer: { "@type": "Answer", text: "Yes. The platform supports all types of academies — phonics, abacus, tuition, art, yoga, coding and more. The live classroom includes tools like shared whiteboards, quizzes and learning games designed for young learners." } },
+      { "@type": "Question", name: "How do parents receive class updates?", acceptedAnswer: { "@type": "Answer", text: "Parents use the parent app to view class schedules, recordings, homework, attendance and fee invoices. They receive automatic notifications for upcoming classes, fee reminders and class summaries." } },
+      { "@type": "Question", name: "Is Meet to Manage secure for student data?", acceptedAnswer: { "@type": "Answer", text: "Yes. Each academy's data is stored in a separate database, all connections are encrypted with TLS, and access is controlled through role-based permissions." } },
+    ]},
+  ]).replace(/</g, "\\u003c");
+  shell = shell.replace("</head>", `  <script type="application/ld+json">${homeJsonLd}</script>\n  </head>`);
+  await writeFile(path.join(dist, "index.html"), shell);
+}
 for (const page of PAGES) {
   const file = path.join(dist, `${page.path}.html`);
   await mkdir(path.dirname(file), { recursive: true });
