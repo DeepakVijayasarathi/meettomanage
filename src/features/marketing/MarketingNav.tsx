@@ -80,6 +80,8 @@ export function MarketingNav({ home = false, hideMobileSalesBar = false }: { hom
     { label: c.nav.pricing, href: "/pricing", route: true },
     { label: c.nav.blog, href: "/blog", route: true },
     { label: lang === "ar" ? "ألعاب مجانية" : "Free games", href: "/free-games", route: true },
+    { label: "Compare plans", href: "/compare", route: true },
+    { label: "Alternatives", href: "/alternatives/classplus-alternative-for-coaching-centres", route: true },
   ];
 
   // The current page or section is shown in orange with an underline. On the home page the first section link is active until another hash is chosen.

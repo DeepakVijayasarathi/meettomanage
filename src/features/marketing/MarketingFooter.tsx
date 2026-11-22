@@ -42,6 +42,12 @@ export function MarketingFooter() {
             <li><Link to="/solutions/tuition-centre-management-software" className={LINK}>Tuition centre software</Link></li>
             <li><Link to="/solutions/coaching-centre-admission-crm" className={LINK}>Admission CRM</Link></li>
             <li><Link to="/alternatives/classplus-alternative-for-coaching-centres" className={LINK}>Classplus alternative</Link></li>
+            <li><Link to="/alternatives/topshelf-alternative-for-coaching-centres" className={LINK}>Topshelf alternative</Link></li>
+            <li><Link to="/alternatives/class4all-alternative-for-coaching-centres" className={LINK}>Class4all alternative</Link></li>
+            <li><Link to="/alternatives/eduprise-alternative-for-coaching-centres" className={LINK}>Eduprise alternative</Link></li>
+            <li><Link to="/alternatives/eaddkar-alternative-for-coaching-centres" className={LINK}>eAdkar alternative</Link></li>
+            <li><Link to="/alternatives/tutorcruncher-alternative-for-coaching-centres" className={LINK}>TutorCruncher alternative</Link></li>
+            <li><Link to="/compare" className={LINK}>Compare plans</Link></li>
           </ul>
         </nav>
 

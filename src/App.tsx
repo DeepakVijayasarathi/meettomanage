@@ -89,6 +89,9 @@ const NichePages = NICHE_SLUGS.map((_, i) => lazy(() => import("@/features/marke
 const ClassplusAlternative = lazy(() => import("@/features/marketing/ClassplusAlternative"));
 const TopshelfAlternative = lazy(() => import("@/features/marketing/TopshelfAlternative"));
 const Class4allAlternative = lazy(() => import("@/features/marketing/Class4allAlternative"));
+const EdupriseAlternative = lazy(() => import("@/features/marketing/EdupriseAlternative"));
+const EadkarAlternative = lazy(() => import("@/features/marketing/eAdkarAlternative").then((m) => ({ default: m.default })));
+const TutorCruncherAlternative = lazy(() => import("@/features/marketing/TutorCruncherAlternative"));
 const Testimonials = lazy(() => import("@/features/marketing/Testimonials"));
 const Compare = lazy(() => import("@/features/marketing/Compare"));
 const LiveClassSolution = lazy(() => import("@/features/marketing/LiveClassSolution"));
@@ -296,6 +299,9 @@ export default function App() {
             <Route path="/alternatives/classplus-alternative-for-coaching-centres" element={<MarketingTranslationLayer><ClassplusAlternative /></MarketingTranslationLayer>} />
             <Route path="/alternatives/topshelf-alternative-for-coaching-centres" element={<MarketingTranslationLayer><TopshelfAlternative /></MarketingTranslationLayer>} />
             <Route path="/alternatives/class4all-alternative-for-coaching-centres" element={<MarketingTranslationLayer><Class4allAlternative /></MarketingTranslationLayer>} />
+            <Route path="/alternatives/eduprise-alternative-for-coaching-centres" element={<MarketingTranslationLayer><EdupriseAlternative /></MarketingTranslationLayer>} />
+            <Route path="/alternatives/eaddkar-alternative-for-coaching-centres" element={<MarketingTranslationLayer><EadkarAlternative /></MarketingTranslationLayer>} />
+            <Route path="/alternatives/tutorcruncher-alternative-for-coaching-centres" element={<MarketingTranslationLayer><TutorCruncherAlternative /></MarketingTranslationLayer>} />
             <Route path="/testimonials" element={<MarketingTranslationLayer><Testimonials /></MarketingTranslationLayer>} />
             <Route path="/compare" element={<MarketingTranslationLayer><Compare /></MarketingTranslationLayer>} />
             {NICHE_SLUGS.map((slug, i) => { const Page = NichePages[i]; return <Route key={slug} path={`/solutions/${slug}`} element={<MarketingTranslationLayer><Page /></MarketingTranslationLayer>} />; })}

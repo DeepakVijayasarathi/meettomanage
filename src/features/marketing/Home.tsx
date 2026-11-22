@@ -659,6 +659,29 @@ export default function MarketingHome() {
           </div>
         </section>
 
+        {/* NEWSLETTER STRIP */}
+        <section className="bg-white py-[clamp(40px,5vw,72px)]">
+          <div className="mx-auto max-w-[900px] px-5 text-center">
+            <Mail className="mx-auto h-10 w-10 text-[#C2410C]" />
+            <h2 className="font-display mt-5 text-[clamp(1.4rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em]">Practical guides for running a coaching centre</h2>
+            <p className="mt-3 text-[15px] leading-relaxed text-[#57534E]">Admissions checklists, fee policies, teacher handover templates and more — delivered to your inbox when you need them. No spam, unsubscribe anytime.</p>
+            <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <input
+                type="email"
+                placeholder="you@email.com"
+                className="w-full rounded-full border border-[#E5DCCD] bg-white px-5 py-3 text-sm placeholder:text-[#9CA3AF] focus:border-[#C2410C] focus:outline-none focus:ring-2 focus:ring-[#C2410C]/20 sm:w-80"
+                aria-label="Email address for newsletter"
+                autoComplete="email"
+                maxLength={256}
+              />
+              <Link to="/get-started?from=newsletter" className={cn("flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#C2410C] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#9A3412]")}>
+                Get guides free <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+              </Link>
+            </div>
+            <p className="mt-3 text-xs text-[#9CA3AF]">We send practical guides and templates — not sales pitches. You can unsubscribe anytime.</p>
+          </div>
+        </section>
+
         {/* FINAL CTA */}
         <section className="relative overflow-hidden bg-[#C2410C] py-[clamp(72px,8vw,112px)] text-white">
           <div aria-hidden="true" className="absolute inset-0 opacity-25 [background-image:radial-gradient(#fff_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(70%_90%_at_50%_50%,#000,transparent)]" />
