@@ -78,6 +78,7 @@ export function MarketingNav({ home = false, hideMobileSalesBar = false }: { hom
     { label: c.nav.classroom, href: `${base}#classroom` },
     { label: c.nav.customers, href: "/customers", route: true },
     { label: c.nav.pricing, href: "/pricing", route: true },
+    { label: c.nav.blog, href: "/blog", route: true },
     { label: "Webinars", href: "/webinars", route: true },
   ];
 
