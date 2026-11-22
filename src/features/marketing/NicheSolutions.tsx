@@ -229,6 +229,7 @@ function makePage(n: Niche) {
           </>
         }
         faq={n.faq}
+        selfSlug={n.slug}
       />
     );
   };
