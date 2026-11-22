@@ -26,6 +26,7 @@ const PlatformReminders = lazy(() => import("@/features/platform/Reminders"));
 const PlatformAuditLog = lazy(() => import("@/features/platform/AuditLog"));
 const PlatformOperations = lazy(() => import("@/features/platform/Operations"));
 const PlatformMonitoring = lazy(() => import("@/features/platform/Monitoring"));
+const PlatformMarketingBranding = lazy(() => import("@/features/platform/MarketingBranding"));
 const PlatformStatusSettings = lazy(() => import("@/features/platform/StatusSettings"));
 const AdminSubscription = lazy(() => import("@/features/admin/Subscription"));
 const Signup = lazy(() => import("@/features/public/Signup"));
@@ -267,6 +268,7 @@ export default function App() {
             <Route path="/platform/audit-log" element={<PlatformAuditLog />} />
             <Route path="/platform/operations" element={<PlatformOperations />} />
             <Route path="/platform/monitoring" element={<PlatformMonitoring />} />
+            <Route path="/platform/marketing-branding" element={<PlatformMarketingBranding />} />
             <Route path="/platform/status-settings" element={<PlatformStatusSettings />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/status" element={<PublicStatusPage />} />

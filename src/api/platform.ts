@@ -13,9 +13,10 @@ export function clearPlatformSession() {
 
 /** Separate operator credentials; never reads or overwrites a client's access token. */
 export async function platformRequest<T>(path: string, token: string, method = "GET", body?: unknown, signal?: AbortSignal): Promise<T> {
+  const multipart = body instanceof FormData;
   const response = await fetch(`${base}/api/platform${path}`, {
-    method, signal, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    method, signal, headers: { ...(!multipart ? { "Content-Type": "application/json" } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: multipart ? body : body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
     if (response.status === 401 && token && sessionStorage.getItem(PLATFORM_TOKEN_KEY) === token) clearPlatformSession();

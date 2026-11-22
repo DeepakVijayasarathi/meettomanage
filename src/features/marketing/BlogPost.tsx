@@ -424,7 +424,7 @@ export default function BlogPost() {
             },
             ...(blogImage(slug) ? { image: `${SITE_URL}${blogImage(slug)}` } : {}),
             author: { "@type": "Organization", name: "Meet to Manage", url: `${SITE_URL}/` },
-            publisher: { "@type": "Organization", name: "Meet to Manage", logo: { "@type": "ImageObject", url: `${SITE_URL}/logo-icon.png` } },
+            publisher: { "@type": "Organization", name: "Meet to Manage" },
           }}
         />
       ) : (

@@ -46,13 +46,14 @@ export function FontField({ id, label, value, onChange, sample, disabled }: { id
 
 /** Logo preview with upload / remove. The upload itself is supplied by the caller (tenant or operator endpoint). */
 export function LogoField({ logoUrl, onUpload, onRemove, disabled, fallbackSrc = "/logo-icon.png" }: {
-  logoUrl: string; onUpload: (file: File) => Promise<void>; onRemove: () => Promise<void>; disabled?: boolean; fallbackSrc?: string;
+  logoUrl: string; onUpload: (file: File) => Promise<void>; onRemove: () => Promise<void>; disabled?: boolean; fallbackSrc?: string | null;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [broken, setBroken] = useState(false);
   useEffect(() => setBroken(false), [logoUrl]);
+  const previewSrc = logoUrl && !broken ? logoUrl : fallbackSrc;
 
   async function pick(file: File | undefined) {
     if (!file) return;
@@ -70,7 +71,9 @@ export function LogoField({ logoUrl, onUpload, onRemove, disabled, fallbackSrc =
   }
   return <div className="flex flex-wrap items-center gap-5">
     <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-2">
-      <img src={!logoUrl || broken ? fallbackSrc : logoUrl} alt="Brand logo preview" onError={() => setBroken(true)} className="h-full w-full object-contain" />
+      {previewSrc
+        ? <img src={previewSrc} alt="Brand logo preview" onError={() => setBroken(true)} className="h-full w-full object-contain" />
+        : <span className="text-center text-xs text-muted-foreground">{broken ? "Preview unavailable" : "No logo set"}</span>}
     </div>
     <div className="space-y-2">
       <p className="text-sm font-semibold text-foreground">Logo</p>

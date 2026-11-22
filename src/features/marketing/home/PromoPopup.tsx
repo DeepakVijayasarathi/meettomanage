@@ -1,3 +1,4 @@
+import { MarketingLogo } from "../MarketingLogo";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, CreditCard, Gift, MessageSquare, Play, Users, Video, X } from "lucide-react";
@@ -117,7 +118,7 @@ export function PromoPopup({ lang }: { lang: Lang }) {
         </button>
 
         <div className="p-7 sm:p-9">
-          <img src="/logo-full.webp" alt="Meet to Manage" width={420} height={150} className="h-12 w-auto object-contain mix-blend-multiply" />
+          <MarketingLogo className="h-12 w-auto max-w-full object-contain" />
           <p className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#FFE9D8] px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C] rtl:tracking-normal">
             <Gift className="h-4 w-4" /> {t.badge}
           </p>

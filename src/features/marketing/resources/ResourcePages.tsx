@@ -73,7 +73,7 @@ export function ResourceGuidePage({ slug }: { slug: string }) {
     jsonLd={[breadcrumbData(guide.title, path), {
       "@context": "https://schema.org", "@type": "Article", headline: guide.title, description: guide.description,
       mainEntityOfPage: SITE+path, url: SITE+path, author: { "@type": "Organization", name: "Meet to Manage", url: SITE+"/" },
-      publisher: { "@type": "Organization", name: "Meet to Manage", url: SITE+"/", logo: { "@type": "ImageObject", url: SITE+"/logo-icon.png" } },
+      publisher: { "@type": "Organization", name: "Meet to Manage", url: SITE+"/" },
       associatedMedia: { "@type": "MediaObject", name: guide.download.label, contentUrl: SITE+guide.download.href, encodingFormat: guide.download.format === "CSV" ? "text/csv" : "text/plain" },
     }]}>
     <article className="pb-20">

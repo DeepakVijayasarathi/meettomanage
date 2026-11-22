@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type FormEvent, type Re
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useConsoleView, type ConsoleView } from "./consoleView";
 import {
-  Activity, AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Radio, Receipt, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, TrendingUp, Users,
+  Activity, AtSign, BellRing, Building2, ChevronDown, Eye, EyeOff, Gauge, History, Image, Layers, LayoutDashboard, ListTree, Loader2, LogOut, Radio, Receipt, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, TrendingUp, Users,
   type LucideIcon,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -28,6 +28,7 @@ const groups: { title: string; items: NavItem[] }[] = [
       { to: "/platform/email-mappings", label: "Simple SSO", icon: AtSign, hint: "One sign-in page for every tenant" },
       { to: "/platform/operations", label: "Tenant operations", icon: Gauge, hint: "Health, usage, onboarding and recovery" },
       { to: "/platform/monitoring", label: "Server monitoring", icon: Activity, hint: "SaaS CPU, memory, disk and runtime health" },
+      { to: "/platform/marketing-branding", label: "Marketing branding", icon: Image, hint: "Upload the public marketing site logo", simple: true },
       { to: "/platform/status-settings", label: "Status page", icon: Radio, hint: "Outages, maintenance and public service status" },
       { to: "/platform/audit-log", label: "Audit log", icon: History, hint: "Who changed what, and when" },
     ],

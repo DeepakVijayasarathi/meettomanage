@@ -1,3 +1,4 @@
+import { MarketingLogo } from "./MarketingLogo";
 import { Link } from "react-router-dom";
 import { Mail, MessageCircle, Facebook, Instagram, Youtube, Linkedin, Twitter } from "lucide-react";
 import { useLang } from "@/lib/i18n";
@@ -16,7 +17,7 @@ export function MarketingFooter() {
     <footer className="border-t border-[#EFE3D7] bg-[#FFFBF7] text-[#57534E]">
       <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-x-6 gap-y-10 px-5 py-14 sm:py-16 md:grid-cols-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr_0.8fr] lg:gap-x-8">
         <div className="col-span-2 md:col-span-4 lg:col-span-1 lg:col-start-1">
-          <img loading="lazy" src="/logo-full.webp" alt="Meet to Manage" width={420} height={150} className="h-14 w-auto object-contain mix-blend-multiply" />
+          <MarketingLogo className="h-14 w-auto max-w-full object-contain" />
           <p className="mt-4 max-w-xs text-sm leading-relaxed">{f.tagline}</p>
         </div>
 

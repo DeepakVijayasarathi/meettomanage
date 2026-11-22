@@ -36,3 +36,17 @@ export async function uploadTenantLogoAsOperator(token: string, tenantId: string
 
 export const removeTenantLogoAsOperator = (token: string, tenantId: string) =>
   platformRequest<void>(`/tenants/${tenantId}/branding/logo`, token, "DELETE");
+
+const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+export const marketingLogoUrl = (path = "/api/platform/public/marketing-logo") => apiBase + path;
+
+export const marketingBranding = {
+  get: (token: string, signal?: AbortSignal) =>
+    platformRequest<{ logoPath: string | null }>("/marketing-branding", token, "GET", undefined, signal),
+  upload: (token: string, file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return platformRequest<{ logoPath: string }>("/marketing-branding/logo", token, "POST", body);
+  },
+  remove: (token: string) => platformRequest<void>("/marketing-branding/logo", token, "DELETE"),
+};

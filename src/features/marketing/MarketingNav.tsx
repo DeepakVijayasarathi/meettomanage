@@ -1,3 +1,4 @@
+import { MarketingLogo } from "./MarketingLogo";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, CalendarClock, Menu, X } from "lucide-react";
@@ -99,7 +100,7 @@ export function MarketingNav({ home = false, hideMobileSalesBar = false }: { hom
     <header className={cn("sticky top-0 border-b bg-white transition-shadow", open ? "z-50" : "z-40", scrolled ? "border-[#F6E3D3] shadow-[0_14px_34px_-22px_rgba(194,65,12,0.45)]" : "border-transparent")}>
       <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-4 px-5 sm:h-[84px]">
         <Link to="/" aria-label="Meet to Manage home" className="shrink-0">
-          <img src="/logo-full.webp" alt="Meet to Manage" width={420} height={150} className="h-11 w-auto object-contain mix-blend-multiply sm:h-[68px]" />
+          <MarketingLogo className="h-11 w-auto max-w-[min(40vw,15rem)] object-contain sm:h-[68px]" />
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-3 whitespace-nowrap 2xl:flex">

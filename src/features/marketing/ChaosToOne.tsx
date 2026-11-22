@@ -1,3 +1,4 @@
+import { MarketingLogo } from "./MarketingLogo";
 import { useEffect, useRef, useState } from "react";
 import { Check, Receipt, RotateCcw, Video, type LucideIcon } from "lucide-react";
 import { useInView } from "@/hooks/useInView";
@@ -215,7 +216,7 @@ export function ChaosToOne({ lang, brandName }: { lang: Lang; brandName: string 
               style={{ transitionDelay: merged ? "650ms" : "0ms" }}
             >
               <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 -z-10 hidden h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(249,115,22,0.16),transparent_68%)] md:block" />
-              <img src="/logo-icon-128.webp" alt={`${brandName} logo`} aria-hidden="true" width={56} height={56} className="mx-auto h-14 w-14 object-contain" />
+              <MarketingLogo showName={false} className="mx-auto h-14 w-auto max-w-full object-contain" />
               <p className="font-display mt-2 text-lg font-extrabold leading-tight text-[#111]">{brandName}</p>
               <p className="mt-0.5 text-xs font-bold uppercase tracking-[0.06em] text-[#16A34A] rtl:tracking-normal">{t.allIn}</p>
             </div>
