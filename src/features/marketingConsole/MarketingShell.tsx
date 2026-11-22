@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
+import { MarketingLogo } from "@/features/marketing/MarketingLogo";
 import { NAV_BY_ROLE } from "@/lib/nav";
 import { ROLE_META } from "@/lib/roles";
 import { accentForDarkMode, hexToHslTriple } from "@/lib/utils";
@@ -35,7 +36,13 @@ export function MarketingShell({ children }: { children: ReactNode }) {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <Sidebar
-        platformBrand
+        renderLogo={isCollapsed => (
+          <MarketingLogo
+            className={isCollapsed ? "h-9 w-9 object-contain" : "h-10 w-auto max-w-[9rem] object-contain"}
+            showName={!isCollapsed}
+            fallbackClassName="text-sidebar-foreground"
+          />
+        )}
         sections={NAV_BY_ROLE.marketing}
         roleLabel={meta.label}
         roleHex={meta.hex}

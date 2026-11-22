@@ -28,7 +28,7 @@ const groups: { title: string; items: NavItem[] }[] = [
       { to: "/platform/email-mappings", label: "Simple SSO", icon: AtSign, hint: "One sign-in page for every tenant" },
       { to: "/platform/operations", label: "Tenant operations", icon: Gauge, hint: "Health, usage, onboarding and recovery" },
       { to: "/platform/monitoring", label: "Server monitoring", icon: Activity, hint: "SaaS CPU, memory, disk and runtime health" },
-      { to: "/platform/marketing-branding", label: "Marketing branding", icon: Image, hint: "Upload the public marketing site logo", simple: true },
+      { to: "/platform/marketing-branding", label: "Marketing branding", icon: Image, hint: "Upload the marketing site and console logo", simple: true },
       { to: "/platform/status-settings", label: "Status page", icon: Radio, hint: "Outages, maintenance and public service status" },
       { to: "/platform/audit-log", label: "Audit log", icon: History, hint: "Who changed what, and when" },
     ],

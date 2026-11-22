@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { ChevronsLeft, ChevronsRight, PanelLeft, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,8 +17,7 @@ interface SidebarProps {
   onClose: () => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
-  /** Platform-owned consoles must never inherit a tenant's uploaded identity. */
-  platformBrand?: boolean;
+  renderLogo?: (collapsed: boolean) => ReactNode;
 }
 
 // Literal class names so Tailwind keeps them. The `dark:` shades stay readable on the dark sidebar.
@@ -78,7 +77,7 @@ const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigat
  * Quiet, light navigation rail: monochrome icons, compact rows, and the portal's role colour only on the
  * active item, so the page content stays the focus.
  */
-export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, collapsed: collapsedProp, onToggleCollapse, platformBrand = false }: SidebarProps) {
+export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, collapsed: collapsedProp, onToggleCollapse, renderLogo }: SidebarProps) {
   const style = useSidebarStyle();
   const collapsed = collapsedProp;
   const soft = style !== "classic"; // tinted pill instead of the edge bar
@@ -124,8 +123,10 @@ export function Sidebar({ sections, roleLabel, roleHex, mobileOpen, onClose, col
         )}
       >
         <div className={cn("flex h-14 items-center border-b border-sidebar-border px-4", collapsed ? "justify-center" : "justify-between")}>
-          <span className={cn("dark:hidden", soft && "mix-blend-multiply")}><Logo platform={platformBrand} variant="dark" showWordmark={!collapsed} imgClassName={platformBrand ? "h-10" : undefined} /></span>
-          <span className="hidden dark:inline-flex"><Logo platform={platformBrand} variant="light" showWordmark={!collapsed} /></span>
+          {renderLogo ? renderLogo(collapsed) : <>
+            <span className={cn("dark:hidden", soft && "mix-blend-multiply")}><Logo variant="dark" showWordmark={!collapsed} /></span>
+            <span className="hidden dark:inline-flex"><Logo variant="light" showWordmark={!collapsed} /></span>
+          </>}
           <button
             ref={closeRef}
             onClick={onClose}

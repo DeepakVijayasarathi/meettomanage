@@ -25,7 +25,7 @@ function MarketingBrandingForm() {
   }, [token]);
 
   return <div className="space-y-6">
-    <Hero title="Marketing branding" text="Upload the logo for the public marketing site." />
+    <Hero title="Marketing branding" text="Upload the logo for the marketing site and the Marketing Console sidebar." />
     <Notices error={error} notice={notice} />
     <section className={`${panel} p-6`}>
       {logoUrl === undefined
