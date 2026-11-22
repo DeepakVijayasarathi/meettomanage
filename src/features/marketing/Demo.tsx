@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
-import { FloatingWhatsApp } from "./FloatingWhatsApp";
 import { CARD, EYEBROW, HERO_OVERLAP } from "./styles";
 
 const T = {
@@ -78,7 +77,6 @@ export default function Demo() {
       </section>
 
       <MarketingFooter />
-      <FloatingWhatsApp />
     </div>
   );
 }

@@ -71,6 +71,9 @@ const utilityRoutes = new Set(["/demo-login", "/portal-select", "/register", "/f
   "/solutions/music-class-software",
   "/solutions/dance-class-software",
   "/solutions/coding-class-software",
+  // Boot screen links that appear on / index but are SPA routes.
+  "/pricing", "/blog", "/get-started", "/solutions/live-class-software-for-institutes",
+  "/solutions/online-attendance-software-for-institutes", "/customers",
 ]);
 for (const page of pages) {
   for (const match of page.html.matchAll(/href="(\/[^"]*)"/g)) {

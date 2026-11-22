@@ -1,16 +1,10 @@
 import type { ReactNode } from "react";
-import { lazy, Suspense } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Seo } from "@/components/Seo";
 import { useLightBrandScope } from "@/lib/theme";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
-import { FloatingWhatsApp } from "./FloatingWhatsApp";
-
-/** Chat and promo are lazy-loaded only on pages that need them, to keep the home page fast. */
-const ChatWidget = lazy(() => import("./HomeChat").then((m) => ({ default: m.ChatWidget })));
-const PromoPopup = lazy(() => import("./home/PromoPopup").then((m) => ({ default: m.PromoPopup })));
 
 /** The shared frame for the marketing sub-pages (customers, case studies, careers): site header and footer, a warm
  *  page hero, the page's SEO tags and optional structured data. Includes floating WhatsApp and chat widget. */
@@ -64,13 +58,6 @@ export function PageShell({ eyebrow, title, sub, seo, jsonLd, hero, children }: 
         {children}
       </main>
       <MarketingFooter />
-      <FloatingWhatsApp />
-      <Suspense fallback={null}>
-        <PromoPopup lang="en" />
-      </Suspense>
-      <Suspense fallback={null}>
-        <ChatWidget lang="en" />
-      </Suspense>
     </div>
   );
 }

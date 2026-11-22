@@ -14,7 +14,6 @@ import { localWebinarTime, readWebinarSchedule, webinarCalendarUrl, type Webinar
 import { webinarHosts } from "@/lib/webinars";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
-import { FloatingWhatsApp } from "./FloatingWhatsApp";
 
 const fields = [
   { name: "fullName", label: "Full name", type: "text", autoComplete: "name", placeholder: "e.g. Asha Patel" },
@@ -44,7 +43,6 @@ function PublishedWebinar({ slug }: { slug: string }) {
         </div>
       </main>
       <MarketingFooter />
-      <FloatingWhatsApp />
     </div>
   );
 }
@@ -227,7 +225,6 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
         </div>
       </main>
       <MarketingFooter />
-      <FloatingWhatsApp />
     </div>
   );
 }

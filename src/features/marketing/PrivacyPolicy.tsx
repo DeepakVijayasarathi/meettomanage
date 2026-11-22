@@ -3,7 +3,6 @@ import { useLightBrandScope } from "@/lib/theme";
 import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
-import { FloatingWhatsApp } from "./FloatingWhatsApp";
 
 /**
  * Legal text, supplied verbatim by the business (not editorial copy this codebase authors,
@@ -335,7 +334,6 @@ export default function PrivacyPolicy() {
       </article>
 
       <MarketingFooter />
-      <FloatingWhatsApp />
     </div>
   );
 }

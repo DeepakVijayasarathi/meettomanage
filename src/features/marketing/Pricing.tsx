@@ -14,7 +14,6 @@ import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
 import { PricingExitIntent } from "./PricingExitIntent";
-import { FloatingWhatsApp } from "./FloatingWhatsApp";
 import { ACCENT_GRADIENT, CARD, CTA_DARK, CTA_ORANGE, H2_SM, HERO_OVERLAP } from "./styles";
 
 type Cycle = "Month" | "Year";
@@ -664,7 +663,6 @@ export default function Pricing() {
       </section>
 
       <MarketingFooter />
-      <FloatingWhatsApp />
       <PricingExitIntent />
     </div>
   );
