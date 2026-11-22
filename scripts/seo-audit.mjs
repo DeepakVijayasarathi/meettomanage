@@ -76,4 +76,37 @@ const blogCount = pages.filter((page) => page.route.startsWith("/blog/")).length
 if (blogCount < 10) {
   console.warn(`seo-audit: only ${blogCount} article pages were generated; check build-time access to the blog API`);
 }
+
+// Validate the OG image dimensions match the hardcoded 1200x630 in index.html.
+// PNG and JPEG both embed dimensions in the header; reading the raw bytes avoids
+// any dependency on external image-processing libraries.
+try {
+  import("node:fs").then(async ({ readFileSync }) => {
+    const buf = readFileSync(path.join(DIST, "og-image.png"));
+    let width, height;
+    // PNG: IHDR chunk at offset 16 (big-endian 4-byte width + height)
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+      width = buf.readUInt32BE(16);
+      height = buf.readUInt32BE(20);
+    }
+    // JPEG: SOI marker + APP0 — width at offset 6, height at offset 8 (big-endian)
+    else if (buf[0] === 0xff && buf[1] === 0xd8) {
+      width = buf.readUInt16BE(6);
+      height = buf.readUInt16BE(8);
+    }
+    if (width && height) {
+      if (width !== 1200 || height !== 630) {
+        console.warn(
+          `seo-audit: og-image.png is ${width}x${height} but index.html declares 1200x630 — social previews may be cropped or stretched`,
+        );
+      } else {
+        console.log("seo-audit: og-image.png (1200x630) matches declared dimensions");
+      }
+    } else {
+      console.warn("seo-audit: could not determine og-image.png dimensions (expected PNG or JPEG)");
+    }
+  }).catch(() => {});
+} catch {
+  // og-image.png may not exist yet (e.g. missing deploy assets) — skip silently
+}
 console.log(`seo-audit: ${pages.length} generated pages (${blogCount} articles) passed metadata, schema and link checks`);
