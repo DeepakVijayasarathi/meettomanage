@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { Mail, MessageCircle } from "lucide-react";
+import { Mail, MessageCircle, Facebook, Instagram, Youtube, Linkedin, Twitter } from "lucide-react";
 import { useLang } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { COPY } from "./home/copy";
 
 const LINK = "py-1.5 text-sm font-medium text-[#57534E] transition-colors hover:text-[#1C1917] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]";
@@ -13,8 +14,8 @@ export function MarketingFooter() {
 
   return (
     <footer className="border-t border-[#EFE3D7] bg-[#FFFBF7] text-[#57534E]">
-      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-x-6 gap-y-10 px-5 py-14 sm:py-16 md:grid-cols-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] lg:gap-x-8">
-        <div className="col-span-2 md:col-span-4 lg:col-span-1">
+      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-x-6 gap-y-10 px-5 py-14 sm:py-16 md:grid-cols-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr_0.8fr] lg:gap-x-8">
+        <div className="col-span-2 md:col-span-4 lg:col-span-1 lg:col-start-1">
           <img loading="lazy" src="/logo-full.webp" alt="Meet to Manage" width={420} height={150} className="h-14 w-auto object-contain mix-blend-multiply" />
           <p className="mt-4 max-w-xs text-sm leading-relaxed">{f.tagline}</p>
         </div>
@@ -62,6 +63,27 @@ export function MarketingFooter() {
             <li><Link to="/careers" className={LINK}>{f.careers}</Link></li>
           </ul>
         </nav>
+
+        <div>
+          <p className={HEAD}>{lang === "ar" ? "تابعنا" : "Follow us"}</p>
+          <div className="mt-4 flex gap-3">
+            <a href="https://www.youtube.com/@meettomanage" target="_blank" rel="noopener noreferrer" className={cn(LINK, "inline-flex items-center")} aria-label="Meet to Manage on YouTube">
+              <Youtube className="h-4 w-4" /> YouTube
+            </a>
+            <a href="https://www.instagram.com/meettomanage" target="_blank" rel="noopener noreferrer" className={cn(LINK, "inline-flex items-center")} aria-label="Meet to Manage on Instagram">
+              <Instagram className="h-4 w-4" /> Instagram
+            </a>
+            <a href="https://www.facebook.com/meettomanage" target="_blank" rel="noopener noreferrer" className={cn(LINK, "inline-flex items-center")} aria-label="Meet to Manage on Facebook">
+              <Facebook className="h-4 w-4" /> Facebook
+            </a>
+            <a href="https://www.linkedin.com/company/meettomanage" target="_blank" rel="noopener noreferrer" className={cn(LINK, "inline-flex items-center")} aria-label="Meet to Manage on LinkedIn">
+              <Linkedin className="h-4 w-4" /> LinkedIn
+            </a>
+            <a href="https://x.com/meettomanage" target="_blank" rel="noopener noreferrer" className={cn(LINK, "inline-flex items-center")} aria-label="Meet to Manage on X (Twitter)">
+              <Twitter className="h-4 w-4" /> X
+            </a>
+          </div>
+        </div>
 
         <div className="flex flex-col gap-10">
           <nav aria-label={f.legal}>

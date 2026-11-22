@@ -201,6 +201,24 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://meettomanage.cloud/solutions/music-class-software</loc>
+    <lastmod>2026-11-22T00:00:00+05:30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://meettomanage.cloud/solutions/dance-class-software</loc>
+    <lastmod>2026-11-22T00:00:00+05:30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://meettomanage.cloud/solutions/coding-class-software</loc>
+    <lastmod>2026-11-22T00:00:00+05:30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://meettomanage.cloud/careers</loc>
     <lastmod>2026-11-22T00:00:00+05:30</lastmod>
     <changefreq>monthly</changefreq>
