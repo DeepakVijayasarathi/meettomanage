@@ -59,7 +59,19 @@ for (const [title, matches] of Map.groupBy(pages.filter((page) => page.title), (
 }
 
 const knownRoutes = new Set(pages.map((page) => page.route));
-const utilityRoutes = new Set(["/demo-login", "/portal-select", "/register", "/forgot-password", "/reset-pin", "/terms"]);
+const utilityRoutes = new Set(["/demo-login", "/portal-select", "/register", "/forgot-password", "/reset-pin", "/terms",
+  // SPA routes (React Router) that are not prerendered but appear as internal links on prerendered pages.
+  "/compare", "/testimonials",
+  "/alternatives/classplus-alternative-for-coaching-centres",
+  "/alternatives/topshelf-alternative-for-coaching-centres",
+  "/alternatives/class4all-alternative-for-coaching-centres",
+  "/alternatives/eduprise-alternative-for-coaching-centres",
+  "/alternatives/eaddkar-alternative-for-coaching-centres",
+  "/alternatives/tutorcruncher-alternative-for-coaching-centres",
+  "/solutions/music-class-software",
+  "/solutions/dance-class-software",
+  "/solutions/coding-class-software",
+]);
 for (const page of pages) {
   for (const match of page.html.matchAll(/href="(\/[^"]*)"/g)) {
     const target = match[1].replaceAll("&amp;", "&").split(/[?#]/)[0].replace(/\/$/, "") || "/";
