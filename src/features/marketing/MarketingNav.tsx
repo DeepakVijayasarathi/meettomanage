@@ -79,6 +79,7 @@ export function MarketingNav({ home = false, hideMobileSalesBar = false }: { hom
     { label: c.nav.customers, href: "/customers", route: true },
     { label: c.nav.pricing, href: "/pricing", route: true },
     { label: c.nav.blog, href: "/blog", route: true },
+    { label: "Webinars", href: "/webinars", route: true },
     { label: lang === "ar" ? "ألعاب مجانية" : "Free games", href: "/free-games", route: true },
     { label: "Compare plans", href: "/compare", route: true },
     { label: "Alternatives", href: "/alternatives/classplus-alternative-for-coaching-centres", route: true },

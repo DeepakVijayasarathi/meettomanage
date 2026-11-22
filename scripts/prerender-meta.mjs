@@ -16,6 +16,7 @@ const dist = path.resolve(import.meta.dirname, "../dist");
 
 
 const NAV = [
+  ["/webinars", "Webinars"],
   ["/free-games", "Free alphabet and phonics games"],
   ["/resources", "Free coaching centre templates"],
   ["/", "Home"], ["/pricing", "Pricing"], ["/demo", "Book a free demo"], ["/get-started", "Request a platform demo"],

@@ -6,6 +6,7 @@ export const PAGES = [
   { path: "/forgot-pin", noindex: true, title: "Reset your Meet to Manage PIN", description: "Request a secure PIN reset for your Meet to Manage account." },
   { path: "/status", noindex: true, title: "Service Status — Meet to Manage", description: "Current availability, maintenance notices and service incidents for the Meet to Manage platform." },
   { path: "/free-games", title: "Free Alphabet, Phonics & Listening Games | Meet to Manage", description: "Play free alphabet, beginning-letter phonics and listening games for beginners. Short rounds, gentle feedback and optional word audio. No signup required." },
+  { path: "/webinars", title: "Webinars | Meet to Manage", description: "Browse live Meet to Manage webinars and register for an upcoming session." },
   { path: "/free-games/alphabet", title: "Free Alphabet Matching Game for Kids | Meet to Manage", description: "Play a free alphabet game: match capital letters to small letters in short, untimed rounds. No account, download or payment required." },
   { path: "/free-games/phonics", title: "Free Beginning-Letter Phonics Game | Meet to Manage", description: "Practise beginning-letter phonics with familiar words and pictures. Choose the first letter, hear an example word and play free without signing in." },
   { path: "/free-games/word-sounds", title: "Free Listening & Word-Sounds Game | Meet to Manage", description: "Listen to a spoken word and choose the matching picture in this free English game. Replay audio or reveal a text clue. No signup required." },
