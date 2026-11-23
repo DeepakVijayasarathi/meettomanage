@@ -348,6 +348,7 @@ export interface ApiMarketingConversionDetail {
   pricingVisitors: number;
   demoPageVisitors: number;
   formStartedVisitors: number;
+  formVisibleVisitors: number;
   submitAttemptedVisitors: number;
   validationFailedVisitors: number;
   abandonedVisitors: number;
@@ -455,7 +456,7 @@ export interface ApiMarketingExperimentVariant { experiment: string; variant: st
 export interface ApiMarketingSiteBehaviour {
   days: number; startDate: string; endDate: string;
   visitors: number; visits: number; singlePageVisits: number; returningVisitors: number; chatVisitors: number; bookedVisitors: number;
-  formStartedVisitors: number; formSubmitAttemptedVisitors: number; formSubmitFailedVisitors: number; formValidationFailedVisitors: number; formAbandonedVisitors: number; formSubmittedVisitors: number; whatsAppVisitors: number;
+  formStartedVisitors: number; formVisibleVisitors: number; formSubmitAttemptedVisitors: number; formSubmitFailedVisitors: number; formValidationFailedVisitors: number; formAbandonedVisitors: number; formSubmittedVisitors: number; whatsAppVisitors: number;
   exitIntentShownVisitors: number; exitIntentSubmittedVisitors: number;
   experiments: ApiMarketingExperimentVariant[];
   signInClickedVisitors: number; demoLoginVisitors: number;

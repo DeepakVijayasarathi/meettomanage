@@ -29,7 +29,7 @@ const EMPTY: ApiMarketingDashboard = {
   endDate: "",
   totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formVisibleVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
   previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formVisibleVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
-  conversionDetail: { visitors: 0, highIntentPageVisitors: 0, pricingVisitors: 0, demoPageVisitors: 0, formStartedVisitors: 0, submitAttemptedVisitors: 0, validationFailedVisitors: 0, abandonedVisitors: 0, apiFailedVisitors: 0, savedFormLeadVisitors: 0, chatBookedVisitors: 0, whatsAppVisitors: 0, totalSavedLeadVisitors: 0 },
+  conversionDetail: { visitors: 0, highIntentPageVisitors: 0, pricingVisitors: 0, demoPageVisitors: 0, formStartedVisitors: 0, formVisibleVisitors: 0, submitAttemptedVisitors: 0, validationFailedVisitors: 0, abandonedVisitors: 0, apiFailedVisitors: 0, savedFormLeadVisitors: 0, chatBookedVisitors: 0, whatsAppVisitors: 0, totalSavedLeadVisitors: 0 },
   daily: [],
   topPages: [],
   topBlogPosts: [],
@@ -198,6 +198,7 @@ export default function MarketingDashboard() {
   const conversionStages = [
     { label: "Website visitors", value: conversion.visitors, detail: "unique people reached" },
     { label: "High-intent page", value: conversion.highIntentPageVisitors, detail: "pricing, get started or demo" },
+    { label: "Form seen", value: conversion.formVisibleVisitors, detail: "scrolled the demo form into view" },
     { label: "Form started", value: conversion.formStartedVisitors, detail: "interacted with the demo form" },
     { label: "Submit attempted", value: conversion.submitAttemptedVisitors, detail: "passed browser validation" },
     { label: "Form lead saved", value: conversion.savedFormLeadVisitors, detail: "confirmed in the CRM" },
@@ -327,7 +328,7 @@ export default function MarketingDashboard() {
             <div className="rounded-xl border bg-muted/20 p-4">
               <p className="font-semibold">Detailed signals</p>
               <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
-                {[["Pricing viewers", conversion.pricingVisitors], ["Demo-page viewers", conversion.demoPageVisitors], ["Validation failures", conversion.validationFailedVisitors], ["Abandoned forms", conversion.abandonedVisitors], ["API failures", conversion.apiFailedVisitors], ["WhatsApp opens", conversion.whatsAppVisitors], ["Chat bookings", conversion.chatBookedVisitors], ["All saved leads", conversion.totalSavedLeadVisitors]].map(([label, value]) => <div key={String(label)}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 text-lg font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
+                {[["Pricing viewers", conversion.pricingVisitors], ["Demo-page viewers", conversion.demoPageVisitors], ["Form visible", conversion.formVisibleVisitors], ["Validation failures", conversion.validationFailedVisitors], ["Abandoned forms", conversion.abandonedVisitors], ["API failures", conversion.apiFailedVisitors], ["WhatsApp opens", conversion.whatsAppVisitors], ["Chat bookings", conversion.chatBookedVisitors], ["All saved leads", conversion.totalSavedLeadVisitors]].map(([label, value]) => <div key={String(label)}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 text-lg font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
               </dl>
             </div>
             <div className={cn("rounded-xl border p-4", biggestLeak && biggestLeak.rate < 30 ? "border-amber-300 bg-amber-50/60 dark:bg-amber-950/10" : "bg-emerald-50/50 dark:bg-emerald-950/10")}>
