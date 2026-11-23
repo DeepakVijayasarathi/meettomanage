@@ -159,6 +159,13 @@ export default function BlogList() {
           name: "Academy Growth & Management Blog",
           description: "Practical guides for coaching centres and online academies on admissions, fee collection, scheduling, parent communication and student retention.",
           url: "https://meettomanage.cloud/blog",
+          breadcrumb: {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: "https://meettomanage.cloud/" },
+              { "@type": "ListItem", position: 2, name: "Blog", item: "https://meettomanage.cloud/blog" },
+            ],
+          },
           publisher: { "@type": "Organization", name: "Meet to Manage", url: "https://meettomanage.cloud/" },
           mainEntity: {
             "@type": "ItemList",

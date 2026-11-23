@@ -165,6 +165,11 @@ export default function MarketingHome() {
         // Same @id as the Organization in index.html, so search engines merge the two instead of seeing two companies.
         { "@context": "https://schema.org", "@type": "Organization", "@id": "https://meettomanage.cloud/#organization", name: "Meet to Manage", url: "https://meettomanage.cloud/", email: "support@meettomanage.cloud", parentOrganization: { "@type": "Organization", name: "Infinity Uniquers" } },
         { "@context": "https://schema.org", "@type": "SoftwareApplication", "@id": "https://meettomanage.cloud/#software", url: "https://meettomanage.cloud/", publisher: { "@id": "https://meettomanage.cloud/#organization" }, name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", description: COPY.en.hero.sub, featureList: ["Interactive live classes", "Admissions CRM", "Batch scheduling and attendance", "Automated fee collection", "Parent mobile app", "Academy reports"], offers: { "@type": "Offer", priceCurrency: "INR", price: fromInr, url: "https://meettomanage.cloud/pricing" }, aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", reviewCount: "2" } },
+        { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: "https://meettomanage.cloud/" },
+            { "@type": "ListItem", position: 2, name: "Meet to Manage", item: "https://meettomanage.cloud/" },
+          ]
+        },
         { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: COPY.en.faq.items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
       ]),
     [fromInr],
