@@ -14,6 +14,7 @@ import { localWebinarTime, readWebinarSchedule, webinarCalendarUrl, type Webinar
 import { webinarHosts } from "@/lib/webinars";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
+import { trackMarketingEvent } from "@/lib/analytics";
 
 const fields = [
   { name: "fullName", label: "Full name", type: "text", autoComplete: "name", placeholder: "e.g. Asha Patel" },
@@ -73,11 +74,11 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
   }
   const available = apiEnabled();
 
-  async function register(event: FormEvent<HTMLFormElement>) {
+  async function register(event: FormEvent) {
     event.preventDefault();
     if (submitting || registered || !available || closed) return;
 
-    const data = new FormData(event.currentTarget);
+    const data = new FormData(event.currentTarget as HTMLFormElement);
     const fullName = String(data.get("fullName") ?? "").trim();
     const workEmail = String(data.get("workEmail") ?? "").trim();
     const phoneInput = String(data.get("phone") ?? "").trim();
@@ -85,9 +86,13 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
     const phone = `${phoneInput.startsWith("+") ? "+" : ""}${digits}`;
     const academyName = String(data.get("academyName") ?? "").trim();
     if (!fullName || !academyName || !/^\+?[\d\s().-]+$/.test(phoneInput) || !/^\d{7,15}$/.test(digits)) {
+      trackMarketingEvent("form_validation_failed");
       setError("Enter your name, organization, and a valid phone number with 7 to 15 digits.");
       return;
     }
+
+    const variant = webinar ? `webinar:${webinar.slug}` : "webinar:general";
+    trackMarketingEvent("form_submit_attempted", registrationUrl.pathname, variant);
 
     setError("");
     setSubmitting(true);
@@ -102,8 +107,10 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
         source: "Webinar",
         landingPath: registrationUrl.pathname,
       });
+      trackMarketingEvent("form_submitted", registrationUrl.pathname, variant);
       setRegistered(true);
     } catch (err) {
+      trackMarketingEvent("form_submit_failed", registrationUrl.pathname, variant);
       setError(userMessage(err, "Your registration could not be saved. Please try again."));
     } finally {
       setSubmitting(false);

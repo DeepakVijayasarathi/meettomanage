@@ -199,7 +199,7 @@ export function PricingExitIntent() {
                 href="https://wa.me/919344773231?text=Hi%2C%20I%27d%20like%20pricing%20for%20my%20academy."
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => trackMarketingEvent("whatsapp_clicked")}
+                onClick={() => trackMarketingEvent("whatsapp_clicked", "/pricing", "exit-intent:whatsapp")}
                 className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#166534] underline decoration-[#22C55E]/40 underline-offset-4 hover:decoration-[#166534]"
               >
                 <MessageSquare className="h-4 w-4" /> {t.whatsapp}

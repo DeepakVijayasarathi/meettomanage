@@ -245,8 +245,8 @@ export default function MarketingHome() {
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                <Link to="/get-started" className={cn(BTN_PRIMARY, "justify-center px-7 py-3.5")}>Book a free demo <ArrowRight className="h-4 w-4" /></Link>
-                <a href={SALES_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D9C9BA] bg-white px-7 py-3.5 text-sm font-bold text-[#166534] shadow-sm transition-colors hover:border-[#86C99A] hover:bg-[#F0FDF4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166534]">
+                <Link to="/get-started" className={cn(BTN_PRIMARY, "justify-center px-7 py-3.5")} onClick={() => trackMarketingEvent("sales_cta_clicked", "/", "hero:demo")}>Book a free demo <ArrowRight className="h-4 w-4" /></Link>
+                <a href={SALES_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D9C9BA] bg-white px-7 py-3.5 text-sm font-bold text-[#166534] shadow-sm transition-colors hover:border-[#86C99A] hover:bg-[#F0FDF4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166534]" onClick={() => trackMarketingEvent("whatsapp_clicked", "/", "hero:whatsapp")}>
                   <MessageSquare className="h-4 w-4" /> Ask on WhatsApp
                 </a>
               </div>
@@ -336,7 +336,7 @@ export default function MarketingHome() {
         </section>}
 
         {lang === "en" && <section aria-labelledby="migration-heading" className="bg-[#FFF8F3] py-[clamp(48px,5vw,72px)]">
-          <div className="mx-auto max-w-[1200px] px-5"><div className="rounded-3xl border border-[#EBCFB7] bg-white p-7 sm:p-10"><div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className={EYEBROW}>Guided migration</p><h2 id="migration-heading" className={cn(H2, "mt-3")}>Bring your spreadsheets, video links and WhatsApp process.</h2><p className="mt-4 max-w-3xl text-lg leading-relaxed text-[#57534E]">We map your student and prospect columns, verify the import, configure batches and fee plans, then help your team run its first class. Your existing process becomes the starting point—not a barrier.</p></div><Link to="/get-started?intent=migration" className={cn(BTN_PRIMARY, "shrink-0")}>Get a migration plan <ArrowRight className="h-4 w-4" /></Link></div><ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{["Spreadsheet data mapped", "Student records verified", "Batches and fees configured", "Team onboarding included"].map((item) => <li key={item} className="flex items-center gap-3 rounded-xl bg-[#FFF8F3] px-4 py-3 text-sm font-bold"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#EA580C]" />{item}</li>)}</ul></div></div>
+          <div className="mx-auto max-w-[1200px] px-5"><div className="rounded-3xl border border-[#EBCFB7] bg-white p-7 sm:p-10"><div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className={EYEBROW}>Guided migration</p><h2 id="migration-heading" className={cn(H2, "mt-3")}>Bring your spreadsheets, video links and WhatsApp process.</h2><p className="mt-4 max-w-3xl text-lg leading-relaxed text-[#57534E]">We map your student and prospect columns, verify the import, configure batches and fee plans, then help your team run its first class. Your existing process becomes the starting point—not a barrier.</p></div><Link to="/get-started?intent=migration" className={cn(BTN_PRIMARY, "shrink-0")} onClick={() => trackMarketingEvent("sales_cta_clicked", "/", "migration:cta")}>Get a migration plan <ArrowRight className="h-4 w-4" /></Link></div><ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{["Spreadsheet data mapped", "Student records verified", "Batches and fees configured", "Team onboarding included"].map((item) => <li key={item} className="flex items-center gap-3 rounded-xl bg-[#FFF8F3] px-4 py-3 text-sm font-bold"><CheckCircle2 className="h-4 w-4 shrink-0 text-[#EA580C]" />{item}</li>)}</ul></div></div>
         </section>}
 
         {lang === "en" && <section aria-labelledby="roi-heading" className="bg-white py-[clamp(56px,6vw,88px)]">
@@ -715,7 +715,7 @@ export default function MarketingHome() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#EBD9C8] bg-white/95 p-3 shadow-[0_-12px_30px_-22px_rgba(28,25,23,0.7)] backdrop-blur sm:hidden">
         <div className="mx-auto flex max-w-lg gap-2">
           <Link to="/get-started" className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#C2410C] px-4 text-sm font-bold text-white">{c.hero.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
-          <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" aria-label="Chat with Meet to Manage on WhatsApp" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#E8C8AD] bg-white px-4 text-sm font-bold text-[#9A3412]"><MessageSquare className="h-4 w-4" /> WhatsApp</a>
+          <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" aria-label="Chat with Meet to Manage on WhatsApp" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#E8C8AD] bg-white px-4 text-sm font-bold text-[#9A3412]" onClick={() => trackMarketingEvent("whatsapp_clicked", "/", "footer:whatsapp")}><MessageSquare className="h-4 w-4" /> WhatsApp</a>
         </div>
       </div>
       {chatReady && (

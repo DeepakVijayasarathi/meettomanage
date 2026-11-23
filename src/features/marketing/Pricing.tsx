@@ -336,6 +336,14 @@ interface CardProps {
   children: React.ReactNode;
 }
 
+/** Plan code constants for tracking analytics on plan-card CTAs. */
+const PLAN_CODE: Record<string, string> = {
+  free: "free",
+  basic: "basic",
+  pro: "pro",
+  growth: "growth",
+};
+
 /** One plan: price and the direct sign-up button up top, then the same comparison rows on every card. */
 function PlanCard({ name, price, priceNote, ribbon, saving, description, highlighted, ctaLabel, ctaTo, note, secondary, compact, children }: CardProps) {
   return (
@@ -352,13 +360,25 @@ function PlanCard({ name, price, priceNote, ribbon, saving, description, highlig
         <span className="text-sm font-semibold text-[#5B6472]">{priceNote}</span>
       </div>
       <p className={cn("mt-2 h-6 text-xs font-semibold", saving ? "text-[#C2410C]" : "text-transparent")} aria-hidden={!saving}>{saving ?? "."}</p>
-      <Link to={ctaTo} className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-4 min-h-12 w-full min-w-0 !rounded-2xl !px-4 text-center text-sm normal-case tracking-normal")}>
+      <Link
+        to={ctaTo}
+        onClick={() => trackMarketingEvent("sales_cta_clicked", "/pricing", `plan:${PLAN_CODE[name.toLowerCase()] ?? name.toLowerCase()}`)}
+        className={cn(highlighted ? CTA_ORANGE : CTA_DARK, "mt-4 min-h-12 w-full min-w-0 !rounded-2xl !px-4 text-center text-sm normal-case tracking-normal")}
+      >
         {ctaLabel} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
       </Link>
       {/* Fixed-height slots so the comparison rows line up across cards. */}
       <p className="mt-2.5 min-h-[2.5rem] text-center text-xs leading-relaxed text-[#5B6472]">{note}</p>
       <div className="flex h-6 items-center justify-center">
-        {secondary && <Link to={secondary.to} className="text-sm font-semibold text-[#C2410C] hover:underline">{secondary.label}</Link>}
+        {secondary && (
+          <Link
+            to={secondary.to}
+            onClick={() => trackMarketingEvent("sales_cta_clicked", "/pricing", `plan:${PLAN_CODE[name.toLowerCase()] ?? name.toLowerCase()}:walkthrough`)}
+            className="text-sm font-semibold text-[#C2410C] hover:underline"
+          >
+            {secondary.label}
+          </Link>
+        )}
       </div>
       <div className="mt-6 flex flex-1 flex-col gap-6 border-t border-[#EFE3D7] pt-6">{children}</div>
     </article>
@@ -586,7 +606,7 @@ export default function Pricing() {
               href="https://wa.me/919344773231?text=I%27d%20like%20an%20add-on%20for%20my%20Meet%20to%20Manage%20plan"
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => trackMarketingEvent("whatsapp_clicked")}
+              onClick={() => trackMarketingEvent("whatsapp_clicked", "/pricing", "addons")}
               className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[#C2410C] hover:underline"
             >
               <MessageCircle className="h-4 w-4" /> {t.addons.cta}
@@ -621,7 +641,13 @@ export default function Pricing() {
             })}
           </ol>
           {signup.enabled && (
-            <Link to="/signup" className={cn(CTA_ORANGE, "mt-8 !rounded-2xl")}>{t.freeCta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+            <Link
+              to="/signup"
+              onClick={() => trackMarketingEvent("sales_cta_clicked", "/pricing", "self-serve:signup")}
+              className={cn(CTA_ORANGE, "mt-8 !rounded-2xl")}
+            >
+              {t.freeCta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
+            </Link>
           )}
         </div>
 
@@ -642,7 +668,7 @@ export default function Pricing() {
             href="https://wa.me/919344773231?text=Which%20Meet%20to%20Manage%20plan%20fits%20my%20academy%3F"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => trackMarketingEvent("whatsapp_clicked")}
+            onClick={() => trackMarketingEvent("whatsapp_clicked", "/pricing", "help")}
             className={cn(CTA_DARK, "!rounded-2xl")}
           >
             <MessageCircle className="h-4 w-4" /> {t.help.cta}

@@ -277,7 +277,7 @@ export default function GetStarted() {
   function markFormStarted() {
     if (startedRef.current) return;
     startedRef.current = true;
-    trackMarketingEvent("form_started", undefined, tag);
+    trackMarketingEvent("form_started", "/get-started", tag);
   }
 
   function updateName(value: string) {
@@ -298,12 +298,12 @@ export default function GetStarted() {
 
   useEffect(() => {
     tagRef.current = tag;
-    if (tag) trackMarketingEvent("experiment_viewed", undefined, tag);
+    if (tag) trackMarketingEvent("experiment_viewed", "/get-started", tag);
   }, [tag]);
 
   useEffect(() => {
     const abandoned = () => {
-      if (startedRef.current && !submittedRef.current) trackMarketingEvent("form_abandoned", undefined, tagRef.current);
+      if (startedRef.current && !submittedRef.current) trackMarketingEvent("form_abandoned", "/get-started", tagRef.current);
     };
     window.addEventListener("pagehide", abandoned);
     return () => {
@@ -318,7 +318,7 @@ export default function GetStarted() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          trackFormVisible(undefined, tagRef.current);
+          trackFormVisible("/get-started", tagRef.current);
           observer.disconnect();
         }
       },
@@ -332,27 +332,27 @@ export default function GetStarted() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.fullName.trim()) {
-      trackMarketingEvent("form_validation_failed", undefined, tag);
+      trackMarketingEvent("form_validation_failed", "/get-started", tag);
       setError(t.errorCoach);
       return;
     }
     if (!form.workEmail.trim() && !form.phone.trim()) {
-      trackMarketingEvent("form_validation_failed", undefined, tag);
+      trackMarketingEvent("form_validation_failed", "/get-started", tag);
       setError(lang === "en" ? "Enter an email address or WhatsApp number so we can contact you." : "أدخل بريدًا إلكترونيًا أو رقم واتساب لنتواصل معك.");
       return;
     }
     if (!validEmail(form.workEmail)) {
-      trackMarketingEvent("form_validation_failed", undefined, tag);
+      trackMarketingEvent("form_validation_failed", "/get-started", tag);
       setError(lang === "en" ? "Enter a valid email address." : "أدخل عنوان بريد إلكتروني صالحًا.");
       return;
     }
     if (!validPhone(form.phone)) {
-      trackMarketingEvent("form_validation_failed", undefined, tag);
+      trackMarketingEvent("form_validation_failed", "/get-started", tag);
       setError(lang === "en" ? "Enter a valid WhatsApp number with 7 to 15 digits." : "أدخل رقم واتساب صالحًا من 7 إلى 15 رقمًا.");
       return;
     }
 
-    trackMarketingEvent("form_submit_attempted", undefined, tag);
+    trackMarketingEvent("form_submit_attempted", "/get-started", tag);
 
     if (!live) {
       submittedRef.current = true;
@@ -386,11 +386,11 @@ export default function GetStarted() {
       });
       markDemoBooked();
       submittedRef.current = true;
-      trackMarketingEvent("form_submitted", undefined, tag);
+      trackMarketingEvent("form_submitted", "/get-started", tag);
       void trackDemoBooked(window.location.pathname);
       setSubmitted(true);
     } catch (err) {
-      trackMarketingEvent("form_submit_failed", undefined, tag);
+      trackMarketingEvent("form_submit_failed", "/get-started", tag);
       setError(err instanceof Error ? err.message : t.submitError);
     } finally {
       setSubmitting(false);
@@ -553,7 +553,7 @@ export default function GetStarted() {
                       href="https://wa.me/919344773231?text=I%27d%20like%20a%20free%20Meet%20to%20Manage%20walkthrough."
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => trackMarketingEvent("whatsapp_clicked", undefined, tag)}
+                      onClick={() => trackMarketingEvent("whatsapp_clicked", "/get-started", tag)}
                       className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#166534] underline decoration-[#22C55E]/40 underline-offset-4 hover:decoration-[#166534]"
                     >
                       <MessageSquare className="h-4 w-4" /> {lang === "en" ? "Prefer WhatsApp? Chat with us" : "تفضل واتساب؟ تحدث معنا"}

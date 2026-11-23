@@ -4,7 +4,7 @@ import { ArrowRight, AudioLines, ChevronRight, Building2, CalendarCheck2, CheckC
 import { type Lang } from "@/lib/i18n";
 import { askSalesAssistant, requestPlatformDemo, type SalesChatTurn } from "@/api/marketing";
 import { apiEnabled } from "@/lib/api";
-import { marketingAttribution, marketingVisitorId, trackChatStarted } from "@/lib/analytics";
+import { marketingAttribution, marketingVisitorId, trackChatStarted, trackMarketingEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { HERO_BG } from "./styles";
 
@@ -513,6 +513,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
           message: questions.length ? message : undefined,
         });
       }
+      trackMarketingEvent("form_submitted");
       recordBooking(name);
       setLeadOpen(false);
       setLead(EMPTY_LEAD);
@@ -849,6 +850,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 rounded-[10px] border border-[#D9E1F0] bg-white px-3 py-2 text-xs font-semibold text-[#111] transition-colors hover:border-[#25D366]"
+                  onClick={() => trackMarketingEvent("whatsapp_clicked", window.location.pathname, "chat:fallback")}
                 >
                   <MessageSquare className="h-3.5 w-3.5 text-[#25D366]" /> {t.nextHuman}
                 </a>
@@ -994,7 +996,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
           )}
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 bg-white px-4 pb-3 pt-1 text-sm font-semibold">
-            <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">
+            <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]" onClick={() => trackMarketingEvent("whatsapp_clicked", window.location.pathname, "chat:whatsapp")}>
               <span aria-hidden className="block h-5 w-5 bg-[#25D366] [mask:url(/tool-logos/whatsapp.svg)_center/contain_no-repeat]" /> {t.whatsapp}
             </a>
             <a href="mailto:support@meettomanage.cloud" className="flex items-center gap-1.5 py-1 text-[#111] hover:text-[#C2410C]">

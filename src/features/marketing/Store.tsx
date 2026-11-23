@@ -18,6 +18,7 @@ import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
 import { CARD, CTA_DARK, CTA_ORANGE, HERO_OVERLAP } from "./styles";
+import { trackMarketingEvent } from "@/lib/analytics";
 
 const DEMO_PLANS: ApiStorePlan[] = [
   { id: "pp-1", name: "Phonics Foundations — Monthly", courseName: "Phonics", billingType: "Subscription", billingCycle: "Monthly", price: 2500, sessionsIncluded: 12 },
@@ -70,15 +71,20 @@ export default function Store() {
     if (!selectedPlan) return;
     // Same whitespace-only gap as the demo form above.
     if (!form.parentName.trim() || !form.childName.trim()) {
+      trackMarketingEvent("form_validation_failed");
       setError("Enter a parent name and child name.");
       return;
     }
     if (childAgeError) {
+      trackMarketingEvent("form_validation_failed");
       setError(childAgeError);
       return;
     }
 
+    trackMarketingEvent("form_submit_attempted", "/store", `store:enroll:${selectedPlan.id}`);
+
     if (!live) {
+      trackMarketingEvent("form_submitted", "/store", `store:enroll:${selectedPlan.id}`);
       setSubmitted(true);
       return;
     }
@@ -95,8 +101,10 @@ export default function Store() {
         childAge: form.childAge ? Number(form.childAge) : undefined,
         notes: form.notes || undefined,
       });
+      trackMarketingEvent("form_submitted", "/store", `store:enroll:${selectedPlan.id}`);
       setSubmitted(true);
     } catch (err) {
+      trackMarketingEvent("form_submit_failed", "/store", `store:enroll:${selectedPlan.id}`);
       setError(userMessage(err, "Couldn't submit your enquiry. Please try again."));
     } finally {
       setSubmitting(false);
@@ -123,7 +131,7 @@ export default function Store() {
         sub="Browse our current courses below. Tell us a little about your child and our team will reach out within a day to complete enrollment and set up the first session."
         overlap
       >
-        <button type="button" onClick={() => setDemoOpen(true)} className={cn(CTA_ORANGE, "mt-8")}>
+        <button type="button" onClick={() => { setDemoOpen(true); trackMarketingEvent("sales_cta_clicked", "/store", "store:demo"); }} className={cn(CTA_ORANGE, "mt-8")}>
           <CalendarClock className="h-4 w-4" /> Book a Free Demo
         </button>
       </MarketingHero>
@@ -165,7 +173,7 @@ export default function Store() {
                   </div>
                   {plan.sessionsIncluded && <p className="mt-2 text-xs text-[#5B6472]">{plan.sessionsIncluded} sessions included</p>}
                 </div>
-                <button type="button" onClick={() => openEnroll(plan)} className={cn(CTA_DARK, "mt-7 w-full")}>
+                <button type="button" onClick={() => { openEnroll(plan); trackMarketingEvent("sales_cta_clicked", "/store", `store:enroll:${plan.id}`); }} className={cn(CTA_DARK, "mt-7 w-full")}>
                   Enroll Now
                 </button>
               </div>
