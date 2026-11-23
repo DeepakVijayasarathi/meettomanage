@@ -616,9 +616,7 @@ export default function AdminReviews() {
         description={`Are you sure you want to delete the review from ${deleteConfirm?.authorName}? This cannot be undone.`}
         confirmLabel="Delete"
         destructive
-        onConfirm={() => { if (deleteConfirm) handleDeleteReview(deleteConfirm.id); }}
-        confirmDisabled={busyId === deleteConfirm?.id}
-        confirmContent={busyId === deleteConfirm?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        onConfirm={() => deleteConfirm?.id && handleDeleteReview(deleteConfirm.id)}
       />
 
       {/* ===== Create Review Request Dialog ===== */}
