@@ -151,7 +151,7 @@ function Slider({
   );
 }
 
-function Check({ on, label }: { on: boolean; label: string }) {
+function Check({ on, label, className }: { on: boolean; label: string; className?: string }) {
   return (
     <li className="flex items-center gap-2.5 text-sm">
       <CheckCircle2 className={cn("h-4 w-4 shrink-0", on ? "text-[#EA580C]" : "text-[#D1D5DB]")} />
@@ -168,7 +168,7 @@ export default function PricingCalculator() {
 
   /** Recommend the best plan based on student and teacher count. */
   const recommendedPlan = useMemo(() => {
-    return [...PLANS].sort((a, b) => {
+    return [...PLANS].sort((a: PlanData, b: PlanData) => {
       if (a.students >= students && b.students < students) return -1;
       if (b.students >= students && a.students < students) return 1;
       return 0;
