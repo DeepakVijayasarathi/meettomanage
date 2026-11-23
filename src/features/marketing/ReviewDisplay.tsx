@@ -1,45 +1,31 @@
-import { Star } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Star, Loader2 } from "lucide-react";
 
-const SITE_URL = "https://meettomanage.cloud";
+const API_BASE = ""; // relative to domain
 
-/** Capterra embed URL — replace with your actual Capterra product URL once submitted. */
-const CAPTERRA_URL = "https://www.capterra.com/software/details/195765/meet-to-manage/";
-
-/** G2 embed URL — replace with your actual G2 product URL once submitted. */
-const G2_URL = "https://www.g2.com/products/meet-to-manage";
-
-/** Internal reviews data — replace with live API when review system is built. */
-interface Review {
-  name: string;
-  role: string;
-  rating: number;
-  text: string;
+interface PublicReview {
+  id: string;
   source: string;
+  rating: number;
+  authorName: string;
+  authorRole: string | null;
+  text: string;
+  response: string | null;
+  reviewUrl: string | null;
+  createdAtUtc: string;
 }
 
-const INTERNAL_REVIEWS: Review[] = [
-  {
-    name: "Akanksha Nagar",
-    role: "Founder, The Reader Nest",
-    rating: 5,
-    text: "The platform helped us bring admissions, classes, fees and parent updates into one system. Parents love the mobile app.",
-    source: "Case Study",
-  },
-  {
-    name: "Rahul M.",
-    role: "Director, Abacus Academy",
-    rating: 5,
-    text: "We switched from Zoom + spreadsheets + WhatsApp. Now everything is in one place. The free plan got us started.",
-    source: "Google Review",
-  },
-  {
-    name: "Priya S.",
-    role: "Manager, Spoken English Centre",
-    rating: 4,
-    text: "Fee automation saves us hours every month. Parents can pay online and get receipts automatically.",
-    source: "WhatsApp Feedback",
-  },
-];
+interface AggregateRating {
+  averageRating: number;
+  totalReviews: number;
+  visibleReviews: number;
+  ratingBreakdown: Record<string, number>;
+  reviewsBySource: Record<string, number>;
+}
+
+/** Capterra/G2 URLs — update when product is live on those platforms. */
+const CAPTERRA_URL = "https://www.capterra.com/software/details/195765/meet-to-manage/";
+const G2_URL = "https://www.g2.com/products/meet-to-manage";
 
 function StarRating({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
@@ -55,18 +41,25 @@ function StarRating({ rating, size = 16 }: { rating: number; size?: number }) {
   );
 }
 
-function ReviewCard({ review }: { review: Review }) {
+function ReviewCard({ review }: { review: PublicReview }) {
   return (
     <article className="flex flex-col gap-3 rounded-2xl border border-[#E5DDD1] bg-white p-6 transition-colors hover:border-[#F2B98A]">
       <StarRating rating={review.rating} />
       <p className="text-[15px] leading-relaxed text-[#1C1917]">"{review.text}"</p>
+      {review.response && (
+        <blockquote className="mt-2 border-l-2 border-[#C2410C] pl-3 text-sm italic text-[#57534E]">
+          "{review.response}"
+        </blockquote>
+      )}
       <div className="mt-auto flex items-center gap-3 pt-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFF3EA] text-sm font-bold text-[#C2410C]">
-          {review.name.charAt(0)}
+          {review.authorName.charAt(0)}
         </div>
         <div>
-          <p className="text-sm font-semibold text-[#1C1917]">{review.name}</p>
-          <p className="text-xs text-[#57534E]">{review.role} · {review.source}</p>
+          <p className="text-sm font-semibold text-[#1C1917]">{review.authorName}</p>
+          <p className="text-xs text-[#57534E]">
+            {review.authorRole}{review.authorRole ? " · " : ""}{review.source}
+          </p>
         </div>
       </div>
     </article>
@@ -80,6 +73,43 @@ export function ReviewDisplay({
   showExternalLinks?: boolean;
   className?: string;
 }) {
+  const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [rating, setRating] = useState<AggregateRating | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch(`${API_BASE}/api/reviews/public?page=1&pageSize=6`).then((r) => r.json()),
+      fetch(`${API_BASE}/api/reviews/aggregate-rating`).then((r) => r.json()),
+    ]).then(([publicData, ratingData]) => {
+      if (!cancelled) {
+        setReviews(publicData.items || []);
+        setRating(ratingData);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const displayRating = useMemo(() => {
+    if (rating && rating.visibleReviews > 0) return rating.averageRating;
+    // Fallback display if no reviews yet
+    return null;
+  }, [rating]);
+
+  if (loading) {
+    return (
+      <section className={className} aria-label="Reviews and ratings">
+        <div className="mx-auto max-w-[1200px] px-5 py-[clamp(48px,6vw,88px)] flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#C2410C]" />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className={className} aria-label="Reviews and ratings">
       <div className="mx-auto max-w-[1200px] px-5 py-[clamp(48px,6vw,88px)]">
@@ -87,11 +117,15 @@ export function ReviewDisplay({
         <div className="flex flex-col items-center gap-6 md:flex-row md:items-end md:gap-8">
           <div className="text-center md:text-start">
             <div className="flex items-center justify-center gap-2 md:justify-start">
-              <span className="font-display text-5xl font-extrabold tracking-tight text-[#1C1917]">4.5</span>
-              <StarRating rating={5} size={22} />
+              <span className="font-display text-5xl font-extrabold tracking-tight text-[#1C1917]">
+                {displayRating ?? "—"}
+              </span>
+              {displayRating && <StarRating rating={Math.round(displayRating)} size={22} />}
             </div>
             <p className="mt-2 text-sm text-[#57534E]">
-              Based on feedback from parents, partners and coaching centres
+              {rating
+                ? `Based on ${rating.visibleReviews} review${rating.visibleReviews !== 1 ? "s" : ""} from parents, partners and coaching centres`
+                : "Reviews from parents, partners and coaching centres"}
             </p>
           </div>
 
@@ -127,9 +161,16 @@ export function ReviewDisplay({
 
         {/* Review cards */}
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {INTERNAL_REVIEWS.map((review, i) => (
-            <ReviewCard key={i} review={review} />
-          ))}
+          {reviews.length > 0 ? (
+            reviews.map((review, i) => (
+              <ReviewCard key={review.id} review={review} />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12 text-[#9CA3AF]">
+              <p className="text-lg font-medium">No reviews yet.</p>
+              <p className="mt-2 text-sm">Be the first to share your experience!</p>
+            </div>
+          )}
         </div>
 
         {/* Call to action */}
