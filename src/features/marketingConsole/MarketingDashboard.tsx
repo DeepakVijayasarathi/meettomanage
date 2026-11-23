@@ -27,8 +27,8 @@ const EMPTY: ApiMarketingDashboard = {
   days: 30,
   startDate: "",
   endDate: "",
-  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
-  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formVisibleVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
+  previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formVisibleVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
   conversionDetail: { visitors: 0, highIntentPageVisitors: 0, pricingVisitors: 0, demoPageVisitors: 0, formStartedVisitors: 0, submitAttemptedVisitors: 0, validationFailedVisitors: 0, abandonedVisitors: 0, apiFailedVisitors: 0, savedFormLeadVisitors: 0, chatBookedVisitors: 0, whatsAppVisitors: 0, totalSavedLeadVisitors: 0 },
   daily: [],
   topPages: [],
@@ -178,6 +178,7 @@ export default function MarketingDashboard() {
   const supportingKpis = kpis.filter(k => ["Page views", "Saved chats", "Pages / visitor", "Saved chat rate"].includes(k.label));
   const demoTrend = change(t.demoRequests, p.demoRequests);
   const formStarts = t.formStartedVisitors ?? 0;
+  const formVisible = t.formVisibleVisitors ?? 0;
   const formAttempts = t.formSubmitAttemptedVisitors ?? 0;
   const formFailures = t.formSubmitFailedVisitors ?? 0;
   const formSubmits = t.formSubmittedVisitors ?? 0;
@@ -189,7 +190,9 @@ export default function MarketingDashboard() {
       ? { tone: "success", label: "Conversion tracking active", message: "Saved demo requests confirm that the conversion path is recording successfully.", icon: CheckCircle2 }
       : formStarts > 0
         ? { tone: "warning", label: "Form activity detected", message: `${fmt(formStarts)} visitor${formStarts === 1 ? "" : "s"} started the form, but no saved demo request was recorded. Review validation failures and abandonments before changing the page.`, icon: AlertTriangle }
-        : { tone: "neutral", label: "No form attempts", message: "Page tracking is active, but nobody started the demo form in this period. Zero requests alone does not indicate a tracking failure.", icon: Info };
+        : formVisible > 0
+          ? { tone: "info", label: "Form seen but not started", message: `${fmt(formVisible)} visitor${formVisible === 1 ? "" : "s"} scrolled past the demo form but none interacted. Review the form's placement and copy to increase engagement.`, icon: Info }
+          : { tone: "neutral", label: "No form activity", message: "Page tracking is active, but nobody saw or started the demo form in this period. Zero requests alone does not indicate a tracking failure.", icon: Info };
   const TrackingIcon = trackingHealth.icon;
   const conversion = data.conversionDetail ?? EMPTY.conversionDetail;
   const conversionStages = [
@@ -296,8 +299,8 @@ export default function MarketingDashboard() {
             <span className={cn("mt-0.5 rounded-full bg-muted p-2", trackingHealth.tone === "warning" && "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300", trackingHealth.tone === "success" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300")}><TrackingIcon className="h-4 w-4" aria-hidden="true" /></span>
             <div><p className="font-semibold">Tracking health · {trackingHealth.label}</p><p className="mt-1 text-sm text-muted-foreground">{trackingHealth.message}</p></div>
           </div>
-          <dl className="grid shrink-0 grid-cols-2 gap-2 text-center text-sm sm:grid-cols-5">
-            {[["Form starts", formStarts], ["Attempts", formAttempts], ["API failures", formFailures], ["Saved demos", t.demoRequests], ["WhatsApp opens", t.whatsAppVisitors ?? 0]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-lg border bg-background/80 px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
+          <dl className="grid shrink-0 grid-cols-2 gap-2 text-center text-sm sm:grid-cols-6">
+            {[["Form seen", formVisible], ["Form starts", formStarts], ["Attempts", formAttempts], ["API failures", formFailures], ["Saved demos", t.demoRequests], ["WhatsApp opens", t.whatsAppVisitors ?? 0]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-lg border bg-background/80 px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
           </dl>
         </CardContent>
       </Card>

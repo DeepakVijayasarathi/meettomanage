@@ -5,7 +5,7 @@ import { Logo } from "@/components/Logo";
 import { useLightBrandScope } from "@/lib/theme";
 import { formatMoney, isModuleKey, saasPublic, type PublicPlan, type SignupSettings } from "@/api/saas";
 import { requestPlatformDemo } from "@/api/marketing";
-import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent, trackMarketingPageView } from "@/lib/analytics";
+import { marketingAttribution, marketingVisitorId, resetFormVisible, trackDemoBooked, trackFormVisible, trackMarketingEvent, trackMarketingPageView } from "@/lib/analytics";
 import { markDemoBooked } from "@/features/marketing/chatTeaser";
 import { Helmet } from "react-helmet-async";
 
@@ -93,6 +93,7 @@ function AccessRequest() {
 /** Public self-service signup (/signup): creates an academy workspace on the Free plan or a free trial. */
 export default function Signup() {
   useLightBrandScope();
+  resetFormVisible();
   const [settings, setSettings] = useState<SignupSettings | null>(null);
   const [plans, setPlans] = useState<PublicPlan[]>([]);
   const [form, setForm] = useState({ organizationName: "", code: "", adminEmail: "", adminPin: "", acceptTerms: false });
@@ -110,6 +111,22 @@ export default function Signup() {
 
   // /signup isn't a marketing page (no <Seo>), so count its visit here for the console.
   useEffect(() => { void trackMarketingPageView("/signup", "Sign up"); }, []);
+
+  // Form visibility tracking: fire once when the form scrolls into view.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          trackFormVisible("/signup");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    const form = document.querySelector("form");
+    if (form) observer.observe(form);
+    return () => observer.disconnect();
+  }, [settings]);
 
   useEffect(() => {
     void saasPublic.settings().then(value => { setSettings(value); setChoice(c => c ?? (wantedPlan === "trial" || !value.freePlanCode ? "trial" : value.freePlanCode)); }).catch(() => setSettings({ enabled: false, trialDays: 14, platformName: "Meet to Manage" }));

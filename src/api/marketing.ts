@@ -307,6 +307,7 @@ export interface ApiMarketingTotals {
   chatsStarted: number;
   demoRequests: number;
   formStartedVisitors: number;
+  formVisibleVisitors: number;
   formSubmitAttemptedVisitors: number;
   formSubmitFailedVisitors: number;
   formSubmittedVisitors: number;

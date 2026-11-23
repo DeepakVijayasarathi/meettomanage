@@ -13,7 +13,7 @@ import { MarketingNav } from "./MarketingNav";
 import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
-import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent } from "@/lib/analytics";
+import { marketingAttribution, marketingVisitorId, resetFormVisible, trackDemoBooked, trackFormVisible, trackMarketingEvent } from "@/lib/analytics";
 import { markDemoBooked } from "./chatTeaser";
 import { experimentVariant } from "@/lib/experiments";
 
@@ -218,6 +218,8 @@ function localDateTimeMinimum() {
 export default function GetStarted() {
   useLightBrandScope();
   const live = apiEnabled();
+  // Reset the module-level singleton so SPA navigations back to /get-started re-track.
+  resetFormVisible();
   const [lang] = useLang();
   const t = T[lang];
   // ?for=coach arrives from coach-focused links (and the sales assistant) — same form and same
@@ -308,6 +310,23 @@ export default function GetStarted() {
       window.removeEventListener("pagehide", abandoned);
       abandoned();
     };
+  }, []);
+
+  // Fire "form_visible" when the demo form scrolls into view — captures interest even
+  // when the visitor never touches a field, so we can measure form-attention rate.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          trackFormVisible(undefined, tagRef.current);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    const form = document.querySelector("form");
+    if (form) observer.observe(form);
+    return () => observer.disconnect();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
