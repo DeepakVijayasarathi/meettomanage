@@ -104,6 +104,8 @@ const AdmissionCrmSolution = lazy(() => import("@/features/marketing/AdmissionCr
 const PlatformTerms = lazy(() => import("@/features/marketing/PlatformTerms"));
 const PlatformPrivacy = lazy(() => import("@/features/marketing/PlatformPrivacy"));
 const SecurityPage = lazy(() => import("@/features/marketing/SecurityPage"));
+const PricingCalculator = lazy(() => import("@/features/marketing/PricingCalculator"));
+const EnterprisePage = lazy(() => import("@/features/marketing/Enterprise"));
 
 const AdminDashboard = lazy(() => import("@/features/admin/Dashboard"));
 const FounderDashboard = lazy(() => import("@/features/founder/Dashboard"));
@@ -311,6 +313,8 @@ export default function App() {
             <Route path="/privacy" element={<MarketingTranslationLayer><PlatformPrivacy /></MarketingTranslationLayer>} />
             <Route path="/security" element={<MarketingTranslationLayer><SecurityPage /></MarketingTranslationLayer>} />
             <Route path="/legal/terms" element={<MarketingTranslationLayer><PlatformTerms /></MarketingTranslationLayer>} />
+            <Route path="/pricing-calculator" element={<MarketingTranslationLayer><PricingCalculator /></MarketingTranslationLayer>} />
+            <Route path="/enterprise" element={<MarketingTranslationLayer><EnterprisePage /></MarketingTranslationLayer>} />
             <Route path="/login" element={<Login />} />
             <Route path="/demo-login" element={<Login mode="demo" />} />
             {/* Desktop app only: these screens render NotFound unless window.desktop exists (Electron preload).
