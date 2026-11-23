@@ -67,7 +67,7 @@ export function MarketingFooter() {
 
         <div>
           <p className={HEAD}>{lang === "ar" ? "تابعنا" : "Follow us"}</p>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1">
             <a href="https://www.youtube.com/@meettomanage" target="_blank" rel="noopener noreferrer" className={cn(LINK, "inline-flex items-center")} aria-label="Meet to Manage on YouTube">
               <Youtube className="h-4 w-4" /> YouTube
             </a>
