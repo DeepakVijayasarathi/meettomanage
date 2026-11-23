@@ -47,6 +47,15 @@ import {
 } from "@/api/reviews";
 import { formatDate } from "@/lib/utils";
 
+/** Cast FormDataEntryValue (string | File | null) to plain Record<string, string | number | boolean | null>. */
+function castEntryMap(fd: FormData): Record<string, string | number | boolean | null> {
+  const out: Record<string, string | number | boolean | null> = {};
+  for (const [key, val] of fd.entries()) {
+    out[key] = typeof val === "string" ? (val === "true" ? true : val === "false" ? false : val) : null;
+  }
+  return out;
+}
+
 // ===== Reviews Tab =====
 
 const SOURCE_LABEL: Record<ReviewSource, string> = {
@@ -394,10 +403,10 @@ export default function AdminReviews() {
       />
 
       {reviewsError && (
-        <InlineAlert variant="error" title="Failed to load reviews" description={userMessage(reviewsError)} />
+        <InlineAlert variant="error">Failed to load reviews: {userMessage(reviewsError)}</InlineAlert>
       )}
       {reqsError && (
-        <InlineAlert variant="error" title="Failed to load review requests" description={userMessage(reqsError)} />
+        <InlineAlert variant="error">Failed to load review requests: {userMessage(reqsError)}</InlineAlert>
       )}
 
       {/* KPI summary */}
@@ -422,7 +431,7 @@ export default function AdminReviews() {
             </Button>
           </div>
 
-          <DataTable columns={reviewColumns} data={reviews} />
+          <DataTable rowKey={(row) => row.id} columns={reviewColumns} data={reviews} />
 
           {reviews.length === 0 && !reviewsError && (
             <EmptyState
@@ -441,7 +450,7 @@ export default function AdminReviews() {
             </Button>
           </div>
 
-          <DataTable columns={requestColumns} data={requests} />
+          <DataTable rowKey={(row) => row.id} columns={requestColumns} data={requests} />
 
           {requests.length === 0 && !reqsError && (
             <EmptyState
@@ -464,7 +473,7 @@ export default function AdminReviews() {
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              handleCreateReview(Object.fromEntries(fd));
+              handleCreateReview(castEntryMap(fd));
             }}
           >
             <div className="grid gap-4 py-4">
@@ -537,7 +546,7 @@ export default function AdminReviews() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
-                handleUpdateReview(editReview.id, Object.fromEntries(fd));
+                handleUpdateReview(editReview.id, castEntryMap(fd));
               }}
             >
               <div className="grid gap-4 py-4">
@@ -607,7 +616,7 @@ export default function AdminReviews() {
         description={`Are you sure you want to delete the review from ${deleteConfirm?.authorName}? This cannot be undone.`}
         confirmLabel="Delete"
         variant="destructive"
-        onConfirm={() => deleteConfirm && handleDeleteReview(deleteConfirm.id)}
+        onConfirm={() => { if (deleteConfirm) handleDeleteReview(deleteConfirm.id); }}
         confirmDisabled={busyId === deleteConfirm?.id}
         confirmContent={busyId === deleteConfirm?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
       />
@@ -623,7 +632,7 @@ export default function AdminReviews() {
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              handleCreateRequest(Object.fromEntries(fd));
+              handleCreateRequest(Object.fromEntries(fd) as Record<string, string>);
             }}
           >
             <div className="grid gap-4 py-4">
