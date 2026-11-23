@@ -679,7 +679,7 @@ export function ChatWidget({ lang, openRequest = 0, onOpen }: { lang: Lang; open
   const orbState: OrbState = listening ? "listening" : pending ? "thinking" : speaking ? "speaking" : "idle";
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 rtl:right-auto rtl:left-5 rtl:items-start sm:rtl:left-6">
+    <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 rtl:right-auto rtl:left-4 rtl:items-start sm:rtl:left-6">
       {open && (
         <div
           role="dialog"
