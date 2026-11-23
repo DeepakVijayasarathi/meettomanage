@@ -124,6 +124,12 @@ export const ADMIN_NAV: NavSection[] = [
     ],
   },
   {
+    title: "Marketing",
+    items: [
+      { label: "Reviews", to: "/admin/reviews", icon: Star },
+    ],
+  },
+  {
     title: "Insights",
     items: [
       { label: "Reports & Analytics", to: "/admin/reports", icon: BarChart3 },

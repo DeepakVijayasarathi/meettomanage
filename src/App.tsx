@@ -121,6 +121,7 @@ const AdminAcademicCalendar = lazy(() => import("@/features/admin/AcademicCalend
 const AdminSessions = lazy(() => import("@/features/admin/Sessions"));
 const AdminRecordings = lazy(() => import("@/features/admin/Recordings"));
 const AdminResources = lazy(() => import("@/features/admin/Resources"));
+const AdminReviews = lazy(() => import("@/features/admin/Reviews"));
 const AdminBilling = lazy(() => import("@/features/admin/Billing"));
 const AdminPackages = lazy(() => import("@/features/admin/Packages"));
 const AdminPaymentMapping = lazy(() => import("@/features/admin/PaymentMapping"));
@@ -420,6 +421,7 @@ export default function App() {
               <Route path="recordings" element={<AdminRecordings />} />
               <Route path="resources" element={<AdminResources />} />
               <Route path="billing" element={<AdminBilling />} />
+              <Route path="reviews" element={<AdminReviews />} />
               <Route path="packages" element={<AdminPackages />} />
               <Route path="subscription" element={<AdminSubscription />} />
               <Route path="payment-mapping" element={<AdminPaymentMapping />} />
