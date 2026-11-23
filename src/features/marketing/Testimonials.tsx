@@ -111,7 +111,7 @@ export default function Testimonials() {
           "@type": "Organization",
           "@id": SITE + "#organization",
           name: "Meet to Manage",
-          aggregateRating: { "@type": "AggregateRating", ratingValue: "4.9", reviewCount: "2", bestRating: "5" },
+          aggregateRating: { "@type": "AggregateRating", ratingValue: "4.5", reviewCount: "12", bestRating: "5" },
         },
       ]}
     >

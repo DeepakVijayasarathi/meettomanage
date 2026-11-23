@@ -435,9 +435,9 @@ export default function Pricing() {
       "@context": "https://schema.org",
       "@graph": [
         // Google rejects a SoftwareApplication with no offers, so it is left out until the plans have loaded.
-        ...(offers.length ? [{ "@type": "SoftwareApplication", "@id": "https://meettomanage.cloud/#software", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", offers, aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", reviewCount: "2" } }] : []),
+        ...(offers.length ? [{ "@type": "SoftwareApplication", "@id": "https://meettomanage.cloud/#software", name: "Meet to Manage", applicationCategory: "EducationalApplication", operatingSystem: "Web, iOS, Android", offers }] : []),
         // Product schema for price/carousel rich results alongside SoftwareApplication.
-        ...(offers.length ? [{ "@type": "Product", name: "Meet to Manage", description: "Academy management software for coaching institutes and tuition centres.", applicationCategory: "EducationalApplication", offers, aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", reviewCount: "2" } }] : []),
+        ...(offers.length ? [{ "@type": "Product", name: "Meet to Manage", description: "Academy management software for coaching institutes and tuition centres.", applicationCategory: "EducationalApplication", offers }] : []),
         { "@type": "BreadcrumbList", itemListElement: [
           { "@type": "ListItem", position: 1, name: "Home", item: "https://meettomanage.cloud/" },
           { "@type": "ListItem", position: 2, name: "Pricing", item: "https://meettomanage.cloud/pricing" },

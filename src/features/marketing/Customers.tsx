@@ -43,7 +43,6 @@ export default function Customers() {
         "@type": "CollectionPage",
         name: "Meet to Manage customers",
         url: "https://meettomanage.cloud/customers",
-        aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", reviewCount: "2" },
         hasPart: STORIES.map((s) => ({ "@type": "Article", name: `${s.name} on Meet to Manage`, url: `https://meettomanage.cloud/customers/${s.slug}` })),
       }}
     >

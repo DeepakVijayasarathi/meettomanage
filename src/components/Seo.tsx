@@ -59,6 +59,7 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
       <meta property="og:image" content={image} />
+      <meta property="og:image:secure_url" content={image} />
       <meta property="og:image:alt" content={title} />
       <meta property="og:locale" content="en_IN" />
       <meta name="twitter:card" content="summary_large_image" />
