@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Calculator, CheckCircle2, TrendingUp, Users, Clock } from "lucide-react";
+import { ArrowRight, Calculator, Check as CheckIcon, CheckCircle2, TrendingUp, Users, Clock } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
@@ -168,7 +168,7 @@ export default function PricingCalculator() {
 
   /** Recommend the best plan based on student and teacher count. */
   const recommendedPlan = useMemo(() => {
-    return PLANS.toSorted((a, b) => {
+    return [...PLANS].sort((a, b) => {
       if (a.students >= students && b.students < students) return -1;
       if (b.students >= students && a.students < students) return 1;
       return 0;
@@ -301,7 +301,7 @@ export default function PricingCalculator() {
                           backgroundColor: addons.includes(addon.name) ? "#C2410C" : "transparent",
                         }}
                       >
-                        {addons.includes(addon.name) && <Check className="h-3.5 w-3.5 text-white" />}
+                        {addons.includes(addon.name) && <CheckIcon className="h-3.5 w-3.5 text-white" />}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-[#1C1917]">{addon.name}</p>
