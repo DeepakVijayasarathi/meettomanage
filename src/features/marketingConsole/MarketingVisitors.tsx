@@ -297,7 +297,7 @@ export default function MarketingVisitors() {
                       <td className="max-w-[14rem] truncate py-1.5 font-mono text-xs" title={p.path}>{p.path}</td>
                       <td className="py-1.5 text-right">{p.visitors}</td>
                       <td className="py-1.5 text-right">{duration(p.avgSeconds)}</td>
-                      <td className={cn("py-1.5 text-right font-medium", p.views >= 5 && p.exitRate >= 70 ? "text-destructive" : "")}>{p.exitRate.toFixed(0)}%</td>
+                      <td className={cn("py-1.5 text-right font-medium", p.views >= 5 && p.exitRate >= 70 ? "text-destructive" : "")}>{(p.exitRate ?? 0).toFixed(0)}%</td>
                     </tr>
                   ))}
                 </tbody>

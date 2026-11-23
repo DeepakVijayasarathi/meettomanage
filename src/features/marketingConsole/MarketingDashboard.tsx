@@ -310,7 +310,7 @@ export default function MarketingDashboard() {
         <CardHeader className="border-b bg-muted/20">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Visitor → demo analysis</p><CardTitle className="mt-1 text-xl">Where prospective customers stop</CardTitle><p className="mt-1 text-sm text-muted-foreground">Unique visitors in {exactRange}; rates compare each stage with the stage immediately before it.</p></div>
-            <div className="rounded-xl border bg-background px-4 py-2 text-end"><p className="text-xs text-muted-foreground">Overall visitor → saved lead</p><p className="text-2xl font-bold tabular-nums">{conversion.visitors === 0 ? "0%" : `${(conversion.totalSavedLeadVisitors * 100 / conversion.visitors).toFixed(1)}%`}</p></div>
+            <div className="rounded-xl border bg-background px-4 py-2 text-end"><p className="text-xs text-muted-foreground">Overall visitor → saved lead</p><p className="text-2xl font-bold tabular-nums">{conversion.visitors === 0 ? "0%" : `${((conversion.totalSavedLeadVisitors ?? 0) * 100 / conversion.visitors).toFixed(1)}%`}</p></div>
           </div>
         </CardHeader>
         <CardContent className="p-5">
@@ -395,10 +395,10 @@ export default function MarketingDashboard() {
                     <td className="py-1.5 pe-3"><button type="button" className="font-medium text-primary hover:underline" onClick={() => setSelectedDate(d.date)}>{d.label}</button></td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.visitors)}</td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.pageViews)}</td>
-                    <td className="py-1.5 pe-3 text-right tabular-nums">{d.pagesPerVisitor.toFixed(1)}</td>
+                    <td className="py-1.5 pe-3 text-right tabular-nums">{(d.pagesPerVisitor ?? 0).toFixed(1)}</td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.chatsStarted)}</td>
                     <td className="py-1.5 pe-3 text-right tabular-nums">{fmt(d.demoRequests)}</td>
-                    <td className="py-1.5 text-right tabular-nums">{d.conversionRate.toFixed(1)}%</td>
+                    <td className="py-1.5 text-right tabular-nums">{(d.conversionRate ?? 0).toFixed(1)}%</td>
                   </tr>
                 ))}
               </tbody>
