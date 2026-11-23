@@ -96,9 +96,11 @@ export function ReviewDisplay({
 
   const displayRating = useMemo(() => {
     if (rating && rating.visibleReviews > 0) return rating.averageRating;
-    // Fallback display if no reviews yet
     return null;
   }, [rating]);
+
+  // Hide the entire section when there are no reviews — don't show a broken "undefined" header or "No reviews yet" placeholder.
+  if (!loading && (!reviews.length && (!rating || rating.visibleReviews <= 0))) return null;
 
   if (loading) {
     return (
@@ -123,7 +125,7 @@ export function ReviewDisplay({
               {displayRating && <StarRating rating={Math.round(displayRating)} size={22} />}
             </div>
             <p className="mt-2 text-sm text-[#57534E]">
-              {rating
+              {rating && rating.visibleReviews > 0
                 ? `Based on ${rating.visibleReviews} review${rating.visibleReviews !== 1 ? "s" : ""} from parents, partners and coaching centres`
                 : "Reviews from parents, partners and coaching centres"}
             </p>
