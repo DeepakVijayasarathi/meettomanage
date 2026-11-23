@@ -616,11 +616,11 @@ export default function AdminReviews() {
         description={`Are you sure you want to delete the review from ${deleteConfirm?.authorName}? This cannot be undone.`}
         confirmLabel="Delete"
         destructive
-        onConfirm: async () => {
+        onConfirm={async () => {
           if (deleteConfirm?.id) {
             await handleDeleteReview(deleteConfirm.id);
           }
-        }
+        }}
       />
 
       {/* ===== Create Review Request Dialog ===== */}
