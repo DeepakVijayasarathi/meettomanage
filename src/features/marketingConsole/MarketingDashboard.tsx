@@ -170,10 +170,10 @@ export default function MarketingDashboard() {
       tone: "success",
       trend: change(t.demoRequests, p.demoRequests),
     },
-    { label: "Visitor → demo", value: `${t.conversionRate}%`, detail: "per 100 visitors", icon: TrendingUp, tone: "warning" },
-    { label: "Pages / visitor", value: t.pagesPerVisitor.toFixed(1), detail: "content depth", icon: BarChart3, tone: "neutral" },
-    { label: "Saved chat rate", value: `${t.chatStartRate}%`, detail: "visitors with a saved chat", icon: MousePointerClick, tone: "primary" },
-    { label: "Demo → converted", value: `${t.demoPipelineConversionRate}%`, detail: "sales pipeline", icon: TrendingUp, tone: "success" },
+    { label: "Visitor → demo", value: `${t.conversionRate ?? 0}%`, detail: "per 100 visitors", icon: TrendingUp, tone: "warning" },
+    { label: "Pages / visitor", value: (t.pagesPerVisitor ?? 0).toFixed(1), detail: "content depth", icon: BarChart3, tone: "neutral" },
+    { label: "Saved chat rate", value: `${t.chatStartRate ?? 0}%`, detail: "visitors with a saved chat", icon: MousePointerClick, tone: "primary" },
+    { label: "Demo → converted", value: `${t.demoPipelineConversionRate ?? 0}%`, detail: "sales pipeline", icon: TrendingUp, tone: "success" },
   ];
   const supportingKpis = kpis.filter(k => ["Page views", "Saved chats", "Pages / visitor", "Saved chat rate"].includes(k.label));
   const demoTrend = change(t.demoRequests, p.demoRequests);
@@ -280,8 +280,8 @@ export default function MarketingDashboard() {
             {[
               ["Unique visitors", fmt(t.visitors), "people reached"],
               ["Demo requests", fmt(t.demoRequests), demoTrend ? `${demoTrend.value >= 0 ? "+" : ""}${demoTrend.value}% vs prior` : "new opportunities"],
-              ["Visitor → demo", `${t.conversionRate}%`, "acquisition conversion"],
-              ["Demo → won", `${t.demoPipelineConversionRate}%`, "pipeline conversion"],
+              ["Visitor → demo", `${t.conversionRate ?? 0}%`, "acquisition conversion"],
+              ["Demo → won", `${t.demoPipelineConversionRate ?? 0}%`, "pipeline conversion"],
             ].map(([label, value, detail]) => <div key={label} role={label === "Demo requests" ? "button" : undefined} tabIndex={label === "Demo requests" ? 0 : undefined} onClick={label === "Demo requests" ? () => navigate("/marketing/demo-requests") : undefined} onKeyDown={label === "Demo requests" ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/marketing/demo-requests"); } } : undefined} className={cn("bg-[#0B132B]/80 p-5 backdrop-blur", label === "Demo requests" && "cursor-pointer transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-300")}><p className="text-xs font-medium text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold tabular-nums">{value}</p><p className="mt-1 text-xs text-slate-400">{detail}</p></div>)}
           </div>
         </div>
