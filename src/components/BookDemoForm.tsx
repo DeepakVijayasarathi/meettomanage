@@ -43,9 +43,13 @@ interface BookDemoFormProps {
   onDone?: () => void;
   /** Fires once the booking is confirmed — lets a host dialog hide its header/description. */
   onConfirmedChange?: (confirmed: boolean) => void;
+  /** Optional callback when a demo booking is confirmed (for tracking). */
+  onSubmitted?: () => void;
+  /** Optional callback when a demo booking fails (for tracking). */
+  onFailed?: () => void;
 }
 
-export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
+export function BookDemoForm({ onDone, onConfirmedChange, onSubmitted, onFailed }: BookDemoFormProps) {
   const live = apiEnabled();
   const { data: departments } = useApiData<ApiPublicDepartment[]>(() => listStoreDepartments(), DEMO_DEPARTMENTS);
 
@@ -109,6 +113,7 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
 
     if (!live) {
       setDemoConfirmed(new Date(demoForm.preferredStart).toLocaleString());
+      onSubmitted?.();
       return;
     }
 
@@ -125,7 +130,9 @@ export function BookDemoForm({ onDone, onConfirmedChange }: BookDemoFormProps) {
         preferredStartAtUtc: new Date(demoForm.preferredStart).toISOString(),
       });
       setDemoConfirmed(new Date(confirmation.scheduledStartAtUtc).toLocaleString());
+      onSubmitted?.();
     } catch (err) {
+      onFailed?.();
       setDemoError(err instanceof Error ? err.message : "Couldn't book that slot. Please try again.");
       // Someone else likely just took it — clear the stale pick and refresh what's actually
       // still open, instead of leaving a slot chip selected that no longer works.

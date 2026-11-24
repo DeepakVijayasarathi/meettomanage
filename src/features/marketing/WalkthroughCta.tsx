@@ -53,7 +53,7 @@ export function WalkthroughCta({ className }: { className?: string }) {
         href={SALES_WHATSAPP_URL}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => trackMarketingEvent("whatsapp_clicked")}
+        onClick={() => trackMarketingEvent("whatsapp_clicked", location.pathname, "walkthrough:whatsapp")}
         className={cn(BTN_SECONDARY, "text-[#166534] hover:border-[#86C99A] hover:bg-[#F0FDF4] focus-visible:outline-[#166534]")}
       >
         <MessageSquare className="h-4 w-4" /> Ask on WhatsApp

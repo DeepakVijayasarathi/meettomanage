@@ -8,6 +8,7 @@ import { MarketingHero } from "./MarketingHero";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
 import { CARD, EYEBROW, HERO_OVERLAP } from "./styles";
+import { trackMarketingEvent } from "@/lib/analytics";
 
 const T = {
   en: {
@@ -71,7 +72,10 @@ export default function Demo() {
         </div>
 
         <div className="border-t border-[#D9E1F0] bg-[#F8F9FB] p-8 sm:p-12 lg:border-s lg:border-t-0">
-          <BookDemoForm />
+          <BookDemoForm
+            onSubmitted={() => trackMarketingEvent("form_submitted", "/demo", "demo:submitted")}
+            onFailed={() => trackMarketingEvent("form_submit_failed", "/demo", "demo:failed")}
+          />
         </div>
         </div>
       </section>
