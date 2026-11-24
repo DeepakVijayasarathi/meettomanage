@@ -269,6 +269,27 @@ export async function trackMarketingPageView(path: string, title: string): Promi
   window.fbq?.("track", "PageView");
 }
 
+/** Shared exit-intent cookie — prevents showing any exit-intent popup more than once per week. */
+const EXIT_INTENT_SEEN_KEY = "mtm.exitIntent.seen";
+const EXIT_INTENT_QUIET_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function recentlyShownExitIntent(): boolean {
+  try {
+    const at = Number(sessionStorage.getItem(EXIT_INTENT_SEEN_KEY));
+    return at > 0 && Date.now() - at < EXIT_INTENT_QUIET_MS;
+  } catch {
+    return false;
+  }
+}
+
+export function markShownExitIntent(): void {
+  try {
+    sessionStorage.setItem(EXIT_INTENT_SEEN_KEY, String(Date.now()));
+  } catch {
+    /* nothing to persist to */
+  }
+}
+
 /** A real platform-demo request was saved. The first-party dashboard counts the request itself;
  * these standard events make the same conversion visible in configured ad/analytics tools. */
 export async function trackDemoBooked(path: string): Promise<void> {

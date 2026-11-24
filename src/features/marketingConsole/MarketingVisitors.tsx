@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarCheck2, CircleAlert, Footprints, FormInput, Loader2, MessageCircle, Repeat, Send, Sparkles, Users, Wrench } from "lucide-react";
+import { ArrowRight, CalendarCheck2, CircleAlert, Footprints, FormInput, Loader2, ListChecks, MessageCircle, Repeat, Send, Sparkles, Users, Wrench, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,38 @@ export default function MarketingVisitors() {
   const maxHour = Math.max(1, ...data.visitsByHour.map((h) => h.count));
   const busiestHour = data.visitsByHour.reduce<ApiNamedCount | null>((best, h) => (h.count > (best?.count ?? 0) ? h : best), null);
   const period = data.startDate && data.endDate ? (data.startDate === data.endDate ? data.startDate : `${data.startDate} – ${data.endDate}`) : "";
+
+  // Quick rule-based checks — free, immediate, no AI call needed.
+  const quickChecks = (() => {
+    const checks: { title: string; text: string; severity: "positive" | "warning" | "action" }[] = [];
+    const formStarted = b.formStartedVisitors ?? 0;
+    const formSubmitted = b.formSubmittedVisitors ?? 0;
+    const formAbandoned = b.formAbandonedVisitors ?? 0;
+    const formValidation = b.formValidationFailedVisitors ?? 0;
+
+    if (formStarted > 0 && formSubmitted > 0 && formAbandoned > formSubmitted) {
+      checks.push({ title: "High form abandonment", text: `${formAbandoned} visitors abandoned the form but only ${formSubmitted} submitted. Try splitting it into shorter steps (name + email first, then extra fields later).`, severity: "action" });
+    }
+    if (formValidation > 0 && formSubmitted > 0 && formValidation > formSubmitted) {
+      checks.push({ title: "Too many validation failures", text: `${formValidation} visitors hit a validation error — more than those who completed the form. Add inline hints on the form fields so errors are caught before submit.`, severity: "action" });
+    }
+    if (formStarted === 0 && b.formVisibleVisitors > 0) {
+      checks.push({ title: "Form seen but not started", text: `${b.formVisibleVisitors} visitors scrolled past the form but none touched it. Move the form higher on the page, or add a stronger headline and CTA above the input fields.`, severity: "action" });
+    }
+    if (data.singlePageVisitors > 0 && data.totalVisitors > 0) {
+      const singlePct = Math.round(data.singlePageVisitors * 100 / data.totalVisitors);
+      if (singlePct > 60) {
+        checks.push({ title: "Many visitors leave after one page", text: `${singlePct}% leave without visiting anything else. Add internal links to pricing, demo, and key solution pages in your hero and top navigation.`, severity: "warning" });
+      }
+    }
+    if (formSubmitted > 0 && b.whatsAppVisitors > formSubmitted * 2) {
+      checks.push({ title: "WhatsApp is outsolving the form", text: `${b.whatsAppVisitors} visitors chose WhatsApp over the demo form. Consider promoting WhatsApp as a "quick question" alternative alongside the form.`, severity: "warning" });
+    }
+    if (checks.length === 0 && b.visitors > 0) {
+      checks.push({ title: "All systems looking good", text: "No critical issues detected yet. Keep monitoring as visitor volume grows.", severity: "positive" });
+    }
+    return checks;
+  })();
 
   return (
     <div>
@@ -213,6 +245,35 @@ export default function MarketingVisitors() {
         </CardContent>
       </Card>
 
+      <Card className="mb-4">
+        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 pb-2">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base"><ListChecks className="h-4 w-4 text-primary" />Quick checks</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Rule-based suggestions from the data shown above — free, immediate, no AI call needed.</p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {quickChecks.map((check, i) => (
+              <div key={i} className={cn(
+                "rounded-lg border p-3",
+                check.severity === "positive" && "border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20",
+                check.severity === "warning" && "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20",
+                check.severity === "action" && "border-destructive/30 bg-destructive/5",
+              )}>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  {check.severity === "positive" ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> :
+                   check.severity === "warning" ? <AlertTriangle className="h-4 w-4 text-amber-600" /> :
+                   <Wrench className="h-4 w-4 text-destructive" />}
+                  {check.title}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{check.text}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="mb-4 border-primary/30">
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-2">
           <div>
@@ -225,7 +286,26 @@ export default function MarketingVisitors() {
         </CardHeader>
         <CardContent>
           {tipsError && <InlineAlert variant="warning" className="mb-3">{tipsError}</InlineAlert>}
-          {!tips && !tipsLoading && !tipsError && (
+          {b.visitors < 20 && !tips && !tipsLoading && !tipsError && (
+            <div className="rounded-lg border border-info/30 bg-info/5 p-4">
+              <p className="text-sm font-medium">Not enough data yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                You have {b.visitors} visitor{b.visitors === 1 ? "" : "s"} this period. The analysis engine needs at least 20 unique visitors before it can surface reliable recommendations. Once you hit that threshold, click <b>Analyse</b> to see the top fixes ranked by expected impact.
+              </p>
+              <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
+                <p><b>What to watch for:</b></p>
+                <ul className="list-disc space-y-1 pl-4">
+                  <li>Form seen: {b.formVisibleVisitors} visitors scrolled the form into view</li>
+                  <li>Form started: {b.formStartedVisitors} visitors interacted with the form</li>
+                  <li>Submitted: {b.formSubmittedVisitors} visitors submitted</li>
+                  <li>Validation failures: {b.formValidationFailedVisitors} visitors hit a validation error</li>
+                  <li>Abandoned: {b.formAbandonedVisitors} visitors left without submitting</li>
+                  <li>WhatsApp clicks: {b.whatsAppVisitors} visitors chose to chat instead</li>
+                </ul>
+              </div>
+            </div>
+          )}
+          {!tips && !tipsLoading && !tipsError && b.visitors >= 20 && (
             <p className="text-sm text-muted-foreground">Click <b>Analyse</b> to see how visitors behave in this period and the specific changes most likely to bring more demo requests.</p>
           )}
           {tipsLoading && <p className="text-sm text-muted-foreground">Reading the numbers… this takes about 10–20 seconds.</p>}

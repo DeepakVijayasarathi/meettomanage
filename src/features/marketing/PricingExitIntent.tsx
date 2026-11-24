@@ -5,14 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiEnabled } from "@/lib/api";
 import { requestPlatformDemo } from "@/api/marketing";
-import { marketingAttribution, marketingVisitorId, trackDemoBooked, trackMarketingEvent } from "@/lib/analytics";
+import { marketingAttribution, marketingVisitorId, markShownExitIntent, recentlyShownExitIntent, trackDemoBooked, trackMarketingEvent } from "@/lib/analytics";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { demoAlreadyBooked, markDemoBooked } from "./chatTeaser";
 import { CTA_ORANGE } from "./styles";
 
-const SEEN_KEY = "mtm.pricingExit.seen";
-/** After the popup shows once, it stays away for this long. */
 const QUIET_MS = 7 * 24 * 60 * 60 * 1000;
 /** Don't interrupt someone who only just landed. */
 const MIN_DWELL_MS = 8000;
@@ -54,29 +52,6 @@ const T = {
   },
 };
 
-function recentlyShown(): boolean {
-  try {
-    const at = Number(localStorage.getItem(SEEN_KEY));
-    return at > 0 && Date.now() - at < QUIET_MS;
-  } catch {
-    return false;
-  }
-}
-
-function markShown() {
-  try {
-    localStorage.setItem(SEEN_KEY, String(Date.now()));
-  } catch {
-    /* nothing to persist to */
-  }
-}
-
-/**
- * Exit-intent lead capture for /pricing. On desktop it opens when the pointer leaves through the
- * top of the window (heading for the tab bar or back button); on touch screens, when the visitor
- * flicks back up toward the top after reading at least a third of the page. Shows at most once a
- * week per browser, and never to someone who already booked a demo.
- */
 export function PricingExitIntent() {
   const [lang] = useLang();
   const t = T[lang];
@@ -90,15 +65,15 @@ export function PricingExitIntent() {
   const firedRef = useRef(false);
 
   useEffect(() => {
-    if (recentlyShown() || demoAlreadyBooked()) return;
+    if (recentlyShownExitIntent() || demoAlreadyBooked()) return;
     const landedAt = Date.now();
 
     const fire = () => {
-      if (firedRef.current || Date.now() - landedAt < MIN_DWELL_MS || recentlyShown() || demoAlreadyBooked()) return;
+      if (firedRef.current || Date.now() - landedAt < MIN_DWELL_MS || recentlyShownExitIntent() || demoAlreadyBooked()) return;
       // Don't stack on top of another open dialog (e.g. a menu sheet).
       if (document.querySelector('[role="dialog"]')) return;
       firedRef.current = true;
-      markShown();
+      markShownExitIntent();
       setOpen(true);
       trackMarketingEvent("exit_intent_shown");
     };

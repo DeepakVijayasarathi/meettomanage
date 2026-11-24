@@ -13,8 +13,8 @@ import { MarketingNav } from "./MarketingNav";
 import { CTA_DARK, CTA_ORANGE } from "./styles";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
-import { marketingAttribution, marketingVisitorId, resetFormVisible, trackDemoBooked, trackFormVisible, trackMarketingEvent } from "@/lib/analytics";
-import { markDemoBooked } from "./chatTeaser";
+import { marketingAttribution, marketingVisitorId, markShownExitIntent, recentlyShownExitIntent, resetFormVisible, trackDemoBooked, trackFormVisible, trackMarketingEvent } from "@/lib/analytics";
+import { demoAlreadyBooked, markDemoBooked } from "./chatTeaser";
 import { experimentVariant } from "@/lib/experiments";
 
 const T = {
@@ -309,6 +309,49 @@ export default function GetStarted() {
     return () => {
       window.removeEventListener("pagehide", abandoned);
       abandoned();
+    };
+  }, []);
+
+  // Track exit intent: when a visitor who has started the form shows intent to leave (mouse leaves
+  // top of viewport on desktop, or quick scroll-up on touch). This gives us a "form exit intent"
+  // signal in addition to the generic abandoned signal.
+  useEffect(() => {
+    if (recentlyShownExitIntent() || demoAlreadyBooked()) return;
+    let fired = false;
+
+    const fire = () => {
+      if (fired || !startedRef.current || demoAlreadyBooked()) return;
+      fired = true;
+      markShownExitIntent();
+      trackMarketingEvent("exit_intent_shown", "/get-started", tagRef.current);
+    };
+
+    // Desktop: cursor leaves through the top of the window
+    const onMouseOut = (e: MouseEvent) => {
+      if (!e.relatedTarget && e.clientY <= 0) fire();
+    };
+
+    // Touch: quick upward scroll near the top of the page, after scrolling some
+    let deepest = 0;
+    let lastY = window.scrollY;
+    let lastAt = performance.now();
+    const onTouchScroll = () => {
+      const y = window.scrollY;
+      const now = performance.now();
+      const scrollable = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      deepest = Math.max(deepest, y / scrollable);
+      const speed = (lastY - y) / Math.max(1, now - lastAt);
+      if (deepest > 0.25 && y < window.innerHeight && speed > 1.5) fire();
+      lastY = y;
+      lastAt = now;
+    };
+
+    const touch = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+    if (touch) window.addEventListener("scroll", onTouchScroll, { passive: true });
+    else document.addEventListener("mouseout", onMouseOut);
+    return () => {
+      window.removeEventListener("scroll", onTouchScroll);
+      document.removeEventListener("mouseout", onMouseOut);
     };
   }, []);
 
