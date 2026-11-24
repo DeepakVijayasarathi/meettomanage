@@ -128,7 +128,7 @@ export default function CrmCustomers() {
 
               <div className="rounded-xl border p-4"><h3 className="mb-2 font-semibold">Invoices</h3>
                 {detail.invoices.length === 0 ? <p className="text-sm text-muted-foreground">No invoices yet.</p> : (
-                  <table className="w-full text-sm"><tbody className="divide-y">{detail.invoices.map((i) => <tr key={i.number}><td className="py-1.5">{i.number}</td><td className="py-1.5">{formatDate(i.issuedAtUtc)}</td><td className="py-1.5 text-end tabular-nums">{i.currency} {Math.round(i.total).toLocaleString("en-IN")}</td><td className="py-1.5 text-end"><Badge variant={i.status === "Paid" ? "success" : i.status === "Open" && new Date(i.dueAtUtc) < new Date() ? "destructive" : "outline"}>{i.status}</Badge></td></tr>)}</tbody></table>
+                  <table className="w-full text-sm"><tbody className="divide-y">{detail.invoices.map((i) => <tr key={i.number}><td className="py-1.5">{i.number}</td><td className="py-1.5">{formatDate(i.issuedAtUtc)}</td><td className="py-1.5 text-end tabular-nums">{i.currency} {Math.round(Number(i.total) || 0).toLocaleString("en-IN")}</td><td className="py-1.5 text-end"><Badge variant={i.status === "Paid" ? "success" : i.status === "Open" && new Date(i.dueAtUtc) < new Date() ? "destructive" : "outline"}>{i.status}</Badge></td></tr>)}</tbody></table>
                 )}
               </div>
 
