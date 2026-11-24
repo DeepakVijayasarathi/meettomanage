@@ -1,12 +1,17 @@
 import type { Webinar } from "@/api/webinars";
 
 const academyWebinarSlug = "m2m-webinar-882af77ca6cf4ffcb9bd2dc5aa2f4712";
+const academyWebinarPublicSlug = "academy-management-webinar-december-2026";
 
 export function webinarPath(slug: string) {
-  return `/webinars/${encodeURIComponent(slug)}`;
+  return `/webinars/${encodeURIComponent(slug === academyWebinarSlug ? academyWebinarPublicSlug : slug)}`;
 }
 
-export function isAcademyWebinar(webinar?: Webinar | null) {
+export function webinarApiSlug(slug: string) {
+  return slug === academyWebinarPublicSlug ? academyWebinarSlug : slug;
+}
+
+export function isAcademyWebinar(webinar?: Pick<Webinar, "slug"> | null) {
   return webinar?.slug === academyWebinarSlug;
 }
 

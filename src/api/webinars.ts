@@ -30,8 +30,10 @@ type WebinarInput = Pick<Webinar, "title" | "excerpt" | "isPublished"> & Webinar
 
 export const listWebinars = () => apiFetchGlobal<WebinarSummary[]>(root, undefined, false);
 export const getWebinar = (slug: string) => apiFetchGlobal<Webinar>(`${root}/${encodeURIComponent(slug)}`, undefined, false);
+export const askWebinarQuestion = (slug: string, question: string) =>
+  apiFetchGlobal<{ reply: string }>(`${root}/${encodeURIComponent(slug)}/questions`, { method: "POST", body: JSON.stringify({ question }) }, false);
 export const registerForWebinar = (slug: string, input: { fullName: string; workEmail: string; phone: string; academyName: string }) =>
-  apiFetchGlobal<void>(`${root}/${encodeURIComponent(slug)}/register`, { method: "POST", body: JSON.stringify(input) }, false);
+  apiFetchGlobal<{ joinUrl?: string } | undefined>(`${root}/${encodeURIComponent(slug)}/register`, { method: "POST", body: JSON.stringify(input) }, false);
 export const listManagedWebinars = () => apiFetchGlobal<Webinar[]>(`${root}/manage`);
 export type WebinarRegistration = Pick<ApiPlatformDemoRequest, "id" | "fullName" | "workEmail" | "phone" | "academyName" | "createdAtUtc">;
 export const listWebinarRegistrations = (id: string, page: number) =>

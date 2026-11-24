@@ -86,7 +86,7 @@ try {
 }
 // Auth/utility pages already receive static noindex metadata from prerender-meta. Rendering
 // their interactive forms is unnecessary and some intentionally wait on API configuration.
-const targets = [{ path: "/", file: path.join(dist, "index.html") }, ...PAGES.filter((p) => !p.noindex && !SKIP.has(p.path)).map((p) => ({ path: p.path, file: path.join(dist, `${p.path}.html`) }))];
+const targets = [{ path: "/", file: path.join(dist, "index.html") }, ...PAGES.filter((p) => !p.noindex && !p.apiDriven && !SKIP.has(p.path)).map((p) => ({ path: p.path, file: path.join(dist, `${p.path}.html`) }))];
 let wrote = 0;
 const failures = [];
 try {
