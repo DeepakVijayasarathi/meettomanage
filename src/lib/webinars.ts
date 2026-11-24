@@ -6,11 +6,15 @@ export function webinarPath(slug: string) {
   return `/webinars/${encodeURIComponent(slug)}`;
 }
 
+export function isAcademyWebinar(webinar?: Webinar | null) {
+  return webinar?.slug === academyWebinarSlug;
+}
+
 export function webinarHosts(webinar?: Webinar | null) {
-  const initialHosts = webinar?.slug === academyWebinarSlug;
+  const initialHosts = isAcademyWebinar(webinar);
   return {
-    hostName: webinar?.details.hostName ?? (initialHosts ? "Prithiv" : ""),
-    hostRole: webinar?.details.hostRole ?? (initialHosts ? "Chief Marketing Officer" : ""),
+    hostName: webinar?.details.hostName ?? (initialHosts ? "Prithivi S" : ""),
+    hostRole: webinar?.details.hostRole ?? (initialHosts ? "Co-founder & Chief of Marketing" : ""),
     teamName: webinar?.details.teamName ?? (initialHosts ? "Meet to Manage team" : ""),
   };
 }

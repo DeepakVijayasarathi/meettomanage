@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, Copy, Gift, MessageCircle, UsersRound, Video } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, CheckCircle2, Clock3, Copy, Gift, MessageCircle, UsersRound, Video } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { requestPlatformDemo } from "@/api/marketing";
 import { getWebinar, registerForWebinar, type Webinar } from "@/api/webinars";
@@ -8,13 +8,13 @@ import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { trackMarketingEvent } from "@/lib/analytics";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useLightBrandScope } from "@/lib/theme";
 import { localWebinarTime, readWebinarSchedule, webinarCalendarUrl, type WebinarSchedule } from "@/lib/webinarCalendar";
-import { webinarHosts } from "@/lib/webinars";
+import { isAcademyWebinar, webinarHosts } from "@/lib/webinars";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
-import { trackMarketingEvent } from "@/lib/analytics";
 
 const fields = [
   { name: "fullName", label: "Full name", type: "text", autoComplete: "name", placeholder: "e.g. Asha Patel" },
@@ -54,17 +54,27 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
   const [error, setError] = useState("");
   const [params] = useSearchParams();
   const details = webinar?.details;
+  const academyWebinar = isAcademyWebinar(webinar);
   const { hostName, hostRole, teamName } = webinarHosts(webinar);
   const benefits = details?.benefits.split(/\r?\n/).map((line) => line.trim()).filter(Boolean) ?? [];
+  if (academyWebinar && !benefits.some((benefit) => /live class/i.test(benefit))) {
+    benefits.push("Manage live online classes.");
+  }
   const schedule = details ? { startsAt: new Date(details.start), endsAt: new Date(details.end) } : readWebinarSchedule(params);
   const title = webinar?.title ?? "Meet to Manage Webinar";
-  const scheduleFormatter: Intl.DateTimeFormat & { formatRange?: (start: Date, end: Date) => string } = new Intl.DateTimeFormat(undefined, {
-    weekday: "short", month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", timeZoneName: "short",
+  const timeZone = academyWebinar ? "Asia/Kolkata" : undefined;
+  const dateFormatter = new Intl.DateTimeFormat("en-IN", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone,
   });
-  const scheduleLabel = schedule && (
-    scheduleFormatter.formatRange?.(schedule.startsAt, schedule.endsAt) ??
-    `${localWebinarTime(schedule.startsAt)} to ${localWebinarTime(schedule.endsAt)}`
+  const dateLabel = schedule && dateFormatter.format(schedule.startsAt);
+  const timeFormatter: Intl.DateTimeFormat & { formatRange?: (start: Date, end: Date) => string } = new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric", minute: "2-digit", timeZoneName: "short", timeZone,
+  });
+  const timeLabel = schedule && (
+    dateLabel !== dateFormatter.format(schedule.endsAt)
+      ? `${localWebinarTime(schedule.startsAt)} to ${localWebinarTime(schedule.endsAt)}`
+      : timeFormatter.formatRange?.(schedule.startsAt, schedule.endsAt) ??
+        `${timeFormatter.format(schedule.startsAt)} to ${timeFormatter.format(schedule.endsAt)}`
   );
   const closed = Boolean(webinar && schedule && schedule.endsAt.getTime() <= Date.now());
   const registrationUrl = new URL(window.location.pathname, window.location.origin);
@@ -74,11 +84,11 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
   }
   const available = apiEnabled();
 
-  async function register(event: FormEvent) {
+  async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting || registered || !available || closed) return;
 
-    const data = new FormData(event.currentTarget as HTMLFormElement);
+    const data = new FormData(event.currentTarget);
     const fullName = String(data.get("fullName") ?? "").trim();
     const workEmail = String(data.get("workEmail") ?? "").trim();
     const phoneInput = String(data.get("phone") ?? "").trim();
@@ -93,7 +103,6 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
 
     const variant = webinar ? `webinar:${webinar.slug}` : "webinar:general";
     trackMarketingEvent("form_submit_attempted", registrationUrl.pathname, variant);
-
     setError("");
     setSubmitting(true);
     try {
@@ -117,117 +126,125 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
     }
   }
 
+
   return (
-    <div className="theme-light-scope marketing-square min-h-screen bg-[#F9F8F6] text-[#17212D]">
-      <Seo title={`${title} | Registration`} description={webinar?.excerpt ?? "Register for the Meet to Manage live webinar."} path={registrationUrl.pathname} noindex />
-      <MarketingNav hideMobileSalesBar />
-      <main className="border-t border-[#EFEAE5] bg-[radial-gradient(ellipse_at_top_left,#FFF0E1_0%,#F9F8F6_58%)]">
-        <div className="mx-auto max-w-[1240px] px-5 pb-14 pt-6 sm:px-8 sm:pb-20 sm:pt-8">
-          <Link to="/webinars" className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-[#7C3515] hover:underline sm:mb-8">
+    <div className="theme-light-scope min-h-screen bg-[#FFFCF8] text-[#251B17]">
+      <Seo title={webinar ? `${title} | Meet to Manage Webinar` : `${title} | Registration`} description={webinar?.excerpt ?? "Register for the Meet to Manage live webinar."} path={registrationUrl.pathname} noindex />
+      <header className="border-b border-[#F0E4DA] bg-white">
+        <div className="mx-auto flex min-h-20 max-w-[1240px] items-center justify-between gap-4 px-5 sm:px-8">
+          <Link to="/" aria-label="Meet to Manage home">
+            <img src="/logo-full.webp" alt="Meet to Manage" width={170} height={61} className="h-auto w-[145px] sm:w-[170px]" />
+          </Link>
+          <Link to="/webinars" className="inline-flex items-center gap-2 text-sm font-semibold text-[#813B20] hover:underline">
             <ArrowLeft className="h-4 w-4" aria-hidden /> All webinars
           </Link>
-          <div className="grid gap-y-7 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.66fr)] lg:items-start lg:gap-x-12 xl:gap-x-16">
-            <header className="min-w-0 lg:col-start-1 lg:row-start-1">
-              <p className="mb-4 inline-flex items-center gap-2 border-b-2 border-[#ED842A] pb-2 text-xs font-bold uppercase tracking-[0.12em] text-[#9A3412]">
-                <Video className="h-4 w-4" aria-hidden /> Live webinar
+        </div>
+      </header>
+      <main id="main-content">
+        <section aria-labelledby="webinar-title" className="border-b border-[#F1E1D2] bg-[radial-gradient(ellipse_at_top_left,#FDE5D0_0%,#FFF7EF_48%,#FFFCF8_85%)]">
+          <div className="mx-auto grid max-w-[1240px] items-start gap-8 px-5 py-10 sm:px-8 sm:py-14 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.66fr)] lg:gap-14 lg:py-16">
+            <div className="min-w-0">
+              <p className="inline-flex items-center gap-2 rounded-full border border-[#EBC4AA] bg-[#FFF8F1] px-4 py-2 text-sm font-bold text-[#973C17]">
+                <Video className="h-4 w-4" aria-hidden /> {academyWebinar ? "Free online webinar" : "Live webinar"}
               </p>
-              <h1 className="max-w-2xl break-words text-[clamp(2.25rem,4.3vw,3.85rem)] font-bold leading-[1.04] tracking-[-0.045em] [text-wrap:balance]">{title}</h1>
-              {webinar?.excerpt && <p className="mt-4 max-w-xl break-words text-base leading-relaxed text-[#455262] sm:text-lg">{webinar.excerpt}</p>}
-              {scheduleLabel && (
-                <p className="mt-5 flex items-start gap-2.5 text-sm font-semibold leading-6 text-[#38271D]">
-                  <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-[#AD4610]" aria-hidden />
-                  <span>{scheduleLabel}</span>
-                </p>
+              <h1 id="webinar-title" className="mt-5 max-w-2xl break-words text-[clamp(2.55rem,5.1vw,4.5rem)] font-bold leading-[1.02] tracking-[-0.055em] [text-wrap:balance]">{title}</h1>
+              {webinar?.excerpt && <p className="mt-5 max-w-[38rem] break-words text-lg leading-relaxed text-[#5F4A40]">{webinar.excerpt}</p>}
+              {schedule && (
+                <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3 border-y border-[#EEDACB] py-4">
+                  <p className="flex items-center gap-2.5 font-semibold">
+                    <CalendarDays className="h-5 w-5 shrink-0 text-[#A8441B]" aria-hidden />
+                    <time dateTime={schedule.startsAt.toISOString()}>{dateLabel}</time>
+                  </p>
+                  <p className="flex items-center gap-2.5 font-semibold">
+                    <Clock3 className="h-5 w-5 shrink-0 text-[#A8441B]" aria-hidden /> {timeLabel}
+                  </p>
+                </div>
               )}
-            </header>
-            <section aria-label="Webinar registration" className="min-w-0 rounded-2xl border border-[#E8E2DB] bg-white p-5 shadow-[0_12px_32px_rgba(27,36,50,0.07)] sm:p-8 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+              {academyWebinar && <p className="mt-4 text-base text-[#5F4A40]">For teachers, tutors, coaches, and academy owners.</p>}
+              <img src={academyWebinar ? "/images/academy-webinar-hero.webp" : details?.bannerImage || "/images/webinar-desk.webp"}
+                alt={academyWebinar ? "An educator presenting from her coaching studio" : ""}
+                width={1200} height={675} fetchPriority="high"
+                className="mt-7 aspect-[2.6/1] w-full rounded-2xl object-cover object-[center_43%] lg:aspect-[2.15/1]" />
+            </div>
+            <section id="webinar-registration" tabIndex={-1} aria-labelledby="webinar-registration-title" className="scroll-mt-8 rounded-[1.5rem] border border-[#EED7C7] bg-white p-5 shadow-[0_20px_48px_rgba(80,37,17,0.09)] sm:p-8">
               {registered ? (
                 <RegistrationConfirmation title={title} schedule={schedule} registrationUrl={registrationUrl.href} />
               ) : closed ? (
-                <h2 className="text-xl font-semibold">Registration has closed</h2>
+                <h2 id="webinar-registration-title" className="text-2xl font-bold">Registration has closed</h2>
               ) : (
                 <form onSubmit={register} className="space-y-4">
-                  <h2 className="mb-5 border-b border-[#EDE9E4] pb-4 text-2xl font-semibold tracking-tight">Register for this webinar</h2>
+                  <div className="mb-5 border-b border-[#F0E5DC] pb-5">
+                    <h2 id="webinar-registration-title" className="text-2xl font-bold tracking-tight sm:text-3xl">{academyWebinar ? "Save your free spot" : "Register for this webinar"}</h2>
+                    <p className="mt-2 text-base text-[#6C5347]">Enter your details to register for the online session.</p>
+                  </div>
                   {fields.map(({ name, label, type, autoComplete, placeholder }) => (
                     <div key={name} className="space-y-2">
                       <Label htmlFor={name}>{label}</Label>
-                      <Input className="h-11 !rounded-md border-[#D9DDE2] bg-white text-base placeholder:text-[#657182] focus-visible:ring-[#C2410C]" id={name} name={name} type={type} autoComplete={autoComplete} placeholder={placeholder} maxLength={type === "tel" ? 40 : type === "email" ? 256 : 150} required />
+                      <Input className="h-12 rounded-lg border-[#E5D6CD] bg-[#FFFCFA] text-base placeholder:text-[#74665D] focus-visible:ring-[#C2410C]" id={name} name={name} type={type} autoComplete={autoComplete} placeholder={placeholder} maxLength={type === "tel" ? 40 : type === "email" ? 256 : 150} required />
                     </div>
                   ))}
                   {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
                   {!available && <p role="status" className="text-sm text-muted-foreground">Registration is temporarily unavailable.</p>}
-                  <Button type="submit" disabled={submitting || !available} className="h-12 w-full !rounded-md bg-[#C2410C] font-semibold text-white hover:bg-[#9A3412]">
-                    {submitting ? "Registering…" : "Register now"} <ArrowRight className="h-4 w-4" aria-hidden />
+                  <Button type="submit" disabled={submitting || !available} className="h-12 w-full rounded-lg bg-[#B53B0C] text-base font-bold text-white hover:bg-[#913009]">
+                    {submitting ? "Registering…" : academyWebinar ? "Register for free" : "Register now"}
                   </Button>
-                  <p className="text-center text-xs text-[#645248]"><Link to="/privacy" className="underline underline-offset-2">Privacy policy</Link></p>
+                  <p className="text-center text-sm text-[#645248]"><Link to="/privacy" className="underline underline-offset-2">Privacy policy</Link></p>
                 </form>
               )}
             </section>
-            <div className="min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
-              {details?.bannerImage ? (
-                <img src={details.bannerImage} alt="" className="aspect-video max-h-96 w-full rounded-xl border border-[#E8E2DB] bg-[#17212D] object-contain" />
-              ) : (
-                <img src="/images/webinar-desk.webp" alt="" width={1200} height={676} className="aspect-video w-full rounded-xl object-cover" />
-              )}
-              <section className="space-y-3">
-                <h2 className="text-2xl font-semibold tracking-tight">About the webinar</h2>
-                <p className="whitespace-pre-line break-words text-base leading-7 text-[#455262]">
-                  {details?.description ?? "See how academies manage scheduling, live classes, and fees in one place. Bring your questions for the live walkthrough."}
-                </p>
-              </section>
-              {(hostName || teamName) && (
-                <section aria-labelledby="webinar-hosts" className="space-y-4">
-                  <h2 id="webinar-hosts" className="break-words text-2xl font-semibold tracking-tight">
-                    {hostName ? `Meet ${hostName}${teamName ? " and the team" : ""}` : "Meet the team"}
-                  </h2>
-                  <ul className="grid divide-y divide-[#EFE8E0] rounded-xl border border-[#E8E2DB] bg-white sm:grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] sm:divide-x sm:divide-y-0">
-                    {hostName && (
-                      <li className="flex min-w-0 items-center gap-3 p-4">
-                        {details?.hostPhoto ? (
-                          <img src={details.hostPhoto} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
-                        ) : (
-                          <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#FFF0E1] font-bold text-[#9A3412]">{Array.from(hostName)[0]?.toUpperCase()}</span>
-                        )}
-                        <div className="min-w-0 break-words">
-                          <p className="font-semibold">{hostName}</p>
-                          {hostRole && <p className="text-sm text-[#455262]">{hostRole}</p>}
-                        </div>
-                      </li>
-                    )}
-                    {teamName && (
-                      <li className="flex min-w-0 items-center gap-3 p-4">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F0F3F7] text-[#34475B]">
-                          <UsersRound className="h-5 w-5" aria-hidden />
-                        </span>
-                        <p className="min-w-0 break-words font-semibold">{teamName}</p>
-                      </li>
-                    )}
-                  </ul>
-                </section>
-              )}
+          </div>
+        </section>
+        <div className="mx-auto grid max-w-[1240px] gap-12 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.66fr)] lg:gap-14">
+          <div className="min-w-0 space-y-8">
+            <section aria-labelledby="webinar-agenda">
+              <h2 id="webinar-agenda" className="text-3xl font-bold tracking-tight sm:text-4xl">What you’ll learn</h2>
+              <p className="mt-4 max-w-[42rem] whitespace-pre-line break-words leading-7 text-[#5F4A40]">
+                {details?.description || "See how academies manage scheduling, live classes, and fees in one place. Bring your questions for the live walkthrough."}
+              </p>
               {benefits.length > 0 && (
-                <section className="space-y-3">
-                  <h2 className="text-2xl font-semibold tracking-tight">What you’ll learn</h2>
-                  <ul className="divide-y divide-[#E9DDD5] border-y border-[#E9DDD5]">
-                    {benefits.map((benefit, index) => (
-                      <li key={index} className="flex items-start gap-3 py-3 leading-6 text-[#455262]">
-                        <Check className="mt-0.5 h-5 w-5 shrink-0 text-[#9A3412]" aria-hidden />
-                        <span className="min-w-0 break-words">{benefit}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                <ul className="mt-6 divide-y divide-[#F0E1D5] overflow-hidden rounded-2xl border border-[#F0E1D5] bg-white">
+                  {benefits.map((benefit, index) => (
+                    <li key={index} className="flex items-center gap-3 px-4 py-3.5 leading-6 text-[#4E3A31] sm:px-5">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#FFF0E4] text-[#973C17]"><Check className="h-4 w-4" aria-hidden /></span>
+                      <span className="min-w-0 break-words">{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
-              {details?.offers && (
-                <section className="flex items-start gap-4 rounded-xl border border-[#EAC9B5] bg-[#FFF0E5] p-5">
-                  <Gift className="mt-0.5 h-5 w-5 shrink-0 text-[#9A3412]" aria-hidden />
-                  <div className="min-w-0 space-y-2">
-                    <h2 className="text-lg font-semibold">Webinar offers</h2>
-                    <p className="whitespace-pre-line break-words leading-6 text-[#58453A]">{details.offers}</p>
-                  </div>
-                </section>
-              )}
-            </div>
+            </section>
+            {!closed && !registered && available && <a href="#webinar-registration" className="inline-flex min-h-11 items-center rounded-lg bg-[#B53B0C] px-5 font-bold text-white hover:bg-[#913009]">{academyWebinar ? "Save your free spot" : "Register now"}</a>}
+          </div>
+          <div className="min-w-0 space-y-5">
+            {(hostName || teamName) && (
+              <section aria-labelledby="webinar-hosts" className="rounded-2xl border border-[#F0E1D5] bg-white p-5 sm:p-6">
+                <h2 id="webinar-hosts" className="text-xl font-bold">Meet your {hostName ? "host" : "team"}</h2>
+                <ul className="mt-4 space-y-4">
+                  {hostName && (
+                    <li className="flex min-w-0 items-center gap-4">
+                      {details?.hostPhoto ? (
+                        <img src={details.hostPhoto} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                      ) : (
+                        <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#FBE8D7] text-lg font-bold text-[#933A17]">{Array.from(hostName)[0]?.toUpperCase()}</span>
+                      )}
+                      <div className="min-w-0 break-words">
+                        <p className="font-bold">{hostName}</p>
+                        {hostRole && <p className="mt-0.5 text-sm text-[#5F4A40]">{hostRole}</p>}
+                      </div>
+                    </li>
+                  )}
+                  {teamName && <li className="flex items-center gap-3 break-words text-sm font-semibold text-[#5F4A40]"><UsersRound className="h-5 w-5 shrink-0 text-[#A8441B]" aria-hidden />{teamName}</li>}
+                </ul>
+              </section>
+            )}
+            {details?.offers && (
+              <section className="flex items-start gap-4 rounded-2xl border border-[#F0D4BE] bg-[#FFF0E3] p-5 sm:p-6">
+                <Gift className="mt-0.5 h-5 w-5 shrink-0 text-[#A8441B]" aria-hidden />
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold">{academyWebinar ? "Live Q&A" : "Webinar offers"}</h2>
+                  <p className="mt-2 whitespace-pre-line break-words leading-6 text-[#5F4A40]">{details.offers}</p>
+                </div>
+              </section>
+            )}
           </div>
         </div>
       </main>
@@ -264,7 +281,7 @@ function RegistrationConfirmation({ title, schedule, registrationUrl }: {
     <div className="space-y-5">
       <div role="status" className="space-y-2">
         <span className="inline-flex rounded-full bg-emerald-50 p-3 text-emerald-700"><CheckCircle2 className="h-6 w-6" aria-hidden /></span>
-        <h2 className="text-2xl font-semibold">Registration received</h2>
+        <h2 id="webinar-registration-title" className="text-2xl font-semibold">Registration received</h2>
         <p className="text-sm leading-relaxed text-slate-700">The webinar team shares the live joining instructions separately.</p>
       </div>
 
