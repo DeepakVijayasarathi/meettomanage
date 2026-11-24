@@ -1,5 +1,8 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Check, X, Sparkles } from "lucide-react";
+import { useApiData } from "@/api/hooks";
+import { saasPublic } from "@/api/saas";
+import { academyPricing } from "@/lib/academyPricing";
 import { PageShell } from "./PageShell";
 import { WalkthroughCta } from "./WalkthroughCta";
 import { cn } from "@/lib/utils";
@@ -8,7 +11,7 @@ import { FOCUS_RING } from "./styles";
 const LINK = "font-semibold text-[#C2410C] underline underline-offset-4";
 const SITE = "https://meettomanage.cloud";
 
-/** Feature groups in the comparison table. Each row shows Free, Basic, Pro and Growth. */
+/** Feature groups in the comparison table. Each row shows Free, Pro Basic, Pro and Growth. */
 const FEATURE_ROWS: {
   category: string;
   rows: {
@@ -92,6 +95,16 @@ function CheckCell({ value, category, rowName }: { value: string | boolean | nul
 }
 
 export default function Compare() {
+  const { data: catalogue } = useApiData(saasPublic.plans, []);
+  function planRate(code: keyof typeof academyPricing) {
+    const live = catalogue.find((plan) => plan.code === code);
+    const monthly = live?.prices.find((price) => price.currency === "INR" && price.billingInterval === "Month");
+    return {
+      name: live?.name ?? academyPricing[code].name,
+      price: `₹${(monthly?.amount ?? academyPricing[code].monthlyINR).toLocaleString("en-IN")}/mo`,
+    };
+  }
+  const basic = planRate("basic");
   return (
     <PageShell
       eyebrow="Compare plans"
@@ -99,7 +112,7 @@ export default function Compare() {
       sub="Start free with live classes and the parent app. Upgrade when you need fees, admissions, reports or more students."
       seo={{
         title: "Compare Plans — Meet to Manage",
-        description: "Compare Meet to Manage Free, Basic, Pro and Growth plans. Live classes free forever. Add fees, admissions, WhatsApp, reports as you grow.",
+        description: "Compare Meet to Manage Free, Pro Basic, Pro and Growth plans. Live classes free forever. Add fees, admissions, WhatsApp, reports as you grow.",
         path: "/compare",
       }}
       jsonLd={{
@@ -123,24 +136,21 @@ export default function Compare() {
                 color: "border-[#E5DCCD] bg-white",
               },
               {
-                name: "Basic",
-                price: "₹999/mo",
+                ...basic,
                 cta: "Start 14-day trial",
                 ctaTo: "/signup?plan=trial&for=basic",
                 badge: "14-day trial",
                 color: "border-[#E5DCCD] bg-[#FFFBF7]",
               },
               {
-                name: "Pro",
-                price: "₹2,499/mo",
+                ...planRate("pro"),
                 cta: "Start 14-day trial",
                 ctaTo: "/signup?plan=trial&for=pro",
                 badge: "Most popular",
                 color: "border-[#C2410C] bg-[#FFF6EE] shadow-[0_4px_20px_-12px_rgba(194,65,12,0.3)]",
               },
               {
-                name: "Growth",
-                price: "₹5,999/mo",
+                ...planRate("growth"),
                 cta: "Talk to us",
                 ctaTo: "/get-started",
                 badge: null,
@@ -180,7 +190,7 @@ export default function Compare() {
                 <tr className="border-b border-[#E5DDD1] bg-[#FFF6EE]">
                   <th className="text-start p-4 font-extrabold text-[#1C1917]">Feature</th>
                   <th className="w-28 p-4 text-center font-extrabold text-[#1C1917]">Free</th>
-                  <th className="w-28 p-4 text-center font-extrabold text-[#9A3412]">Basic</th>
+                  <th className="w-28 p-4 text-center font-extrabold text-[#9A3412]">{basic.name}</th>
                   <th className="w-28 p-4 text-center font-extrabold text-[#C2410C]">Pro</th>
                   <th className="w-28 p-4 text-center font-extrabold text-[#1C1917]">Growth</th>
                 </tr>

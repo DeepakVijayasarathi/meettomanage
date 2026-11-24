@@ -4,6 +4,7 @@ import { ArrowRight, Building2, CheckCircle2, Globe2, Lock, LogIn, MessageCircle
 import { Seo } from "@/components/Seo";
 import { saasPublic, type PublicPlan } from "@/api/saas";
 import { apiEnabled } from "@/lib/api";
+import { academyPricing } from "@/lib/academyPricing";
 import { useBrand } from "@/lib/branding";
 import { useLightBrandScope } from "@/lib/theme";
 import { useLang } from "@/lib/i18n";
@@ -37,8 +38,8 @@ const FALLBACK_PLANS: PublicPlan[] = [
     ],
   },
   {
-    id: "fallback-basic", code: "basic", name: "Basic", description: null, trialDays: 14,
-    prices: [{ id: "b-m", billingInterval: "Month", currency: "INR", amount: 999 }, { id: "b-y", billingInterval: "Year", currency: "INR", amount: 9990 }],
+    id: "fallback-basic", code: "basic", name: academyPricing.basic.name, description: null, trialDays: 14,
+    prices: [{ id: "b-m", billingInterval: "Month", currency: "INR", amount: academyPricing.basic.monthlyINR }, { id: "b-y", billingInterval: "Year", currency: "INR", amount: academyPricing.basic.yearlyINR }],
     entitlements: [
       { key: "max_students", value: 75 }, { key: "max_staff", value: 5 }, { key: "max_storage_mb", value: 10240 },
       { key: "max_session_minutes_per_month", value: 3600 }, { key: "recording_retention_days", value: 7 },
@@ -47,8 +48,8 @@ const FALLBACK_PLANS: PublicPlan[] = [
     ],
   },
   {
-    id: "fallback-pro", code: "pro", name: "Pro", description: null, trialDays: 14,
-    prices: [{ id: "p-m", billingInterval: "Month", currency: "INR", amount: 2499 }, { id: "p-y", billingInterval: "Year", currency: "INR", amount: 24990 }],
+    id: "fallback-pro", code: "pro", name: academyPricing.pro.name, description: null, trialDays: 14,
+    prices: [{ id: "p-m", billingInterval: "Month", currency: "INR", amount: academyPricing.pro.monthlyINR }, { id: "p-y", billingInterval: "Year", currency: "INR", amount: academyPricing.pro.yearlyINR }],
     entitlements: [
       { key: "max_students", value: 250 }, { key: "max_staff", value: 15 }, { key: "max_storage_mb", value: 51200 },
       { key: "max_session_minutes_per_month", value: 12000 }, { key: "recording_retention_days", value: 30 },
@@ -56,8 +57,8 @@ const FALLBACK_PLANS: PublicPlan[] = [
     ],
   },
   {
-    id: "fallback-growth", code: "growth", name: "Growth", description: null, trialDays: 14,
-    prices: [{ id: "g-m", billingInterval: "Month", currency: "INR", amount: 5999 }, { id: "g-y", billingInterval: "Year", currency: "INR", amount: 59990 }],
+    id: "fallback-growth", code: "growth", name: academyPricing.growth.name, description: null, trialDays: 14,
+    prices: [{ id: "g-m", billingInterval: "Month", currency: "INR", amount: academyPricing.growth.monthlyINR }, { id: "g-y", billingInterval: "Year", currency: "INR", amount: academyPricing.growth.yearlyINR }],
     entitlements: [
       { key: "max_students", value: 750 }, { key: "max_staff", value: 50 }, { key: "max_storage_mb", value: 204800 },
       { key: "max_session_minutes_per_month", value: 36000 }, { key: "recording_retention_days", value: 90 },
@@ -467,7 +468,7 @@ export default function Pricing() {
           { "@type": "Question", name: "Is there a free plan?", acceptedAnswer: { "@type": "Answer", text: "Yes. The free plan supports up to 75 students with online fees, class recordings and your own branding. No credit card required to start." } },
           { "@type": "Question", name: "What payment methods do you accept?", acceptedAnswer: { "@type": "Answer", text: "Payments are processed through Razorpay and Cashfree, accepting UPI, debit cards, credit cards and net banking." } },
           { "@type": "Question", name: "Can I cancel my subscription anytime?", acceptedAnswer: { "@type": "Answer", text: "Yes, you can cancel at any time with no penalties. Your academy data remains accessible until the end of your current billing period." } },
-          { "@type": "Question", name: "Do you offer yearly billing?", acceptedAnswer: { "@type": "Answer", text: "Yes. Yearly billing gives you two months free compared to the monthly price, making it the most cost-effective option for growing academies." } },
+          { "@type": "Question", name: "Do you offer yearly billing?", acceptedAnswer: { "@type": "Answer", text: "Yes. Select yearly billing to compare the annual rate and savings for each plan." } },
         ] },
       ],
     };
@@ -515,7 +516,7 @@ export default function Pricing() {
         {loading && <p className="mb-4 text-center text-sm text-[#5B6472]" aria-live="polite">{t.loading}</p>}
         {lang === "en" && <div className={cn(HERO_OVERLAP, "mb-6 grid gap-3 rounded-3xl border border-[#EBCFB7] bg-[#FFF8F3] p-4 sm:grid-cols-3 sm:p-5")}>
           {[
-            { stage: "Tuition centre", plan: "Basic", reason: "Online fees, your branding and class recordings for up to 75 students." },
+            { stage: "Tuition centre", plan: plans.find((plan) => plan.code === "basic")?.name ?? academyPricing.basic.name, reason: "Online fees, your branding and class recordings for up to 75 students." },
             { stage: "Growing academy", plan: "Pro", reason: "Add admissions, reports, payouts and WhatsApp for up to 250 students." },
             { stage: "Multi-batch institute", plan: "Growth", reason: "Larger teams, server recording, a 90-day archive and API access." },
           ].map((item) => <div key={item.plan} className="rounded-2xl bg-white p-4"><p className="text-xs font-bold uppercase tracking-[0.08em] text-[#C2410C]">{item.stage}</p><p className="mt-1 font-display text-lg font-extrabold text-[#111]">Choose {item.plan}</p><p className="mt-1 text-sm leading-relaxed text-[#5B6472]">{item.reason}</p></div>)}
@@ -528,7 +529,7 @@ export default function Pricing() {
             const chosen = cycle === "Year" && year ? year : month ?? year!;
             const shownCycle: Cycle = chosen === year ? "Year" : "Month";
             const walkthroughTo = `/get-started?plan=${encodeURIComponent(plan.code)}&cycle=${shownCycle}`;
-            const freeMonths = month && year && month.amount > 0 ? Math.round(12 - year.amount / month.amount) : 0;
+            const freeMonths = month && year && month.amount > 0 ? Math.floor(12 - year.amount / month.amount) : 0;
             // A trial length set on the plan itself (Platform > Plans) wins over the site-wide signup setting.
             const planTrialDays = plan.trialDays > 0 ? plan.trialDays : signup.trialDays;
             const cta = free

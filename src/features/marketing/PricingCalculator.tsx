@@ -2,6 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Calculator, Check as CheckIcon, CheckCircle2, TrendingUp, Users, Clock } from "lucide-react";
 import { Seo } from "@/components/Seo";
+import { useApiData } from "@/api/hooks";
+import { saasPublic } from "@/api/saas";
+import { academyPricing } from "@/lib/academyPricing";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
 import { cn } from "@/lib/utils";
@@ -10,8 +13,8 @@ import { trackMarketingEvent } from "@/lib/analytics";
 
 const SITE_URL = "https://meettomanage.cloud";
 
-/** Plan data mirrored from Pricing.tsx FALLBACK_PLANS. Keeps this page accurate even before API loads. */
 interface PlanData {
+  code: keyof typeof academyPricing;
   name: string;
   monthlyINR: number;
   yearlyINR: number;
@@ -28,9 +31,8 @@ interface PlanData {
 
 const PLANS: PlanData[] = [
   {
-    name: "Basic",
-    monthlyINR: 999,
-    yearlyINR: 9990,
+    code: "basic",
+    ...academyPricing.basic,
     students: 75,
     staff: 5,
     storageGB: 10,
@@ -42,9 +44,8 @@ const PLANS: PlanData[] = [
     hasWhiteLabel: true,
   },
   {
-    name: "Pro",
-    monthlyINR: 2499,
-    yearlyINR: 24990,
+    code: "pro",
+    ...academyPricing.pro,
     students: 250,
     staff: 15,
     storageGB: 50,
@@ -56,9 +57,8 @@ const PLANS: PlanData[] = [
     hasWhiteLabel: true,
   },
   {
-    name: "Growth",
-    monthlyINR: 5999,
-    yearlyINR: 59990,
+    code: "growth",
+    ...academyPricing.growth,
     students: 750,
     staff: 50,
     storageGB: 200,
@@ -89,11 +89,11 @@ const FAQ = [
   },
   {
     q: "Is there a free plan?",
-    a: "The free plan supports up to 25 students with live classes and the parent app. No credit card needed. Paid plans start at ₹999/month with a 14-day free trial.",
+    a: "The free plan supports up to 25 students with live classes and the parent app. You can compare current paid rates and trial options on the pricing page.",
   },
   {
     q: "What payment methods do you accept?",
-    a: "Razorpay and Cashfree — UPI, debit cards, credit cards, and net banking. Annual plans give you two months free.",
+    a: "Razorpay and Cashfree — UPI, debit cards, credit cards, and net banking. Choose yearly billing to see the savings for your plan.",
   },
   {
     q: "Do you support multi-branch centres?",
@@ -165,15 +165,22 @@ export default function PricingCalculator() {
   const [teachers, setTeachers] = useState(3);
   const [addons, setAddons] = useState<string[]>([]);
   const [billingCycle, setBillingCycle] = useState<"Monthly" | "Yearly">("Monthly");
+  const { data: catalogue } = useApiData(saasPublic.plans, []);
+  const plans = useMemo(() => PLANS.map((plan) => {
+    const live = catalogue.find((entry) => entry.code === plan.code);
+    const monthly = live?.prices.find((price) => price.currency === "INR" && price.billingInterval === "Month");
+    const yearly = live?.prices.find((price) => price.currency === "INR" && price.billingInterval === "Year");
+    return { ...plan, name: live?.name ?? plan.name, monthlyINR: monthly?.amount ?? plan.monthlyINR, yearlyINR: yearly?.amount ?? plan.yearlyINR };
+  }), [catalogue]);
 
   /** Recommend the best plan based on student and teacher count. */
   const recommendedPlan = useMemo(() => {
-    return [...PLANS].sort((a: PlanData, b: PlanData) => {
+    return [...plans].sort((a: PlanData, b: PlanData) => {
       if (a.students >= students && b.students < students) return -1;
       if (b.students >= students && a.students < students) return 1;
       return 0;
     })[0] ?? PLANS[0];
-  }, [students]);
+  }, [plans, students]);
 
   /** Calculate monthly cost including addons. */
   const monthlyCost = useMemo(() => {
