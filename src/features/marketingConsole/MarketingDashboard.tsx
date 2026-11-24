@@ -124,7 +124,8 @@ export default function MarketingDashboard() {
   // cacheKey carries `days`, so switching the range refetches (useApiData re-runs on cacheKey).
   const t: ApiMarketingTotals = data.totals;
   const p: ApiMarketingTotals = data.previous;
-  const daily = data.daily.map((d) => ({ ...d, label: formatDate(d.date) }));
+  const dailyRaw = data.daily ?? [];
+  const daily = dailyRaw.map((d) => ({ ...d, label: formatDate(d.date) }));
   const selectedIndex = Math.max(0, selectedDate ? daily.findIndex(d => d.date === selectedDate) : daily.length - 1);
   const selectedDay = daily[selectedIndex];
   const previousDay = selectedIndex > 0 ? daily[selectedIndex - 1] : undefined;
