@@ -366,7 +366,7 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
               <div className="flex flex-wrap gap-3">
                 <Link to={`/get-started?from=${encodeURIComponent(registrationUrl.pathname)}`} className="inline-flex min-h-11 items-center rounded-lg bg-[#B53B0C] px-4 font-bold text-white hover:bg-[#913009]">Claim a free demo</Link>
                 <Link to="/pricing" className="inline-flex min-h-11 items-center rounded-lg border border-[#DAB9A6] px-4 font-bold text-[#492B21] hover:bg-[#FFF1E6]">View plans and buy</Link>
-                <a href="https://wa.me/919344773231?text=I%27d%20like%20to%20ask%20about%20Meet%20to%20Manage%20webinar%20attendee%20offers." target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center px-1 font-semibold text-[#813B20] hover:underline">Ask about attendee offers</a>
+                <a href="https://wa.me/919344773231?text=I%27d%20like%20to%20ask%20about%20Meet%20to%20Manage%20webinar%20attendee%20offers." target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center px-1 font-semibold text-[#813B20] hover:underline" onClick={() => trackMarketingEvent("whatsapp_clicked", window.location.pathname, "webinar:attendee_offers")}>Ask about attendee offers</a>
               </div>
             </div>
           </section>

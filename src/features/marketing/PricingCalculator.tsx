@@ -393,6 +393,7 @@ export default function PricingCalculator() {
                 <Link
                   to="/signup?plan=free"
                   className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#E8C8AD] bg-white px-4 py-3 text-sm font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA]"
+                  onClick={() => trackMarketingEvent("sales_cta_clicked", "/pricing-calculator", "calculator:free_signup")}
                 >
                   Start free forever <span className="text-sm">→</span>
                 </Link>

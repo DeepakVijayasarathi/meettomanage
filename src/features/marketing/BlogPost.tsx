@@ -658,6 +658,7 @@ export default function BlogPost() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white"
+                      onClick={() => trackMarketingEvent("whatsapp_clicked", `/blog/${slug}`, `blog-sidebar:whatsapp`)}
                     >
                       <MessageCircle className="h-3.5 w-3.5 text-[#25D366]" /> {t.whatsapp}
                     </a>

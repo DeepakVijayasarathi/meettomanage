@@ -4,6 +4,7 @@ import { Mail, MessageCircle, Facebook, Instagram, Youtube, Linkedin, Twitter } 
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { COPY } from "./home/copy";
+import { trackMarketingEvent } from "@/lib/analytics";
 
 const LINK = "py-1.5 text-sm font-medium text-[#57534E] transition-colors hover:text-[#1C1917] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C2410C]";
 const HEAD = "text-xs font-bold uppercase tracking-[0.08em] text-[#1C1917] rtl:tracking-normal";
@@ -24,7 +25,7 @@ export function MarketingFooter() {
         <nav aria-label={f.company}>
           <p className={HEAD}>{f.company}</p>
           <ul className="mt-4 flex flex-col">
-            <li><Link to="/signup?plan=free" className={LINK}>{f.freeAccount}</Link></li>
+            <li><Link to="/signup?plan=free" className={LINK} onClick={() => trackMarketingEvent("sales_cta_clicked", window.location.pathname, "footer:free_signup")}>{f.freeAccount}</Link></li>
             <li><Link to="/demo-login" className={LINK}>{f.liveDemo}</Link></li>
             <li><Link to="/get-started" className={LINK}>{f.demo}</Link></li>
             <li><Link to="/get-started?intent=call&from=footer" className={LINK}>{lang === "ar" ? "حدد موعد مكالمة" : "Schedule a call"}</Link></li>
@@ -101,7 +102,7 @@ export function MarketingFooter() {
             <p className={HEAD}>{f.contact}</p>
             <ul className="mt-4 flex flex-col">
               <li>
-                <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className={`${LINK} inline-flex items-center gap-2`}>
+                <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" className={`${LINK} inline-flex items-center gap-2`} onClick={() => trackMarketingEvent("whatsapp_clicked", window.location.pathname, "footer:contact")}>
                   <MessageCircle className="h-4 w-4 shrink-0" /> {f.whatsapp}
                 </a>
               </li>

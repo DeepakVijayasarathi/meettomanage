@@ -624,7 +624,7 @@ export default function MarketingHome() {
                   <p className="mt-1.5 text-sm font-semibold text-[#57534E]">{c.pricing.perMonth}</p>
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap md:flex-col xl:flex-row">
                     <Link to="/pricing" className={cn(BTN_PRIMARY, "w-full rounded-2xl sm:w-auto")}>{c.pricing.cta} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
-                    <Link to="/signup?plan=free" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#E8C8AD] bg-white px-5 py-3 text-sm font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] sm:w-auto">{c.pricing.free}</Link>
+                    <Link to="/signup?plan=free" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#E8C8AD] bg-white px-5 py-3 text-sm font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] sm:w-auto" onClick={() => trackMarketingEvent("sales_cta_clicked", "/", "pricing-teaser:free")}>{c.pricing.free}</Link>
                   </div>
                 </div>
                 <div className="hidden lg:block" aria-hidden="true" />
@@ -698,11 +698,11 @@ export default function MarketingHome() {
             <h2 className="font-display text-[clamp(1.8rem,3.4vw,2.8rem)] font-extrabold leading-[1.08] tracking-[-0.035em] rtl:tracking-normal">{c.cta.heading}</h2>
             <p className="mt-5 text-lg leading-relaxed text-white">{c.cta.sub}</p>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <Link to="/get-started" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-7 py-4 text-[15px] font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">{c.cta.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
+              <Link to="/get-started" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-7 py-4 text-[15px] font-bold text-[#9A3412] transition-colors hover:bg-[#FFF3EA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white" onClick={() => trackMarketingEvent("sales_cta_clicked", "/", "home:bottom:demo")}>{c.cta.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
               <button type="button" onClick={() => { setChatReady(true); setAiOpenRequest((n) => n + 1); }} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/60 px-7 py-4 text-[15px] font-bold text-white transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"><Sparkles className="h-4 w-4" /> {c.cta.ask}</button>
             </div>
             <p className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
-              <Link to="/signup?plan=free" className="font-semibold text-white underline underline-offset-4">{c.cta.free}</Link>
+              <Link to="/signup?plan=free" className="font-semibold text-white underline underline-offset-4" onClick={() => trackMarketingEvent("sales_cta_clicked", "/", "home:bottom:free")}>{c.cta.free}</Link>
               <Link to="/demo-login" className="font-semibold text-white underline underline-offset-4">{c.nav.liveDemo}</Link>
               <Link to="/login" className="font-semibold text-white underline underline-offset-4">{c.cta.signIn}</Link>
             </p>

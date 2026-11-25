@@ -31,7 +31,7 @@ export function WalkthroughCta({ className }: { className?: string }) {
   return (
     <div className={cn("flex flex-col gap-3 sm:flex-row sm:flex-wrap", className)}>
       {trialDays > 0 && (
-        <Link to="/signup" className={cn(BTN_PRIMARY, "justify-center")}>
+        <Link to="/signup" className={cn(BTN_PRIMARY, "justify-center")} onClick={() => trackMarketingEvent("sales_cta_clicked", location.pathname, "walkthrough:free_trial")}>
           Start {trialDays}-day free trial <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
         </Link>
       )}
