@@ -185,7 +185,7 @@ export default function PricingCalculator() {
   /** Calculate monthly cost including addons. */
   const monthlyCost = useMemo(() => {
     const plan = recommendedPlan;
-    let cost = billingCycle === "Yearly" ? plan.yearlyINR / 12 : plan.monthlyINR;
+    const cost = billingCycle === "Yearly" ? plan.yearlyINR / 12 : plan.monthlyINR;
     const addOnMonthly = addons.reduce((sum, a) => {
       const found = ADDONS.find((o) => o.name === a);
       return sum + (found?.monthlyINR ?? 0);

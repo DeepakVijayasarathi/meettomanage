@@ -685,7 +685,7 @@ export default function MarketingHome() {
                 Get guides free <ArrowRight className="h-4 w-4 rtl:-scale-x-100" />
               </Link>
             </div>
-            <p className="mt-3 text-xs text-[#9CA3AF]">We send practical guides and templates — not sales pitches. You can unsubscribe anytime.</p>
+            <p className="mt-3 text-xs text-[#6B7280]">We send practical guides and templates — not sales pitches. You can unsubscribe anytime.</p>
           </div>
         </section>
 
@@ -710,7 +710,7 @@ export default function MarketingHome() {
 
       <WebinarListing landing />
       <MarketingFooter />
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#EBD9C8] bg-white/95 p-3 shadow-[0_-12px_30px_-22px_rgba(28,25,23,0.7)] backdrop-blur sm:hidden">
+      <div role="region" aria-label="Quick contact actions" className="fixed inset-x-0 bottom-0 z-40 border-t border-[#EBD9C8] bg-white/95 p-3 shadow-[0_-12px_30px_-22px_rgba(28,25,23,0.7)] backdrop-blur sm:hidden">
         <div className="mx-auto flex max-w-lg gap-2">
           <Link to="/get-started" className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#C2410C] px-4 text-sm font-bold text-white">{c.hero.demo} <ArrowRight className="h-4 w-4 rtl:-scale-x-100" /></Link>
           <a href="https://wa.me/919344773231" target="_blank" rel="noopener noreferrer" aria-label="Chat with Meet to Manage on WhatsApp" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#E8C8AD] bg-white px-4 text-sm font-bold text-[#9A3412]" onClick={() => trackMarketingEvent("whatsapp_clicked", "/", "footer:whatsapp")}><MessageSquare className="h-4 w-4" /> WhatsApp</a>

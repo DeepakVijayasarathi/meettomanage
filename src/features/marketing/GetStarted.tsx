@@ -194,7 +194,7 @@ function Field({ icon: Icon, children }: { icon: LucideIcon; children: React.Rea
     </div>
   );
 }
-const FIELD = "h-12 w-full !rounded-xl border border-[#EBD9C8] bg-white ps-11 pe-3 text-sm text-[#1C1917] shadow-none placeholder:text-[#8A817A] focus:border-[#F97316] focus-visible:ring-2 focus-visible:ring-[#F97316]/25";
+const FIELD = "h-12 w-full !rounded-xl border border-[#EBD9C8] bg-white ps-11 pe-3 text-sm text-[#1C1917] shadow-none placeholder:text-[#6B625C] focus:border-[#F97316] focus-visible:ring-2 focus-visible:ring-[#F97316]/25";
 
 const EMPTY_FORM = { fullName: "", workEmail: "", phone: "", academyName: "", contactMethod: "Video call", preferredAt: "", message: "" };
 
@@ -451,6 +451,7 @@ export default function GetStarted() {
 
       <MarketingNav />
 
+      <main>
       <section className="relative overflow-hidden bg-gradient-to-b from-[#FFF3EA] via-[#FFF8F3] to-white px-5 py-[clamp(32px,5vw,72px)]">
         <div className="mx-auto max-w-[1160px] overflow-hidden rounded-[28px] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05),0_40px_80px_-40px_rgba(194,65,12,0.35)] ring-1 ring-[#F6E3D3]">
           <div className="grid lg:grid-cols-[1.05fr_1fr]">
@@ -589,7 +590,7 @@ export default function GetStarted() {
                     <p className="text-center text-xs leading-relaxed text-[#78716C]">
                       {lang === "en" ? "Takes less than a minute · No payment details · No commitment" : "نستخدم هذه التفاصيل فقط لترتيب العرض التوضيحي."}
                     </p>
-                    <p className="text-center text-[11px] leading-relaxed text-[#8A817A]">
+                    <p className="text-center text-[11px] leading-relaxed text-[#6B625C]">
                       {lang === "en" ? <>By requesting a demo, you agree that our team may contact you about your request. See our <Link to="/policy" className="font-semibold text-[#9A3412] underline underline-offset-2">privacy policy</Link>.</> : <>بطلب العرض، فإنك توافق على أن يتواصل فريقنا معك بشأن طلبك. راجع <Link to="/policy" className="font-semibold text-[#9A3412] underline underline-offset-2">سياسة الخصوصية</Link>.</>}
                     </p>
                     <a
@@ -608,6 +609,7 @@ export default function GetStarted() {
           </div>
         </div>
       </section>
+      </main>
 
       <MarketingFooter />
     </div>

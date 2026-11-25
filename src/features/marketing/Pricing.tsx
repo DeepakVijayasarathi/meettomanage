@@ -506,6 +506,7 @@ export default function Pricing() {
 
       <MarketingNav />
 
+      <main>
       <MarketingHero eyebrow={t.eyebrow} title={t.heading} sub={t.subheading(brand.name)} overlap>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <ToggleGroup value={cycle} onChange={setCycle} options={(["Month", "Year"] as Cycle[]).map((value) => ({ value, label: t.cycle[value] }))} />
@@ -688,6 +689,7 @@ export default function Pricing() {
           <p>{t.notes[4]}</p>
         </div>
       </section>
+      </main>
 
       <MarketingFooter />
       <PricingExitIntent />
