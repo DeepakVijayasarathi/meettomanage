@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Star, Loader2 } from "lucide-react";
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const API_BASE = `${(import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "")}/t/meettomanage`;
 
 interface PublicReview {
   id: string;
