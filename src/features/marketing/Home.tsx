@@ -17,7 +17,6 @@ import { WebinarListing } from "./WebinarListing";
 import { BTN_PRIMARY, MarketingNav } from "./MarketingNav";
 import { OpenSourceStrip } from "./OpenSourceStrip";
 import { SALES_WHATSAPP_URL } from "./WalkthroughCta";
-import { ReviewDisplay } from "./ReviewDisplay";
 import { COPY } from "./home/copy";
 import { ExplainerVideo } from "./home/ExplainerVideo";
 import { CountUp, Reveal } from "./home/fx";
@@ -583,7 +582,6 @@ export default function MarketingHome() {
         </section>
 
         {/* REVIEWS */}
-        <ReviewDisplay />
 
         {/* PRICING TEASER */}
         <section className="bg-white py-[clamp(40px,4.5vw,64px)]">
