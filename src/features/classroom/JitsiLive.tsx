@@ -2279,7 +2279,7 @@ export default function JitsiLive({
     >
       <header
         ref={headerRef}
-        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-call-ink/10 bg-call-bg px-4 py-3 short:py-1.5 sm:px-5"
+        className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-call-ink/15 bg-call-surface px-4 py-3 shadow-sm shadow-black/5 short:py-1.5 sm:px-5"
       >
         {/* Thin brand-gradient hairline instead of a flat border — ties the header to the
             same violet/amber accent used by the celebrate button and active toggles below,
@@ -2340,7 +2340,7 @@ export default function JitsiLive({
           {/* Grouped as one segmented control (shared pill housing) instead of two
               independently-bordered chips — reads as one family of view toggles. */}
           {(mode === "teacher" || interactive) && !error && (
-            <div className="flex items-center gap-1 rounded-full border border-call-ink/10 bg-call-ink/5 p-1 backdrop-blur">
+            <div className="flex items-center gap-1 rounded-full border border-call-ink/15 bg-call-raised p-1">
               {/* Client report (2026-10-08): "no mute and unmute option." Jitsi's own mic button
                   auto-hides with its toolbar on a laptop, and "mute everyone" sits under its
                   "..." menu -- so the teacher's two most-needed audio controls live up here too,

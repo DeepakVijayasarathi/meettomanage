@@ -271,12 +271,14 @@
 /* Live classroom colours (tailwind.config.ts `call-*`, `brand-orange-ink`), as "R G B" so Tailwind's
    opacity modifiers work. Light by default; the app's dark mode (.dark on <html>) swaps them. */
 :root {
-  --call-bg: 244 245 247;
+  /* Classroom light theme: crisp white canvas with neutral black controls.
+     Keep colour for meaning (live, warning, celebrate), not for chrome. */
+  --call-bg: 255 255 255;
   --call-surface: 255 255 255;
-  --call-raised: 232 235 239;
-  --call-hover: 220 224 230;
-  --call-muted: 195 201 210;
-  --call-ink: 28 31 36;
+  --call-raised: 248 248 248;
+  --call-hover: 238 238 238;
+  --call-muted: 212 212 212;
+  --call-ink: 15 15 15;
   --call-accent-ink: 194 65 12;
   --call-warn: 180 83 9;
   --call-danger-ink: 185 28 28;
