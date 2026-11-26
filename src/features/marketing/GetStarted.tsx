@@ -296,6 +296,10 @@ export default function GetStarted() {
       : { ...current, workEmail: "", phone: value });
   }
 
+  const recoveryWhatsAppUrl = `https://wa.me/919344773231?text=${encodeURIComponent(
+    `I tried to book a Meet to Manage demo, but the form could not be submitted.\nName: ${form.fullName || "Not entered"}\nContact: ${form.workEmail || form.phone || "Not entered"}`
+  )}`;
+
   useEffect(() => {
     tagRef.current = tag;
     if (tag) trackMarketingEvent("experiment_viewed", "/get-started", tag);
@@ -583,7 +587,20 @@ export default function GetStarted() {
                       </div>
                     </div>
                     </div>}
-                    {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
+                    {error && (
+                      <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                        <p className="font-semibold">{error}</p>
+                        <a
+                          href={recoveryWhatsAppUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#166534] px-4 font-bold text-white hover:bg-[#14532D]"
+                          onClick={() => trackMarketingEvent("whatsapp_clicked", "/get-started", "form-error-recovery")}
+                        >
+                          <MessageSquare className="h-4 w-4" /> Continue on WhatsApp
+                        </a>
+                      </div>
+                    )}
                     <button type="submit" disabled={submitting} className={cn(CTA_ORANGE, "mt-1 h-14 w-full !rounded-2xl text-base normal-case tracking-normal shadow-[0_16px_30px_-14px_rgba(194,65,12,0.8)]")}>
                       {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>{wantsCall ? (lang === "en" ? "Request this call" : "اطلب هذه المكالمة") : wantsMigration ? (lang === "en" ? "Get my migration plan" : "احصل على خطة الانتقال") : lang === "en" ? "Book my free 30-minute demo" : pc.cta} <ArrowRight className="h-5 w-5 rtl:-scale-x-100" /></>}
                     </button>
