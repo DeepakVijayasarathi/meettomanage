@@ -218,8 +218,6 @@ function localDateTimeMinimum() {
 export default function GetStarted() {
   useLightBrandScope();
   const live = apiEnabled();
-  // Reset the module-level singleton so SPA navigations back to /get-started re-track.
-  resetFormVisible();
   const [lang] = useLang();
   const t = T[lang];
   // ?for=coach arrives from coach-focused links (and the sales assistant) — same form and same
@@ -273,6 +271,7 @@ export default function GetStarted() {
   const startedRef = useRef(false);
   const submittedRef = useRef(false);
   const tagRef = useRef(tag);
+  const formRef = useRef<HTMLFormElement>(null);
 
   function markFormStarted() {
     if (startedRef.current) return;
@@ -362,6 +361,9 @@ export default function GetStarted() {
   // Fire "form_visible" when the demo form scrolls into view — captures interest even
   // when the visitor never touches a field, so we can measure form-attention rate.
   useEffect(() => {
+    // Reset once per mounted form. Resetting during render made every field update clear the
+    // guard and allowed the same visitor to be counted repeatedly.
+    resetFormVisible();
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
@@ -369,9 +371,11 @@ export default function GetStarted() {
           observer.disconnect();
         }
       },
-      { threshold: 0.3 }
+      // The complete form is taller than many phone/laptop viewports. Requiring 30% of the
+      // whole element meant a visitor could type into it without ever satisfying the observer.
+      { threshold: 0.05 }
     );
-    const form = document.querySelector("form");
+    const form = formRef.current;
     if (form) observer.observe(form);
     return () => observer.disconnect();
   }, []);
@@ -514,7 +518,7 @@ export default function GetStarted() {
                       ))}
                     </ol>
                   )}
-                  <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+                  <form ref={formRef} onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
                     <div className="grid gap-1.5">
                       <Label htmlFor="gs-fullName" className="font-semibold text-[#1C1917]">{t.yourName} <span aria-hidden className="text-[#C2410C]">*</span></Label>
                       <Field icon={User}>
