@@ -29,6 +29,32 @@ interface Niche {
 
 const NICHES: Niche[] = [
   {
+    slug: "online-academy-management-software-india",
+    eyebrow: "For Indian online academies and coaching centres",
+    title: "Online academy management software built for India.",
+    sub: "Run enquiries, admissions, batches, live classes, attendance, fees and parent updates from one system instead of separate spreadsheets, meeting links and WhatsApp groups.",
+    seoTitle: "Online Academy Management Software India | Meet to Manage",
+    seoDescription: "Manage admissions, batches, live classes, attendance, fees and parent communication with online academy management software built for Indian coaching businesses.",
+    name: "Online academy management software for India",
+    specific: [
+      { title: "Enquiry to enrolment in one pipeline", body: "Capture each enquiry, assign follow-ups, schedule a demo and move the family through admission without losing the conversation across spreadsheets and personal phones." },
+      { title: "Batches, teachers and timetables", body: "Create recurring batches, assign teachers, manage capacity and show every person the same academic calendar so clashes are caught before class." },
+      { title: "Indian fee collection workflows", body: "Create invoices, record cash or bank payments, accept online payments through Razorpay or Cashfree, handle part payments and send receipts to families." },
+      { title: "Live classes connected to operations", body: "Open the scheduled class with video, whiteboard, screen sharing and recordings. Attendance and the replay stay connected to the same batch and student." },
+      { title: "Parent access without repeated link sharing", body: "Parents see upcoming classes, recordings, invoices, payments and notices from one portal instead of asking the team for another link." },
+      { title: "Owner reports that lead to action", body: "See admissions, collections, overdue fees, attendance and class activity together, with clear exceptions that need the owner's attention." },
+    ],
+    closingHeading: "Replace the patchwork, not your teaching process",
+    closing: "Start with the workflow you already run, import your students and batches, and move one operational area at a time.",
+    faq: [
+      ["What does online academy management software include?", "It connects enquiries, admissions, students, batches, teachers, live classes, attendance, fees, recordings, parent communication and reports in one system."],
+      ["Is Meet to Manage suitable for coaching centres in India?", "Yes. It supports Indian academy workflows including recurring batches, INR pricing, cash and online fee records, Razorpay or Cashfree payments and parent communication."],
+      ["Can I move from spreadsheets and WhatsApp gradually?", "Yes. You can begin with students and batches, then add admissions, fees, live classes and parent access without changing everything on the first day."],
+      ["Can parents join classes without receiving a new link every time?", "Yes. Upcoming classes appear in the parent experience, so the family opens the scheduled class from one consistent place."],
+      ["Does it support both online and hybrid academies?", "Yes. Use the same batches, attendance, fees and parent records for online, offline or hybrid programmes."],
+    ],
+  },
+  {
     slug: "music-class-software",
     eyebrow: "For music and instrument teachers",
     title: "Online class software for music and instrument teachers.",

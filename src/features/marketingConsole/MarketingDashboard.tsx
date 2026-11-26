@@ -119,6 +119,8 @@ export default function MarketingDashboard() {
   const reportState = useApiData<ApiMarketingReportSetting>(getMarketingReportSettings, { enabled: false, frequency: "Weekly", recipientEmail: "", retentionDays: 400, lastSentAtUtc: null }, undefined, { cacheKey: "marketing-report-settings", ttlMs: 30_000 });
   const [reportForm, setReportForm] = useState(reportState.data);
   const [campaignForm, setCampaignForm] = useState({ campaign: "", spend: "", wonRevenue: "", startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10) });
+  const [campaignLink, setCampaignLink] = useState({ source: "meta", medium: "paid-social", campaign: "" });
+  const [campaignLinkCopied, setCampaignLinkCopied] = useState(false);
   const [operationsBusy, setOperationsBusy] = useState(false);
   useEffect(() => setReportForm(reportState.data), [reportState.data]);
 
@@ -159,6 +161,21 @@ export default function MarketingDashboard() {
   }
 
   async function saveAutomation() { setOperationsBusy(true); try { await saveMarketingReportSettings(reportForm); await reportState.reload(); } finally { setOperationsBusy(false); } }
+
+  const taggedCampaignUrl = campaignLink.campaign.trim()
+    ? `https://meettomanage.cloud/get-started?${new URLSearchParams({
+        utm_source: campaignLink.source.trim().toLowerCase(),
+        utm_medium: campaignLink.medium.trim().toLowerCase(),
+        utm_campaign: campaignLink.campaign.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+      })}`
+    : "";
+
+  async function copyCampaignLink() {
+    if (!taggedCampaignUrl) return;
+    await navigator.clipboard.writeText(taggedCampaignUrl);
+    setCampaignLinkCopied(true);
+    window.setTimeout(() => setCampaignLinkCopied(false), 2000);
+  }
 
   const kpis: { label: string; value: string; detail?: string; icon: LucideIcon; tone: "primary" | "success" | "warning" | "neutral"; trend?: { value: number; label: string } }[] = [
     { label: "Visitors", value: fmt(t.visitors), icon: Users, tone: "primary", trend: change(t.visitors, p.visitors) },
@@ -475,6 +492,11 @@ export default function MarketingDashboard() {
 
       <div className="mb-3 mt-8"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Operations</p><h2 className="mt-1 text-xl font-bold">ROI and automation</h2></div>
       <div className="grid gap-4 xl:grid-cols-2">
+        <Card><CardHeader><CardTitle className="text-base">Tagged campaign link</CardTitle><p className="text-sm text-muted-foreground">Use this link in every advertisement and social post so visitors and leads are assigned to the right campaign.</p></CardHeader><CardContent className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-3"><input aria-label="Campaign source" placeholder="Source, e.g. meta" value={campaignLink.source} onChange={e => setCampaignLink({ ...campaignLink, source: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Campaign medium" placeholder="Medium, e.g. paid-social" value={campaignLink.medium} onChange={e => setCampaignLink({ ...campaignLink, medium: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Campaign name for link" placeholder="Campaign, e.g. academy owners" value={campaignLink.campaign} onChange={e => setCampaignLink({ ...campaignLink, campaign: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /></div>
+          <div className="flex flex-col gap-2 sm:flex-row"><input aria-label="Generated campaign URL" readOnly value={taggedCampaignUrl} placeholder="Enter a campaign name to generate the URL" className="h-10 min-w-0 flex-1 rounded-md border bg-muted/40 px-3 text-sm" /><Button type="button" disabled={!taggedCampaignUrl} onClick={() => void copyCampaignLink()}>{campaignLinkCopied ? "Copied" : "Copy link"}</Button></div>
+        </CardContent></Card>
+
         <Card><CardHeader><CardTitle className="text-base">Campaign ROI</CardTitle><p className="text-sm text-muted-foreground">Add spend and won revenue using the exact utm_campaign value.</p></CardHeader><CardContent className="space-y-4">
           <div className="grid gap-2 sm:grid-cols-5"><input aria-label="Campaign" placeholder="Campaign" value={campaignForm.campaign} onChange={e => setCampaignForm({ ...campaignForm, campaign: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Spend" type="number" min="0" placeholder="Spend ₹" value={campaignForm.spend} onChange={e => setCampaignForm({ ...campaignForm, spend: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Won revenue" type="number" min="0" placeholder="Won ₹" value={campaignForm.wonRevenue} onChange={e => setCampaignForm({ ...campaignForm, wonRevenue: e.target.value })} className="h-10 rounded-md border bg-background px-3 text-sm" /><input aria-label="Start date" type="date" value={campaignForm.startDate} onChange={e => setCampaignForm({ ...campaignForm, startDate: e.target.value })} className="h-10 rounded-md border bg-background px-2 text-sm" /><Button disabled={operationsBusy} onClick={() => void addCampaign()}>Add</Button></div>
           <div className="overflow-auto" tabIndex={0} aria-label="Campaign return on investment data"><table className="w-full text-sm"><thead className="text-xs text-muted-foreground"><tr><th className="pb-2 text-left">Campaign</th><th className="pb-2 text-right">Spend</th><th className="pb-2 text-right">Leads</th><th className="pb-2 text-right">CPA</th><th className="pb-2 text-right">ROAS</th></tr></thead><tbody className="divide-y">{campaignState.data.map(c => <tr key={c.id}><td className="py-2">{c.campaign}</td><td className="text-right">₹{Number(c.spend ?? 0).toLocaleString()}</td><td className="text-right">{c.leads}</td><td className="text-right">{c.costPerAcquisition == null ? "—" : `₹${Number(c.costPerAcquisition).toLocaleString()}`}</td><td className="text-right font-semibold">{c.returnOnAdSpend == null ? "—" : `${c.returnOnAdSpend}×`}</td></tr>)}</tbody></table></div>
