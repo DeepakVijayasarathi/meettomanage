@@ -20,11 +20,6 @@ export default defineConfig({
       },
     },
   },
-  esbuild: {
-    // lucide-react puts a multi-line licence banner above every icon, which splits the
-    // minified entry chunk into hundreds of lines and makes SEO audits flag it as unminified.
-    legalComments: "none",
-  },
   test: {
     environment: "jsdom",
     globals: true,

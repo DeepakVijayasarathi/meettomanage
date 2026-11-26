@@ -30,6 +30,7 @@ const EMPTY: ApiMarketingDashboard = {
   totals: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formVisibleVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
   previous: { pageViews: 0, visitors: 0, chatsStarted: 0, demoRequests: 0, formStartedVisitors: 0, formVisibleVisitors: 0, formSubmitAttemptedVisitors: 0, formSubmitFailedVisitors: 0, formSubmittedVisitors: 0, formValidationFailedVisitors: 0, formAbandonedVisitors: 0, whatsAppVisitors: 0, chatBookings: 0, conversionRate: 0, pagesPerVisitor: 0, chatStartRate: 0, demoPipelineConversionRate: 0 },
   conversionDetail: { visitors: 0, highIntentPageVisitors: 0, pricingVisitors: 0, demoPageVisitors: 0, formStartedVisitors: 0, formVisibleVisitors: 0, submitAttemptedVisitors: 0, validationFailedVisitors: 0, abandonedVisitors: 0, apiFailedVisitors: 0, savedFormLeadVisitors: 0, chatBookedVisitors: 0, whatsAppVisitors: 0, totalSavedLeadVisitors: 0 },
+  trafficQuality: { totalVisitors: 0, campaignVisitors: 0, organicReferralVisitors: 0, directVisitors: 0, engagedVisitors: 0, qualifiedProspects: 0, lowEngagementVisitors: 0, knownBotsExcluded: true },
   daily: [],
   topPages: [],
   topBlogPosts: [],
@@ -196,6 +197,7 @@ export default function MarketingDashboard() {
           : { tone: "neutral", label: "No form activity", message: "Page tracking is active, but nobody saw or started the demo form in this period. Zero requests alone does not indicate a tracking failure.", icon: Info };
   const TrackingIcon = trackingHealth.icon;
   const conversion = data.conversionDetail ?? EMPTY.conversionDetail;
+  const traffic = data.trafficQuality ?? EMPTY.trafficQuality;
   const conversionStages = [
     { label: "Website visitors", value: conversion.visitors, detail: "unique people reached" },
     { label: "High-intent page", value: conversion.highIntentPageVisitors, detail: "pricing, get started or demo" },
@@ -304,6 +306,29 @@ export default function MarketingDashboard() {
           <dl className="grid shrink-0 grid-cols-2 gap-2 text-center text-sm sm:grid-cols-6">
             {[["Form seen", formVisible], ["Form starts", formStarts], ["Attempts", formAttempts], ["API failures", formFailures], ["Saved demos", t.demoRequests], ["WhatsApp opens", t.whatsAppVisitors ?? 0]].map(([label, value]) => <div key={String(label)} className="min-w-20 rounded-lg border bg-background/80 px-3 py-2"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-bold tabular-nums">{fmt(Number(value))}</dd></div>)}
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 overflow-hidden shadow-sm">
+        <CardHeader className="border-b bg-muted/20">
+          <CardTitle className="text-base">Qualified traffic</CardTitle>
+          <p className="text-sm text-muted-foreground">Acquisition and intent are measured separately. Known crawlers, monitors, headless browsers and signed-in staff are excluded.</p>
+        </CardHeader>
+        <CardContent className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-6">
+          {[
+            ["Campaign", traffic.campaignVisitors, "UTM or paid-click traffic"],
+            ["Organic / referral", traffic.organicReferralVisitors, "unpaid external sources"],
+            ["Direct", traffic.directVisitors, "no campaign or referrer"],
+            ["Engaged", traffic.engagedVisitors, "multiple pages or intent action"],
+            ["Qualified prospects", traffic.qualifiedProspects, "sales, form, chat or WhatsApp intent"],
+            ["Low engagement", traffic.lowEngagementVisitors, "one page and no intent action"],
+          ].map(([label, value, detail]) => (
+            <div key={String(label)} className="rounded-xl border bg-background p-4">
+              <p className="text-xs font-medium text-muted-foreground">{label}</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{fmt(Number(value))}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+            </div>
+          ))}
         </CardContent>
       </Card>
 

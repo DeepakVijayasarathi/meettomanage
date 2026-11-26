@@ -328,6 +328,7 @@ export interface ApiMarketingDashboard {
   totals: ApiMarketingTotals;
   previous: ApiMarketingTotals;
   conversionDetail: ApiMarketingConversionDetail;
+  trafficQuality: ApiMarketingTrafficQuality;
   daily: { date: string; pageViews: number; visitors: number; demoRequests: number; chatsStarted: number; conversionRate: number; pagesPerVisitor: number }[];
   topPages: ApiNamedCount[];
   topBlogPosts: ApiNamedCount[];
@@ -340,6 +341,17 @@ export interface ApiMarketingDashboard {
   sourceQuality: ApiMarketingPerformance[];
   campaignPerformance: ApiMarketingPerformance[];
   landingPagePerformance: ApiMarketingPerformance[];
+}
+
+export interface ApiMarketingTrafficQuality {
+  totalVisitors: number;
+  campaignVisitors: number;
+  organicReferralVisitors: number;
+  directVisitors: number;
+  engagedVisitors: number;
+  qualifiedProspects: number;
+  lowEngagementVisitors: number;
+  knownBotsExcluded: boolean;
 }
 
 export interface ApiMarketingConversionDetail {

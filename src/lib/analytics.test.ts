@@ -4,6 +4,7 @@ import { browserCountry, marketingAttribution } from "./analytics";
 describe("marketingAttribution", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -42,7 +43,31 @@ describe("marketingAttribution", () => {
     expect(marketingAttribution()).toEqual({});
   });
 
+  it.each([
+    ["?gclid=paid-click", "google", "cpc"],
+    ["?fbclid=paid-click", "meta", "paid-social"],
+    ["?msclkid=paid-click", "bing", "cpc"],
+  ])("classifies paid click identifiers even when UTM tags are missing", (search, source, medium) => {
+    at(search);
+    expect(marketingAttribution()).toMatchObject({ utmSource: source, utmMedium: medium });
+  });
+
+  it("retains first-touch campaign attribution across browser sessions", () => {
+    at("?utm_source=linkedin&utm_medium=paid-social&utm_campaign=owners");
+    marketingAttribution();
+    sessionStorage.clear();
+    at("");
+    expect(marketingAttribution()).toMatchObject({
+      utmSource: "linkedin",
+      utmMedium: "paid-social",
+      utmCampaign: "owners",
+    });
+  });
+
   function stubTimeZone(timeZone: string) {
+    // Vitest 5 spies must wrap the real constructor; restore a previous zone spy before
+    // installing the next one in the same test.
+    vi.restoreAllMocks();
     const real = Intl.DateTimeFormat;
     vi.spyOn(Intl, "DateTimeFormat").mockImplementation(((...args: ConstructorParameters<typeof Intl.DateTimeFormat>) => {
       const f = new real(...args);

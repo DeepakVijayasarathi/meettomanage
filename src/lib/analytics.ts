@@ -127,6 +127,8 @@ function install() {
 
 const VISITOR_KEY = "mtm.visitorId";
 const ATTRIBUTION_KEY = "mtm.marketingAttribution";
+const FIRST_TOUCH_KEY = "mtm.marketingFirstTouch";
+const ATTRIBUTION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 export type MarketingAttribution = {
   referrerHost?: string;
@@ -134,6 +136,8 @@ export type MarketingAttribution = {
   utmMedium?: string;
   utmCampaign?: string;
 };
+
+type StoredAttribution = { value: MarketingAttribution; expiresAt: number };
 
 /**
  * Where the visitor is, without an IP address. The browser's time zone is the reliable signal:
@@ -183,20 +187,36 @@ export function marketingAttribution(): MarketingAttribution {
   } catch {
     /* unparseable referrer -- treat as direct */
   }
+  const paidClick = params.has("gclid")
+    ? { source: "google", medium: "cpc" }
+    : params.has("fbclid")
+      ? { source: "meta", medium: "paid-social" }
+      : params.has("msclkid")
+        ? { source: "bing", medium: "cpc" }
+        : null;
   const current: MarketingAttribution = {
     referrerHost,
-    utmSource: params.get("utm_source") ?? undefined,
-    utmMedium: params.get("utm_medium") ?? undefined,
+    utmSource: params.get("utm_source") ?? paidClick?.source,
+    utmMedium: params.get("utm_medium") ?? paidClick?.medium,
     utmCampaign: params.get("utm_campaign") ?? undefined,
   };
   const hasCurrent = Boolean(referrerHost || current.utmSource || current.utmMedium || current.utmCampaign);
   try {
     if (hasCurrent) {
       sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(current));
+      // Keep first-touch attribution long enough for a prospect who returns in another tab or
+      // on another day before requesting a demo. Never overwrite the original acquisition.
+      const first = JSON.parse(localStorage.getItem(FIRST_TOUCH_KEY) ?? "null") as StoredAttribution | null;
+      if (!first || first.expiresAt <= Date.now()) {
+        localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify({ value: current, expiresAt: Date.now() + ATTRIBUTION_TTL_MS } satisfies StoredAttribution));
+      }
       return current;
     }
     const stored = JSON.parse(sessionStorage.getItem(ATTRIBUTION_KEY) ?? "null") as MarketingAttribution | null;
     if (stored && typeof stored === "object") return stored;
+    const first = JSON.parse(localStorage.getItem(FIRST_TOUCH_KEY) ?? "null") as StoredAttribution | null;
+    if (first?.value && first.expiresAt > Date.now()) return first.value;
+    if (first) localStorage.removeItem(FIRST_TOUCH_KEY);
   } catch {
     /* Storage can be unavailable or contain stale invalid JSON; current attribution still works. */
   }
