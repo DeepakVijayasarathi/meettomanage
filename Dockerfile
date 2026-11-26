@@ -58,5 +58,8 @@ RUN printf '{"version":"%s","commit":"%s"}\n' "$RELEASE_VERSION" "$GIT_COMMIT" >
 FROM nginx:1.27-alpine AS final
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD wget -q -O /dev/null http://127.0.0.1/release.json || exit 1
+# nginx has separate host-based virtual servers. Probe the production virtual host
+# explicitly; a bare 127.0.0.1 request selects the www redirect server and can follow
+# that redirect through the public reverse proxy, reporting a false 502 during deploys.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD wget -q --header='Host: meettomanage.cloud' -O /dev/null http://127.0.0.1/release.json || exit 1
 EXPOSE 80
