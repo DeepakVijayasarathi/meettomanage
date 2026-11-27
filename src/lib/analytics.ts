@@ -284,7 +284,7 @@ export async function trackMarketingPageView(path: string, title: string): Promi
   if (!ids.ga && !ids.gtm && !ids.pixel) return;
   install();
   const location = `${window.location.origin}${path}`;
-  window.gtag?.("event", "page_view", { page_path: path, page_location: location, page_title: title });
+  if (ids.ga) window.gtag?.("event", "page_view", { page_path: path, page_location: location, page_title: title });
   if (ids.gtm) window.dataLayer?.push({ event: "marketing_page_view", page_path: path, page_title: title });
   window.fbq?.("track", "PageView");
 }
@@ -316,7 +316,7 @@ export async function trackDemoBooked(path: string): Promise<void> {
   await load();
   if (!ids.ga && !ids.gtm && !ids.pixel) return;
   install();
-  window.gtag?.("event", "generate_lead", { lead_source: "website", page_path: path });
+  if (ids.ga) window.gtag?.("event", "generate_lead", { lead_source: "website", page_path: path });
   if (ids.gtm) window.dataLayer?.push({ event: "marketing_generate_lead", page_path: path });
   window.fbq?.("track", "Lead");
 }
