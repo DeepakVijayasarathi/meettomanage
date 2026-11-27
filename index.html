@@ -2,16 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Google tag (gtag.js). Calls queue in dataLayer straight away, but the 178 KB library itself loads on the
-         visitor's first interaction or 4 s after the page has loaded, so it no longer competes with the page on
-         mobile. src/lib/analytics.ts uses the same trigger (window.__m2mAfterLoad) for the console-configured tags. -->
+    <!-- Console-configured analytics libraries wait until the visitor's first interaction or 4 s after load,
+         so they do not compete with the page on mobile. The IDs themselves live only in the Marketing Console;
+         hardcoding GA here as well as loading GTM caused every public page view to be sent twice. -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-8C85KWQ0MQ');
-
       (function () {
         var queue = [], fired = false, events = ["pointerdown", "keydown", "scroll", "touchstart"];
         function fire() {
@@ -23,12 +17,6 @@
         window.__m2mAfterLoad = function (cb) { fired ? cb() : queue.push(cb); };
         events.forEach(function (e) { addEventListener(e, fire, { capture: true, passive: true }); });
         addEventListener("load", function () { setTimeout(fire, 4000); });
-        window.__m2mAfterLoad(function () {
-          var s = document.createElement("script");
-          s.async = true;
-          s.src = "https://www.googletagmanager.com/gtag/js?id=G-8C85KWQ0MQ";
-          document.head.appendChild(s);
-        });
       })();
     </script>
     <link rel="icon" href="/favicon.ico" sizes="any" />
