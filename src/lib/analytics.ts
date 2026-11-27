@@ -278,6 +278,8 @@ export function trackMarketingEvent(type: Exclude<MarketingEventType, "page_view
 }
 
 /** Called by each public marketing page (via <Seo>) once it renders. */
+let initialGtmPageViewSeen = false;
+
 export async function trackMarketingPageView(path: string, title: string): Promise<void> {
   beacon("page_view", path);
   await load();
@@ -285,7 +287,12 @@ export async function trackMarketingPageView(path: string, title: string): Promi
   install();
   const location = `${window.location.origin}${path}`;
   if (ids.ga) window.gtag?.("event", "page_view", { page_path: path, page_location: location, page_title: title });
-  if (ids.gtm) window.dataLayer?.push({ event: "marketing_page_view", page_path: path, page_title: title });
+  if (ids.gtm) {
+    // The GA configuration inside GTM sends the landing-page view automatically. Emit our
+    // custom event only for later client-side route changes, otherwise the first view is doubled.
+    if (initialGtmPageViewSeen) window.dataLayer?.push({ event: "marketing_page_view", page_path: path, page_title: title });
+    initialGtmPageViewSeen = true;
+  }
   window.fbq?.("track", "PageView");
 }
 
