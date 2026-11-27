@@ -43,6 +43,7 @@ const BLOG_IMAGES: Record<string, string> = {
   "onboard-students-online-academy": "/blog/onboard-students-online-academy.webp",
   "expand-coaching-centre-second-branch": "/blog/expand-coaching-centre-second-branch.webp",
   "academy-software-roi-calculator": "/blog/academy-software-roi-calculator.webp",
+  "academy-management-software-roi-200-student-worked-example": "/blog/academy-software-roi-a-worked-example-for-a-200-student-centre.webp",
   "admissions-crm-for-academies": "/blog/admissions-crm-for-academies.webp",
   "interactive-whiteboard-activities-online-classes": "/blog/interactive-whiteboard-activities-online-classes.webp",
   "gamification-online-classes-kids": "/blog/gamification-online-classes-kids.webp",
