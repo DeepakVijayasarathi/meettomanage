@@ -91,9 +91,7 @@ function install() {
   if (ids.ga || ids.gtm) {
     window.dataLayer = window.dataLayer ?? [];
   }
-  // GTM owns Google Analytics when both settings are present. Loading the direct GA tag as
-  // well would send every landing-page view twice.
-  if (ids.ga && !ids.gtm) {
+  if (ids.ga) {
     window.gtag = function gtag() {
       // gtag.js reads the Arguments object itself, not an array copy.
       // eslint-disable-next-line prefer-rest-params
@@ -284,13 +282,18 @@ let lastMarketingPageViewPath: string | null = null;
 
 export async function trackMarketingPageView(path: string, title: string): Promise<void> {
   if (lastMarketingPageViewPath === path) return;
+  const isInitialPageView = lastMarketingPageViewPath === null;
   lastMarketingPageViewPath = path;
   beacon("page_view", path);
   await load();
   if (!ids.ga && !ids.gtm && !ids.pixel) return;
   install();
   const location = `${window.location.origin}${path}`;
-  if (ids.ga && !ids.gtm) window.gtag?.("event", "page_view", { page_path: path, page_location: location, page_title: title });
+  // With GTM present, loading the Google tag activates the container's linked GA destination,
+  // which already sends the landing view. Explicitly send only later SPA route changes.
+  if (ids.ga && (!ids.gtm || !isInitialPageView)) {
+    window.gtag?.("event", "page_view", { page_path: path, page_location: location, page_title: title });
+  }
   if (ids.gtm) {
     window.dataLayer?.push({ event: "marketing_page_view", page_path: path, page_title: title });
   }
@@ -324,7 +327,7 @@ export async function trackDemoBooked(path: string): Promise<void> {
   await load();
   if (!ids.ga && !ids.gtm && !ids.pixel) return;
   install();
-  if (ids.ga && !ids.gtm) window.gtag?.("event", "generate_lead", { lead_source: "website", page_path: path });
+  if (ids.ga) window.gtag?.("event", "generate_lead", { lead_source: "website", page_path: path });
   if (ids.gtm) window.dataLayer?.push({ event: "marketing_generate_lead", page_path: path });
   window.fbq?.("track", "Lead");
 }
