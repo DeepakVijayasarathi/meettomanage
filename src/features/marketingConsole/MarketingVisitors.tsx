@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarCheck2, CircleAlert, Footprints, FormInput, Loader2, ListChecks, MessageCircle, Repeat, Send, Sparkles, Users, Wrench, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CalendarCheck2, CircleAlert, Footprints, FormInput, Loader2, ListChecks, MessageCircle, Repeat, Send, Sparkles, Wrench, AlertTriangle, CheckCircle2, Activity, Globe2, MousePointerClick, TrendingUp } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { InlineAlert } from "@/components/InlineAlert";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ const EMPTY_BEHAVIOUR: ApiMarketingSiteBehaviour = {
 };
 const IMPACT_STYLE = { High: "bg-destructive/10 text-destructive", Medium: "bg-warning/15 text-warning", Low: "bg-muted text-muted-foreground" } as const;
 const duration = (s: number | null) => (s == null ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`);
+const CHART_COLORS = ["#7C3AED", "#EC4899", "#F97316", "#0EA5E9", "#10B981", "#F59E0B"];
 
 /** Marketing console → Visitors: the patterns — where people land and leave, common paths, when they arrive. */
 export default function MarketingVisitors() {
@@ -67,9 +69,15 @@ export default function MarketingVisitors() {
   }
 
   const funnelTop = Math.max(1, b.funnel[0]?.visitors ?? 0);
-  const maxHour = Math.max(1, ...data.visitsByHour.map((h) => h.count));
   const busiestHour = data.visitsByHour.reduce<ApiNamedCount | null>((best, h) => (h.count > (best?.count ?? 0) ? h : best), null);
   const period = data.startDate && data.endDate ? (data.startDate === data.endDate ? data.startDate : `${data.startDate} – ${data.endDate}`) : "";
+  const engagedVisitors = Math.max(0, data.totalVisitors - data.singlePageVisitors);
+  const engagementData = [
+    { name: "Engaged", value: engagedVisitors },
+    { name: "One page", value: data.singlePageVisitors },
+  ].filter((item) => item.value > 0);
+  const sourceData = b.sources.slice(0, 6).map((item) => ({ name: item.name, value: item.count }));
+  const deviceData = b.devices.slice(0, 6).map((item) => ({ name: item.name, value: item.count }));
 
   // Quick rule-based checks — free, immediate, no AI call needed.
   const quickChecks = (() => {
@@ -126,19 +134,35 @@ export default function MarketingVisitors() {
         </InlineAlert>
       )}
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {[
-          { label: "Visitors", value: String(data.totalVisitors), icon: Users },
-          { label: "Left after 1 page", value: pct(data.singlePageVisitors, data.totalVisitors), icon: Footprints },
-          { label: "Came back another day", value: String(data.returningVisitors), icon: Repeat },
-          { label: "Started a chat", value: String(data.chatVisitors), icon: MessageCircle },
-          { label: "Booked a demo", value: String(data.bookedVisitors), icon: CalendarCheck2 },
-        ].map((k) => (
-          <div key={k.label} className="rounded-xl border bg-card p-4">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">{k.label}<k.icon className="h-4 w-4" /></div>
-            <p className="mt-1 text-2xl font-bold">{k.value}</p>
+      <section className="relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-violet-950 to-fuchsia-950 p-5 text-white shadow-xl shadow-violet-950/10 sm:p-7">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl" />
+        <div className="relative grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+          <div>
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-violet-200"><TrendingUp className="h-4 w-4" /> Audience overview</div>
+            <div className="flex items-end gap-3"><p className="text-5xl font-black tracking-tight sm:text-6xl">{data.totalVisitors}</p><p className="pb-1.5 text-sm text-violet-200">visitors{period ? ` · ${period}` : ""}</p></div>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">{data.totalVisitors > 0 ? `${pct(engagedVisitors, data.totalVisitors)} viewed more than one page. ${data.returningVisitors} returned on another day.` : "Visitor activity will appear here as soon as the website records traffic."}</p>
           </div>
-        ))}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+            {[
+              { label: "Engaged", value: engagedVisitors, icon: Activity, tone: "bg-violet-400/15" },
+              { label: "Returned", value: data.returningVisitors, icon: Repeat, tone: "bg-cyan-400/15" },
+              { label: "Started chat", value: data.chatVisitors, icon: MessageCircle, tone: "bg-pink-400/15" },
+              { label: "Booked demo", value: data.bookedVisitors, icon: CalendarCheck2, tone: "bg-orange-400/15" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur-sm">
+                <div className="flex items-center justify-between text-xs text-slate-300">{item.label}<span className={cn("rounded-lg p-1.5", item.tone)}><item.icon className="h-4 w-4" /></span></div>
+                <p className="mt-1 text-2xl font-bold">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="mb-4 grid gap-4 lg:grid-cols-3">
+        <DonutCard title="Engagement quality" subtitle="Visitors who explored beyond their first page" data={engagementData} total={data.totalVisitors} icon={Activity} />
+        <DonutCard title="Traffic sources" subtitle="How visitors discovered the website" data={sourceData} total={b.visitors} icon={Globe2} />
+        <DonutCard title="Devices" subtitle="Devices used to browse the website" data={deviceData} total={b.visitors} icon={MousePointerClick} />
       </div>
 
       <Card className="mb-4">
@@ -396,18 +420,65 @@ export default function MarketingVisitors() {
             <CardTitle className="text-base">When they arrive{busiestHour ? ` · busiest ${busiestHour.name}:00` : ""}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex h-28 items-end gap-[3px]" aria-label="Visitors by hour of arrival, your local time">
-              {data.visitsByHour.map((h) => (
-                <div key={h.name} className="flex flex-1 flex-col items-center justify-end" title={`${h.name}:00 — ${h.count} visitors`}>
-                  <div className="w-full rounded-t bg-primary/80" style={{ height: `${(h.count / maxHour) * 100}%`, minHeight: h.count ? 2 : 0 }} />
-                </div>
-              ))}
-            </div>
-            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+            {data.visitsByHour.some((hour) => hour.count > 0) ? (
+              <div className="h-44" aria-label="Visitors by hour of arrival, your local time">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.visitsByHour} margin={{ top: 8, right: 4, left: -18, bottom: 0 }}>
+                    <defs><linearGradient id="visitorHourFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="name" interval={3} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(hour) => `${hour}:00`} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                    <Tooltip cursor={{ fill: "hsl(var(--muted))", opacity: 0.45 }} formatter={(value) => [`${value} visitors`, "Arrivals"]} labelFormatter={(hour) => `${hour}:00`} />
+                    <Bar dataKey="count" fill="url(#visitorHourFill)" radius={[6, 6, 0, 0]} maxBarSize={22} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">No arrival activity in this period.</p>}
           </CardContent>
         </Card>
       </div>
     </div>
+  );
+}
+
+type DonutDatum = { name: string; value: number };
+
+function DonutCard({ title, subtitle, data, total, icon: Icon }: { title: string; subtitle: string; data: DonutDatum[]; total: number; icon: typeof Activity }) {
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-0">
+        <div className="flex items-start justify-between gap-3">
+          <div><CardTitle className="text-base">{title}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{subtitle}</p></div>
+          <span className="rounded-xl bg-primary/10 p-2 text-primary"><Icon className="h-4 w-4" /></span>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-3">
+        {data.length > 0 ? (
+          <div className="grid grid-cols-[9rem_1fr] items-center gap-2">
+            <div className="relative h-36">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={data} dataKey="value" nameKey="name" innerRadius={44} outerRadius={65} paddingAngle={3} stroke="none">
+                    {data.map((item, index) => <Cell key={item.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} visitors`, ""]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-bold">{total}</span><span className="text-[10px] text-muted-foreground">visitors</span></div>
+            </div>
+            <div className="min-w-0 space-y-2">
+              {data.slice(0, 6).map((item, index) => (
+                <div key={item.name} className="flex items-center gap-2 text-xs">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground" title={item.name}>{item.name}</span>
+                  <span className="font-semibold">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : <p className="flex h-36 items-center justify-center text-sm text-muted-foreground">No data in this period.</p>}
+      </CardContent>
+    </Card>
   );
 }
 

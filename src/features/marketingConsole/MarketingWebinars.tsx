@@ -3,8 +3,8 @@ import WebinarCatalog from "./WebinarCatalog";
 
 export default function MarketingWebinars() {
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <PageHeader title="Webinars" description="Create and publish webinars, share registration pages, and host live sessions on Jitsi." />
+    <div className="mx-auto max-w-7xl space-y-6">
+      <PageHeader eyebrow="Audience growth" title="Webinars" description="Plan events, monitor registrations, share landing pages, and host live sessions from one workspace." />
       <WebinarCatalog />
     </div>
   );

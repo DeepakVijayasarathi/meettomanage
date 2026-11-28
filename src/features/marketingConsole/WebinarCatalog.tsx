@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link, useHref } from "react-router-dom";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { BarChart3, CalendarDays, CalendarPlus, Clock3, Copy, ExternalLink, ImagePlus, MonitorPlay, Radio, Sparkles, Trash2, UserRound, UsersRound } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { createWebinarAttendeeLink, listManagedWebinars, listWebinarRegistrations, saveWebinar, startWebinar, type Webinar } from "@/api/webinars";
 import { useApiData } from "@/api/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -89,10 +91,12 @@ export default function WebinarCatalog() {
   }
 
   return (
-    <Card>
+    <div className="space-y-5">
+      {!loading && !error && <WebinarOverview webinars={data} />}
+    <Card className="overflow-hidden border-border/70 shadow-sm">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
-        <CardTitle className="text-lg">Webinar catalog</CardTitle>
-        {editing === undefined && <Button onClick={() => openEditor(null)}>Create webinar</Button>}
+        <div><CardTitle className="text-lg">Webinar catalog</CardTitle><p className="mt-1 text-sm text-muted-foreground">Manage upcoming, draft, and completed events.</p></div>
+        {editing === undefined && <Button onClick={() => openEditor(null)}><CalendarPlus className="h-4 w-4" /> Create webinar</Button>}
       </CardHeader>
       <CardContent className="space-y-4">
         {editing !== undefined && (
@@ -173,11 +177,80 @@ export default function WebinarCatalog() {
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         {loading && <p role="status" className="text-sm text-muted-foreground">Loading webinars…</p>}
         {!loading && !error && !data.length && editing === undefined && <p className="text-sm text-muted-foreground">No webinars yet.</p>}
-        {data.map((webinar) => (
+        <div className="grid gap-4">{data.map((webinar) => (
           <WebinarRow key={`${webinar.id}:${webinar.details.end}:${webinar.isPublished}`} webinar={webinar} disabled={saving || readingImage} onEdit={() => openEditor(webinar)} />
-        ))}
+        ))}</div>
       </CardContent>
     </Card>
+    </div>
+  );
+}
+
+const WEBINAR_COLORS = ["#7C3AED", "#EC4899", "#F97316", "#0EA5E9", "#10B981"];
+
+function WebinarOverview({ webinars }: { webinars: Webinar[] }) {
+  const now = Date.now();
+  const published = webinars.filter((webinar) => webinar.isPublished).length;
+  const upcoming = webinars.filter((webinar) => new Date(webinar.details.end).getTime() > now).length;
+  const completed = webinars.length - upcoming;
+  const ids = webinars.map((webinar) => webinar.id).join(",");
+  const counts = useApiData(
+    async () => Promise.all(webinars.map(async (webinar) => {
+      try {
+        const registrations = await listWebinarRegistrations(webinar.id, 1);
+        return { id: webinar.id, title: webinar.title, registrations: registrations.totalCount };
+      } catch {
+        return { id: webinar.id, title: webinar.title, registrations: 0 };
+      }
+    })),
+    [],
+    [],
+    { cacheKey: `webinar-overview-${ids}`, ttlMs: 30_000 },
+  );
+  const totalRegistrations = counts.data.reduce((sum, item) => sum + item.registrations, 0);
+  const statusData = [
+    { name: "Upcoming", value: upcoming },
+    { name: "Completed", value: completed },
+    { name: "Draft", value: webinars.length - published },
+  ].filter((item) => item.value > 0);
+
+  return (
+    <>
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-violet-950 to-fuchsia-950 p-6 text-white shadow-xl shadow-violet-950/10 sm:p-8">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-fuchsia-500/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
+        <div className="relative grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+          <div>
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-violet-200"><Sparkles className="h-4 w-4" /> Event performance</div>
+            <h2 className="max-w-xl text-2xl font-bold tracking-tight sm:text-3xl">Turn every webinar into a measurable growth channel.</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">Track your event pipeline, registration interest, publishing readiness, and upcoming sessions at a glance.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+            {[
+              { label: "All webinars", value: webinars.length, icon: MonitorPlay },
+              { label: "Upcoming", value: upcoming, icon: CalendarDays },
+              { label: "Published", value: published, icon: Radio },
+              { label: "Registrations", value: counts.loading ? "…" : totalRegistrations, icon: UsersRound },
+            ].map((item) => <div key={item.label} className="rounded-xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur-sm"><div className="flex items-center justify-between text-xs text-slate-300">{item.label}<item.icon className="h-4 w-4" /></div><p className="mt-1 text-2xl font-bold">{item.value}</p></div>)}
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <Card>
+          <CardHeader className="pb-2"><div className="flex items-start justify-between"><div><CardTitle className="text-base">Registrations by webinar</CardTitle><p className="mt-1 text-xs text-muted-foreground">Compare audience interest across your events.</p></div><span className="rounded-xl bg-violet-500/10 p-2 text-violet-600"><BarChart3 className="h-4 w-4" /></span></div></CardHeader>
+          <CardContent>
+            {counts.data.length ? <div className="h-56"><ResponsiveContainer width="100%" height="100%"><BarChart data={counts.data} margin={{ top: 8, right: 8, left: -20, bottom: 8 }}><defs><linearGradient id="webinarRegistrationFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#EC4899" /></linearGradient></defs><CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" /><XAxis dataKey="title" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} tickFormatter={(value) => value.length > 18 ? `${value.slice(0, 18)}…` : value} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 10 }} /><Tooltip formatter={(value) => [`${value} registrations`, "Audience"]} /><Bar dataKey="registrations" fill="url(#webinarRegistrationFill)" radius={[7, 7, 0, 0]} maxBarSize={50} /></BarChart></ResponsiveContainer></div> : <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">Create a webinar to begin tracking registrations.</p>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base">Webinar pipeline</CardTitle><p className="text-xs text-muted-foreground">Current event status distribution.</p></CardHeader>
+          <CardContent>
+            {statusData.length ? <div className="grid h-56 grid-cols-[9rem_1fr] items-center"><div className="relative h-40"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={statusData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={68} paddingAngle={4} stroke="none">{statusData.map((item, index) => <Cell key={item.name} fill={WEBINAR_COLORS[index]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer><div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-bold">{webinars.length}</span><span className="text-[10px] text-muted-foreground">events</span></div></div><div className="space-y-3">{statusData.map((item, index) => <div key={item.name} className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: WEBINAR_COLORS[index] }} /><span className="flex-1 text-muted-foreground">{item.name}</span><b>{item.value}</b></div>)}</div></div> : <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">No webinar pipeline yet.</p>}
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 }
 
@@ -190,6 +263,9 @@ function WebinarRow({ webinar, disabled, onEdit }: { webinar: Webinar; disabled:
   const registrationUrl = new URL(useHref(path), window.location.origin).href;
   const schedule = { startsAt: new Date(webinar.details.start), endsAt: new Date(webinar.details.end) };
   const ended = schedule.endsAt.getTime() <= Date.now();
+  const hosts = webinarHosts(webinar);
+  const registrationSummary = useApiData(() => listWebinarRegistrations(webinar.id, 1), null, null, { cacheKey: `webinar-registration-summary-${webinar.id}`, ttlMs: 30_000 });
+  const durationMinutes = Math.max(0, Math.round((schedule.endsAt.getTime() - schedule.startsAt.getTime()) / 60_000));
 
   async function openRoom() {
     setPending(true);
@@ -228,25 +304,36 @@ function WebinarRow({ webinar, disabled, onEdit }: { webinar: Webinar; disabled:
   }
 
   return (
-    <article className="space-y-3 border-t pt-4">
-      <div>
-        <h3 className="font-medium">{webinar.title}</h3>
-        <p className="text-sm text-muted-foreground">{ended ? "Ended" : webinar.isPublished ? "Published" : "Draft"} · {localWebinarTime(schedule.startsAt)}</p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" disabled={disabled} onClick={onEdit}>Edit</Button>
-        <WebinarRegistrations webinar={webinar} />
-        <Button size="sm" disabled={pending || ended} onClick={openRoom}>Start Jitsi webinar</Button>
+    <article className="overflow-hidden rounded-2xl border bg-card shadow-sm transition-shadow hover:shadow-md">
+      <div className="grid md:grid-cols-[15rem_1fr]">
+        <div className="relative min-h-44 overflow-hidden bg-gradient-to-br from-violet-700 via-fuchsia-700 to-orange-500">
+          {webinar.details.bannerImage ? <img src={webinar.details.bannerImage} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0 flex flex-col items-center justify-center p-5 text-center text-white"><MonitorPlay className="mb-3 h-10 w-10 opacity-90" /><span className="text-xs font-bold uppercase tracking-[0.18em] opacity-80">Meet to Manage</span><span className="mt-1 text-lg font-bold">Live webinar</span></div>}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent" />
+          <Badge className="absolute left-3 top-3 border-0 bg-white/90 text-slate-900 hover:bg-white">{ended ? "Completed" : webinar.isPublished ? "Published" : "Draft"}</Badge>
+          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white"><span className="flex items-center gap-1.5"><UsersRound className="h-3.5 w-3.5" />{registrationSummary.loading ? "Loading" : `${registrationSummary.data?.totalCount ?? 0} registered`}</span><span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" />{durationMinutes} min</span></div>
+        </div>
+        <div className="space-y-4 p-5">
+          <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-primary" />{localWebinarTime(schedule.startsAt)}</span>{hosts.hostName && <span className="flex items-center gap-1.5"><UserRound className="h-3.5 w-3.5 text-primary" />{hosts.hostName}</span>}</div>
+            <h3 className="text-lg font-bold tracking-tight">{webinar.title}</h3>
+            <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{webinar.excerpt}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" disabled={disabled} onClick={onEdit}>Edit details</Button>
+            <WebinarRegistrations webinar={webinar} />
+            <Button size="sm" disabled={pending || ended} onClick={openRoom}><Radio className="h-4 w-4" /> Start Jitsi</Button>
         {webinar.isPublished && (
           <>
-            <Button variant="outline" size="sm" disabled={pending || ended} onClick={generateLink}>Generate attendee link</Button>
-            <Button variant="ghost" size="sm" asChild><a href={webinarCalendarUrl(schedule, registrationUrl, webinar.title)} target="_blank" rel="noopener noreferrer">Add to Google Calendar</a></Button>
+              <Button variant="outline" size="sm" disabled={pending || ended} onClick={generateLink}>Attendee link</Button>
+              <Button variant="ghost" size="sm" asChild><a href={webinarCalendarUrl(schedule, registrationUrl, webinar.title)} target="_blank" rel="noopener noreferrer"><CalendarPlus className="h-4 w-4" /> Calendar</a></Button>
           </>
         )}
+          </div>
+        </div>
       </div>
       {webinar.isPublished && (
-        <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
-          <label htmlFor={`webinar-registration-${webinar.id}`} className="text-sm font-medium">Public registration link</label>
+        <div className="space-y-2 border-t bg-muted/20 px-5 py-4">
+          <label htmlFor={`webinar-registration-${webinar.id}`} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Public registration page</label>
           <div className="flex flex-wrap items-center gap-2">
             <Input
               id={`webinar-registration-${webinar.id}`}
@@ -256,21 +343,19 @@ function WebinarRow({ webinar, disabled, onEdit }: { webinar: Webinar; disabled:
               readOnly
               onFocus={(event) => event.currentTarget.select()}
             />
-            <Button variant="outline" size="sm" onClick={() => copy(registrationUrl, "Registration link")}>Copy registration link</Button>
-            <Button variant="ghost" size="sm" asChild><Link to={path} target="_blank" rel="noopener noreferrer">Open registration</Link></Button>
+            <Button variant="outline" size="sm" onClick={() => copy(registrationUrl, "Registration link")}><Copy className="h-4 w-4" /> Copy</Button>
+            <Button variant="ghost" size="sm" asChild><Link to={path} target="_blank" rel="noopener noreferrer">Open <ExternalLink className="h-4 w-4" /></Link></Button>
           </div>
         </div>
       )}
       {invite && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 border-t px-5 py-4">
           <Input className="max-w-md" aria-label="Attendee link" value={invite.url} readOnly onFocus={(event) => event.currentTarget.select()} />
           <Button size="sm" variant="outline" onClick={() => copy(invite.url, "Attendee link")}>Copy attendee link</Button>
           <span className="text-xs text-muted-foreground">Expires {localWebinarTime(new Date(invite.expiresAtUtc))}</span>
         </div>
       )}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {pending && <p role="status" className="text-sm">Connecting to the webinar service…</p>}
-      {feedback && <p role="status" className="text-sm">{feedback}</p>}
+      {(error || pending || feedback) && <div className="border-t px-5 py-3">{error && <p role="alert" className="text-sm text-destructive">{error}</p>}{pending && <p role="status" className="text-sm">Connecting to the webinar service…</p>}{feedback && <p role="status" className="text-sm">{feedback}</p>}</div>}
     </article>
   );
 }
