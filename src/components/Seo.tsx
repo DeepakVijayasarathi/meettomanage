@@ -18,12 +18,14 @@ interface SeoProps {
   /** Set on routes with no real content of their own (404) so a crawler that renders the
    *  JS doesn't index them under the previous page's — or index.html's default — title. */
   noindex?: boolean;
+  /** Record a first-party page view even when this page is intentionally excluded from search. */
+  trackNoindex?: boolean;
   /** schema.org structured data for this page (e.g. a BlogPosting). */
   jsonLd?: Record<string, unknown>;
 }
 
 /** Per-route title, description, canonical and social-share tags (index.html carries the site-wide defaults a crawler sees before JS runs). */
-export function Seo({ pageKey, title: titleFallback, description: descriptionFallback, path, image = DEFAULT_IMAGE, type = "website", noindex = false, jsonLd }: SeoProps) {
+export function Seo({ pageKey, title: titleFallback, description: descriptionFallback, path, image = DEFAULT_IMAGE, type = "website", noindex = false, trackNoindex = false, jsonLd }: SeoProps) {
   const title = useSeoOverride(pageKey ?? "", "title", titleFallback);
   const description = useSeoOverride(pageKey ?? "", "description", descriptionFallback);
   const url = `${SITE_URL}${path}`;
@@ -34,8 +36,8 @@ export function Seo({ pageKey, title: titleFallback, description: descriptionFal
   const titleRef = useRef(title);
   titleRef.current = title;
   useEffect(() => {
-    if (!noindex) void trackMarketingPageView(path, titleRef.current);
-  }, [path, noindex]);
+    if (!noindex || trackNoindex) void trackMarketingPageView(path, titleRef.current);
+  }, [path, noindex, trackNoindex]);
 
   // index.html ships site-wide default tags for crawlers that don't run JavaScript. Once a page declares its own,
   // two canonicals (or two descriptions) would conflict, so the defaults are dropped; Helmet's own tags carry data-rh.

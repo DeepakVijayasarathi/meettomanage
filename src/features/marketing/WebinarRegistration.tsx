@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, CalendarDays, Check, CheckCircle2, ChevronDown, ClipboardCheck, Clock3, Copy, CreditCard, Gift, MessageCircle, UserPlus, UsersRound, Video } from "lucide-react";
 import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { requestPlatformDemo } from "@/api/marketing";
@@ -8,7 +8,7 @@ import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { trackMarketingEvent } from "@/lib/analytics";
+import { marketingVisitorId, resetFormVisible, trackFormVisible, trackMarketingEvent } from "@/lib/analytics";
 import { apiEnabled, userMessage } from "@/lib/api";
 import { useLightBrandScope } from "@/lib/theme";
 import { localWebinarTime, readWebinarSchedule, webinarCalendarUrl, type WebinarSchedule } from "@/lib/webinarCalendar";
@@ -75,6 +75,8 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
   const [registered, setRegistered] = useState(false);
   const [joinUrl, setJoinUrl] = useState<string>();
   const [error, setError] = useState("");
+  const formStarted = useRef(false);
+  const formSubmitted = useRef(false);
   const [params] = useSearchParams();
   const { hash } = useLocation();
   useEffect(() => {
@@ -116,6 +118,22 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
   const canRegister = !closed && !registered && available;
   const registrationAction = academyWebinar ? "Reserve your spot" : "Register now";
   const titleEnding = academyWebinar ? title.match(/^(.*?)(less admin work)$/i) : null;
+  const analyticsVariant = webinar ? `webinar:${webinar.id.replace(/-/g, "")}` : "webinar:general";
+
+  useEffect(() => {
+    resetFormVisible();
+    const panel = document.getElementById("webinar-registration");
+    if (!panel || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) trackFormVisible(registrationUrl.pathname, analyticsVariant);
+    }, { threshold: 0.25 });
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [analyticsVariant, registrationUrl.pathname]);
+
+  useEffect(() => () => {
+    if (formStarted.current && !formSubmitted.current) trackMarketingEvent("form_abandoned", registrationUrl.pathname, analyticsVariant);
+  }, [analyticsVariant, registrationUrl.pathname]);
 
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -134,12 +152,11 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
       return;
     }
 
-    const variant = webinar ? `webinar:${webinar.slug}` : "webinar:general";
-    trackMarketingEvent("form_submit_attempted", registrationUrl.pathname, variant);
+    trackMarketingEvent("form_submit_attempted", registrationUrl.pathname, analyticsVariant);
     setError("");
     setSubmitting(true);
     try {
-      const contact = { fullName, workEmail, phone, academyName };
+      const contact = { fullName, workEmail, phone, academyName, visitorId: marketingVisitorId() };
       if (webinar) {
         const confirmation = await registerForWebinar(webinar.slug, contact);
         if (confirmation?.joinUrl && /^https:\/\/[^\s/]+\//i.test(confirmation.joinUrl)) setJoinUrl(confirmation.joinUrl);
@@ -152,10 +169,11 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
         source: "Webinar",
         landingPath: registrationUrl.pathname,
       });
-      trackMarketingEvent("form_submitted", registrationUrl.pathname, variant);
+      formSubmitted.current = true;
+      trackMarketingEvent("form_submitted", registrationUrl.pathname, analyticsVariant);
       setRegistered(true);
     } catch (err) {
-      trackMarketingEvent("form_submit_failed", registrationUrl.pathname, variant);
+      trackMarketingEvent("form_submit_failed", registrationUrl.pathname, analyticsVariant);
       setError(userMessage(err, "Your registration could not be saved. Please try again."));
     } finally {
       setSubmitting(false);
@@ -165,11 +183,11 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
   const registrationPanel = (
     <section id="webinar-registration" tabIndex={-1} aria-labelledby="webinar-registration-title" className="scroll-mt-8 overflow-hidden rounded-[1.5rem] border border-[#EED7C7] bg-white shadow-[0_20px_48px_rgba(80,37,17,0.09)]">
       {registered ? (
-        <div className="p-5 sm:p-8"><RegistrationConfirmation title={title} schedule={schedule} registrationUrl={registrationUrl.href} joinUrl={joinUrl} /></div>
+        <div className="p-5 sm:p-8"><RegistrationConfirmation title={title} schedule={schedule} registrationUrl={registrationUrl.href} joinUrl={joinUrl} analyticsVariant={analyticsVariant} /></div>
       ) : closed ? (
         <h2 id="webinar-registration-title" className="p-5 text-2xl font-bold sm:p-8">Registration has closed</h2>
       ) : (
-        <form onSubmit={register}>
+        <form onSubmit={register} onInput={() => { if (!formStarted.current) { formStarted.current = true; trackMarketingEvent("form_started", registrationUrl.pathname, analyticsVariant); } }}>
           <div className="border-b border-[#EFDCD0] bg-[#FFF8F2] px-5 py-5 sm:px-8 sm:py-6">
             <h2 id="webinar-registration-title" className="text-2xl font-bold tracking-tight sm:text-3xl">{academyWebinar ? registrationAction : "Register for this webinar"}</h2>
             <p className="mt-2 text-base text-[#6C5347]">{academyWebinar ? "RSVP for the free online session." : "Enter your details to register for the online session."}</p>
@@ -197,7 +215,7 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
     <div className="theme-light-scope min-h-screen bg-[#FFFCF8] text-[#251B17]">
       <Seo title={academyWebinar ? "Free Academy Management Webinar | Meet to Manage" : `${title} | Registration`}
         description={webinar?.excerpt ?? "Register for the Meet to Manage live webinar."}
-        path={registrationUrl.pathname} noindex={!academyWebinar || !webinar?.isPublished}
+        path={registrationUrl.pathname} noindex={!academyWebinar || !webinar?.isPublished} trackNoindex={Boolean(webinar?.isPublished)}
         image={academyWebinar ? "https://meettomanage.cloud/images/academy-webinar-hero.webp" : undefined} />
       <header className="border-b border-[#F0E4DA] bg-white">
         <div className="mx-auto flex min-h-[4.5rem] max-w-[1240px] items-center justify-between gap-4 px-5 sm:px-8">
@@ -364,8 +382,8 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
                 <p className="mt-2 leading-relaxed text-[#5F4A40]">Book a free demo or compare plans. If you’re attending the webinar, ask the team about available offers before you buy.</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Link to={`/get-started?from=${encodeURIComponent(registrationUrl.pathname)}`} className="inline-flex min-h-11 items-center rounded-lg bg-[#B53B0C] px-4 font-bold text-white hover:bg-[#913009]">Claim a free demo</Link>
-                <Link to="/pricing" className="inline-flex min-h-11 items-center rounded-lg border border-[#DAB9A6] px-4 font-bold text-[#492B21] hover:bg-[#FFF1E6]">View plans and buy</Link>
+                <Link to={`/get-started?from=${encodeURIComponent(registrationUrl.pathname)}`} onClick={() => trackMarketingEvent("sales_cta_clicked", registrationUrl.pathname, "webinar-demo")} className="inline-flex min-h-11 items-center rounded-lg bg-[#B53B0C] px-4 font-bold text-white hover:bg-[#913009]">Claim a free demo</Link>
+                <Link to="/pricing" onClick={() => trackMarketingEvent("sales_cta_clicked", registrationUrl.pathname, "webinar-pricing")} className="inline-flex min-h-11 items-center rounded-lg border border-[#DAB9A6] px-4 font-bold text-[#492B21] hover:bg-[#FFF1E6]">View plans and buy</Link>
                 <a href="https://wa.me/919344773231?text=I%27d%20like%20to%20ask%20about%20Meet%20to%20Manage%20webinar%20attendee%20offers." target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center px-1 font-semibold text-[#813B20] hover:underline" onClick={() => trackMarketingEvent("whatsapp_clicked", window.location.pathname, "webinar:attendee_offers")}>Ask about attendee offers</a>
               </div>
             </div>
@@ -377,11 +395,12 @@ function RegistrationForm({ webinar }: { webinar?: Webinar }) {
   );
 }
 
-function RegistrationConfirmation({ title, schedule, registrationUrl, joinUrl }: {
+function RegistrationConfirmation({ title, schedule, registrationUrl, joinUrl, analyticsVariant }: {
   title: string;
   schedule: WebinarSchedule | null;
   registrationUrl: string;
   joinUrl?: string;
+  analyticsVariant: string;
 }) {
   const [copyStatus, setCopyStatus] = useState("");
   const starts = schedule ? localWebinarTime(schedule.startsAt) : "";
@@ -410,7 +429,7 @@ function RegistrationConfirmation({ title, schedule, registrationUrl, joinUrl }:
         <p className="text-sm leading-relaxed text-slate-700">{joinUrl ? "Your RSVP is confirmed. Save your joining link and open it at the scheduled time." : "Your RSVP is confirmed. The webinar team shares the live joining instructions separately."}</p>
       </div>
       {joinUrl && <Button className="w-full rounded-lg bg-[#B53B0C] font-bold text-white hover:bg-[#913009]" asChild>
-        <a href={joinUrl} target="_blank" rel="noopener noreferrer"><Video className="h-4 w-4" aria-hidden /> Join the webinar</a>
+        <a href={joinUrl} target="_blank" rel="noopener noreferrer" onClick={() => trackMarketingEvent("content_cta_clicked", new URL(registrationUrl).pathname, `join:${analyticsVariant.slice(8)}`)}><Video className="h-4 w-4" aria-hidden /> Join the webinar</a>
       </Button>}
 
       <div className="space-y-3 rounded-xl border border-[#F3D8BD] bg-[#FFF6EB] p-4">

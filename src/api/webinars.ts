@@ -32,12 +32,28 @@ export const listWebinars = () => apiFetchGlobal<WebinarSummary[]>(root, undefin
 export const getWebinar = (slug: string) => apiFetchGlobal<Webinar>(`${root}/${encodeURIComponent(slug)}`, undefined, false);
 export const askWebinarQuestion = (slug: string, question: string) =>
   apiFetchGlobal<{ reply: string }>(`${root}/${encodeURIComponent(slug)}/questions`, { method: "POST", body: JSON.stringify({ question }) }, false);
-export const registerForWebinar = (slug: string, input: { fullName: string; workEmail: string; phone: string; academyName: string }) =>
+export const registerForWebinar = (slug: string, input: { fullName: string; workEmail: string; phone: string; academyName: string; visitorId?: string }) =>
   apiFetchGlobal<{ joinUrl?: string } | undefined>(`${root}/${encodeURIComponent(slug)}/register`, { method: "POST", body: JSON.stringify(input) }, false);
 export const listManagedWebinars = () => apiFetchGlobal<Webinar[]>(`${root}/manage`);
 export type WebinarRegistration = Pick<ApiPlatformDemoRequest, "id" | "fullName" | "workEmail" | "phone" | "academyName" | "createdAtUtc">;
 export const listWebinarRegistrations = (id: string, page: number) =>
   apiFetchGlobal<ApiPaged<WebinarRegistration>>(`${root}/manage/${id}/registrations?page=${page}`);
+export interface WebinarAnalytics {
+  pageViews: number;
+  visitors: number;
+  formViews: number;
+  formStarts: number;
+  submitAttempts: number;
+  trackedSubmissions: number;
+  registrations: number;
+  joinClicks: number;
+  demoClicks: number;
+  converted: number;
+  sources: { name: string; count: number }[];
+  dailyRegistrations: { date: string; count: number }[];
+}
+export const getWebinarAnalytics = (id: string) =>
+  apiFetchGlobal<WebinarAnalytics>(`${root}/manage/${id}/analytics`);
 export const saveWebinar = (input: WebinarInput, id?: string) => apiFetchGlobal<void>(
   id ? `${root}/manage/${id}` : `${root}/manage`,
   { method: id ? "PUT" : "POST", body: JSON.stringify(input) },
